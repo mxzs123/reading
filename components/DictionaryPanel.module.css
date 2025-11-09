@@ -1,0 +1,134 @@
+.wrapper {
+  position: fixed;
+  width: min(360px, calc(100vw - 32px));
+  max-height: 70vh;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1.2rem 1.4rem;
+  border-radius: 20px;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(10px) scale(0.98);
+  transition: transform 0.28s ease, opacity 0.24s ease;
+  z-index: 20;
+}
+
+.open {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0) scale(1);
+}
+
+.floating {
+  right: 24px;
+  bottom: 24px;
+}
+
+.anchored {
+  transform: translateY(8px) scale(0.98);
+}
+
+.open.anchored {
+  transform: translateY(0) scale(1);
+}
+
+.mobile {
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100vw;
+  max-height: 60vh;
+  border-radius: 24px 24px 0 0;
+  transform: translateY(100%);
+  box-shadow: 0 -12px 32px rgba(0, 0, 0, 0.25);
+  padding-bottom: calc(1.4rem + env(safe-area-inset-bottom));
+}
+
+.open.mobile {
+  transform: translateY(0);
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.title {
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+
+.close {
+  font-size: 0.9rem;
+  padding: 0.28rem 0.8rem;
+  background: rgba(0, 0, 0, 0.08);
+  border-radius: 999px;
+}
+
+.phoneticDivider {
+  margin-left: 0.6rem;
+}
+
+.content {
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.content::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 999px;
+}
+
+.meanings {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.meanings li {
+  line-height: 1.5;
+  font-size: 0.95rem;
+}
+
+.pos {
+  display: inline-flex;
+  min-width: 2.4rem;
+  font-size: 0.82rem;
+  color: var(--color-muted);
+  margin-right: 0.5rem;
+}
+
+.webSection h4 {
+  margin: 0 0 0.4rem;
+  font-size: 0.95rem;
+}
+
+.webSection ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.webSection li strong {
+  font-weight: 600;
+}
+
+.error {
+  color: #c53030;
+}
