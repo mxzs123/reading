@@ -107,6 +107,24 @@
   font-size: 0.85rem;
 }
 
+/* 折叠状态下的提示栏 */
+.collapsedNotice {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.8rem;
+  padding: 0.6rem 0.9rem;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.04);
+  font-size: 0.92rem;
+}
+
+.collapsedActions {
+  display: inline-flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
 .outputInner {
   min-height: 260px;
   display: flex;
@@ -128,11 +146,18 @@
 @media (max-width: 1024px) {
   .layout {
     flex-direction: column;
+    /* 让单列布局在移动端横向拉伸，避免内容贴左出现右侧留白 */
+    align-items: stretch;
   }
 
   .headerActions {
     width: 100%;
     justify-content: flex-end;
+  }
+
+  /* 确保主内容区域占满可用宽度 */
+  .main {
+    width: 100%;
   }
 }
 

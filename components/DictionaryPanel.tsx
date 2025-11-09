@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, type CSSProperties } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { playWordSound } from "@/lib/wordAudio";
 import styles from "./DictionaryPanel.module.css";
 
 interface DictionaryMeaning {
@@ -47,6 +48,10 @@ export function DictionaryPanel({
   onClose,
 }: DictionaryPanelProps) {
   const anchored = !isMobile && Boolean(anchor);
+  const panelRef = useRef<HTMLDivElement | null>(null);
+  const [dragY, setDragY] = useState(0);
+  const draggingRef = useRef(false);
+  const startYRef = useRef(0);
 
   const panelStyle = useMemo<CSSProperties | undefined>(() => {
     if (isMobile || !anchor) return undefined;
@@ -73,6 +78,44 @@ export function DictionaryPanel({
     return { top, left };
   }, [anchor, isMobile]);
 
+  // 允许按下 ESC 快速关闭
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [isOpen, onClose]);
+
+  // 拖拽关闭（仅移动端）
+  const onPointerDown = (e: React.PointerEvent) => {
+    if (!isMobile || !isOpen) return;
+    draggingRef.current = true;
+    startYRef.current = e.clientY;
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+  };
+
+  const onPointerMove = (e: React.PointerEvent) => {
+    if (!draggingRef.current) return;
+    const delta = Math.max(0, e.clientY - startYRef.current);
+    setDragY(delta);
+  };
+
+  const onPointerUp = (e: React.PointerEvent) => {
+    if (!draggingRef.current) return;
+    draggingRef.current = false;
+    (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
+    const threshold = Math.min(140, Math.round((typeof window !== "undefined" ? window.innerHeight : 600) * 0.3));
+    if (dragY > threshold) {
+      setDragY(0);
+      onClose();
+    } else {
+      // 回弹
+      setDragY(0);
+    }
+  };
+
   const wrapperClassName = [
     styles.wrapper,
     isMobile ? styles.mobile : anchored ? styles.anchored : styles.floating,
@@ -82,13 +125,39 @@ export function DictionaryPanel({
     .filter(Boolean)
     .join(" ");
 
+  const combinedStyle: CSSProperties | undefined = useMemo(() => {
+    if (isMobile) {
+      return {
+        ...(panelStyle ?? {}),
+        transform: dragY > 0 ? `translateY(${dragY}px)` : undefined,
+        transition: dragY > 0 ? "none" : undefined,
+      } as CSSProperties;
+    }
+    return panelStyle;
+  }, [isMobile, panelStyle, dragY]);
+
   return (
-    <div
-      className={wrapperClassName}
-      role="dialog"
-      aria-live="polite"
-      style={panelStyle}
-    >
+    <>
+      <div
+        className={`${styles.backdrop} ${isOpen ? styles.backdropVisible : ""}`}
+        onClick={onClose}
+        aria-hidden
+      />
+      <div
+        ref={panelRef}
+        className={wrapperClassName}
+        role="dialog"
+        aria-live="polite"
+        style={combinedStyle}
+      >
+        {isMobile && (
+          <div
+            className={styles.dragHandle}
+            onPointerDown={onPointerDown}
+            onPointerMove={onPointerMove}
+            onPointerUp={onPointerUp}
+          />
+        )}
       <header className={styles.header}>
         <div>
           <h3 className={styles.title}>{word || "词典"}</h3>
@@ -103,9 +172,24 @@ export function DictionaryPanel({
             </p>
           )}
         </div>
-        <button className={styles.close} onClick={onClose}>
-          关闭
-        </button>
+        <div className={styles.actions}>
+          <button
+            type="button"
+            className={styles.iconButton}
+            aria-label="重播发音"
+            title="重播发音"
+            disabled={!word}
+            onClick={() => word && playWordSound(word)}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+              <path d="M3 10v4h4l5 5V5L7 10H3z" fill="currentColor"/>
+              <path d="M14 7.35a7 7 0 010 9.3M16.5 4a10.5 10.5 0 010 16" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+            </svg>
+          </button>
+          <button className={styles.close} onClick={onClose}>
+            关闭
+          </button>
+        </div>
       </header>
 
       <div className={styles.content}>
@@ -146,5 +230,6 @@ export function DictionaryPanel({
         )}
       </div>
     </div>
+    </>
   );
 }

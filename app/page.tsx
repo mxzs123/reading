@@ -26,7 +26,10 @@ interface DictionaryData {
 
 export default function Home() {
   const [sourceText, setSourceText] = useState("");
-  const [userSettingsOpen, setUserSettingsOpen] = useState<boolean | null>(null);
+  // 默认折叠设置面板（桌面与移动端一致）
+  const [userSettingsOpen, setUserSettingsOpen] = useState<boolean>(false);
+  // 原文输入是否折叠
+  const [inputCollapsed, setInputCollapsed] = useState(false);
   const [selectedWord, setSelectedWord] = useState("");
   const [dictionaryAnchor, setDictionaryAnchor] = useState<
     | {
@@ -44,7 +47,10 @@ export default function Home() {
   const abortRef = useRef<AbortController | null>(null);
   const isDesktop = useMediaQuery("(min-width: 1025px)");
   const isMobile = useMediaQuery("(max-width: 768px)");
-  const settingsOpen = userSettingsOpen ?? isDesktop;
+  const settingsOpen = userSettingsOpen;
+  const inputSectionRef = useRef<HTMLElement | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const outputSectionRef = useRef<HTMLElement | null>(null);
 
   const handleWordSelected = useCallback(
     (
@@ -124,6 +130,16 @@ export default function Home() {
     []
   );
 
+  const confirmAndCollapse = useCallback(() => {
+    // 没有文本不折叠
+    if (!sourceText.trim()) return;
+    setInputCollapsed(true);
+    // 聚焦阅读区域
+    setTimeout(() => {
+      outputSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 0);
+  }, [sourceText]);
+
   return (
     <div className={styles.page}>
       <header className={styles.header}>
@@ -136,55 +152,111 @@ export default function Home() {
         <div className={styles.headerActions}>
           <button
             className="primary-button"
-            onClick={() =>
-              setUserSettingsOpen((prev) => {
-                const current = (prev ?? isDesktop) === true;
-                const next = !current;
-                const defaultState = isDesktop;
-                return next === defaultState ? null : next;
-              })
-            }
+            onClick={() => setUserSettingsOpen((prev) => !prev)}
           >
             {settingsOpen ? "收起设置" : "打开设置"}
           </button>
+          {inputCollapsed && (
+            <button
+              className="primary-button"
+              onClick={() => {
+                setInputCollapsed(false);
+                setTimeout(() => textareaRef.current?.focus(), 0);
+                setTimeout(() => inputSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 0);
+              }}
+            >
+              编辑原文
+            </button>
+          )}
         </div>
       </header>
 
       <div className={styles.layout}>
         <main className={styles.main}>
-          <section className={`${styles.inputSection} surface-card`}>
+          <section ref={inputSectionRef} className={`${styles.inputSection} surface-card`}>
             <div className={styles.sectionHeader}>
               <h2>原文输入</h2>
               <span className="muted-text">支持键鼠与触屏编辑</span>
             </div>
-            <textarea
-              className={styles.textarea}
-              value={sourceText}
-              onChange={(event) => setSourceText(event.target.value)}
-              placeholder={placeholder}
-              rows={12}
-            />
-            <div className={styles.helperRow}>
-              <span className="muted-text">
-                字数：{sourceText.trim().length ? sourceText.length : 0}
-              </span>
-              <button
-                type="button"
-                className={styles.clearButton}
-                onClick={() => {
-                  setSourceText("");
-                  setDictionaryOpen(false);
-                  setDictionaryAnchor(null);
-                  setDictionaryData(undefined);
-                  setDictionaryError(undefined);
-                }}
-              >
-                清空
-              </button>
-            </div>
+            {!inputCollapsed ? (
+              <>
+                <textarea
+                  ref={textareaRef}
+                  className={styles.textarea}
+                  value={sourceText}
+                  onChange={(event) => setSourceText(event.target.value)}
+                  onKeyDown={(e) => {
+                    if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+                      e.preventDefault();
+                      confirmAndCollapse();
+                    }
+                  }}
+                  placeholder={placeholder}
+                  rows={8}
+                />
+                <div className={styles.helperRow}>
+                  <span className="muted-text">
+                    字数：{sourceText.trim().length ? sourceText.length : 0}
+                  </span>
+                  <div style={{ display: "inline-flex", gap: "0.5rem" }}>
+                    <button
+                      type="button"
+                      className={styles.clearButton}
+                      onClick={() => {
+                        setSourceText("");
+                        setDictionaryOpen(false);
+                        setDictionaryAnchor(null);
+                        setDictionaryData(undefined);
+                        setDictionaryError(undefined);
+                        textareaRef.current?.focus();
+                      }}
+                    >
+                      清空
+                    </button>
+                    <button
+                      type="button"
+                      className={styles.clearButton}
+                      onClick={confirmAndCollapse}
+                      title="确认生成并折叠输入（Ctrl/Cmd + Enter）"
+                    >
+                      确认生成
+                    </button>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className={styles.collapsedNotice}>
+                <span>
+                  已载入 <strong>{sourceText.trim().length ? sourceText.length : 0}</strong> 字
+                </span>
+                <div className={styles.collapsedActions}>
+                  <button
+                    type="button"
+                    className={styles.clearButton}
+                    onClick={() => {
+                      setInputCollapsed(false);
+                      setTimeout(() => textareaRef.current?.focus(), 0);
+                    }}
+                  >
+                    重新编辑
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.clearButton}
+                    onClick={() => {
+                      setInputCollapsed(false);
+                      setSourceText("");
+                      setTimeout(() => textareaRef.current?.focus(), 0);
+                    }}
+                  >
+                    替换文本
+                  </button>
+                </div>
+              </div>
+            )}
           </section>
 
-          <section className={`${styles.outputSection} surface-card`}>
+          <section ref={outputSectionRef} className={`${styles.outputSection} surface-card`}>
             <div className={styles.sectionHeader}>
               <h2>仿生阅读</h2>
               <span className="muted-text">点击单词即可发音与查询释义</span>
@@ -195,10 +267,19 @@ export default function Home() {
           </section>
         </main>
 
-        <SettingsPanel
-          isOpen={settingsOpen}
-          onClose={() => setUserSettingsOpen(false)}
-        />
+        {isDesktop ? (
+          settingsOpen && (
+            <SettingsPanel
+              isOpen={true}
+              onClose={() => setUserSettingsOpen(false)}
+            />
+          )
+        ) : (
+          <SettingsPanel
+            isOpen={settingsOpen}
+            onClose={() => setUserSettingsOpen(false)}
+          />
+        )}
       </div>
 
       <DictionaryPanel
