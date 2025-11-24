@@ -1,6 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+} from "react";
+import type React from "react";
 import { playWordSound } from "@/lib/wordAudio";
 import styles from "./DictionaryPanel.module.css";
 
@@ -47,11 +54,10 @@ export function DictionaryPanel({
   isMobile,
   onClose,
 }: DictionaryPanelProps) {
-  const anchored = !isMobile && Boolean(anchor);
-  const panelRef = useRef<HTMLDivElement | null>(null);
   const [dragY, setDragY] = useState(0);
   const draggingRef = useRef(false);
   const startYRef = useRef(0);
+  const anchored = !isMobile && Boolean(anchor);
 
   const panelStyle = useMemo<CSSProperties | undefined>(() => {
     if (isMobile || !anchor) return undefined;
@@ -144,7 +150,6 @@ export function DictionaryPanel({
         aria-hidden
       />
       <div
-        ref={panelRef}
         className={wrapperClassName}
         role="dialog"
         aria-live="polite"

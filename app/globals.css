@@ -1,7 +1,7 @@
 :root {
   color-scheme: light;
   --font-size: 20px;
-  --line-height: 2;
+  --line-height: 1.75;
   --letter-spacing: 0em;
   --paragraph-spacing: 1.5em;
   --font-family: Charter, "Bitstream Charter", Georgia, serif;
@@ -117,30 +117,46 @@ select {
 }
 
 .converted-paragraph {
-  margin-bottom: var(--paragraph-spacing);
+  margin: 0;
   font-size: var(--font-size);
   line-height: var(--line-height);
   letter-spacing: var(--letter-spacing);
   text-align: var(--text-align);
 }
 
-.converted-paragraph:last-of-type {
-  margin-bottom: 0;
-}
-
 :root {
   --panel-blur: blur(18px);
 }
 
+.bionic-shell {
+  width: 100%;
+  padding: 0 var(--reading-padding);
+  display: flex;
+  justify-content: center;
+}
+
 .bionic-content {
   width: 100%;
+  max-width: var(--page-width);
   display: flex;
   flex-direction: column;
   gap: var(--paragraph-spacing);
+  font-size: var(--font-size);
+  line-height: var(--line-height);
+  letter-spacing: var(--letter-spacing);
+  text-align: var(--text-align);
+  font-family: var(--font-family);
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
-.bionic-content p {
+.bionic-paragraph {
   margin: 0;
+}
+
+.bionic-paragraph.is-blank {
+  min-height: calc(var(--font-size) * var(--line-height) * 0.6);
+  pointer-events: none;
 }
 
 .surface-card {

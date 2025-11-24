@@ -63,12 +63,11 @@ export default function Home() {
       if (!trimmed) return;
 
       setSelectedWord(trimmed);
+      setDictionaryAnchor(isMobile ? null : selection.rect);
       setDictionaryOpen(true);
       setDictionaryData(undefined);
       setDictionaryLoading(true);
       setDictionaryError(undefined);
-
-      setDictionaryAnchor(isMobile ? null : selection.rect);
 
       abortRef.current?.abort();
       const controller = new AbortController();
@@ -111,7 +110,6 @@ export default function Home() {
   const handleCloseDictionary = useCallback(() => {
     abortRef.current?.abort();
     setDictionaryOpen(false);
-    setDictionaryAnchor(null);
   }, []);
 
   useEffect(() => {

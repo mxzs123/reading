@@ -1,7 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useRef } from "react";
-import { convertToBionicReading } from "@/lib/bionicReading";
+import {
+  useCallback,
+  useDeferredValue,
+  useEffect,
+  useMemo,
+  useRef,
+} from "react";
+import type React from "react";
+import type { BoldRatio } from "@/lib/bionicReading";
 import { playWordSound } from "@/lib/wordAudio";
 import { useSettings } from "@/contexts/SettingsContext";
 
@@ -20,34 +27,51 @@ interface BionicTextProps {
   onWordSelected?: (selection: WordSelection) => void;
 }
 
+type Token =
+  | { type: "word"; value: string }
+  | { type: "text"; value: string };
+
+interface Paragraph {
+  id: string;
+  tokens: Token[];
+  isBlank: boolean;
+}
+
+const WORD_REGEX = /[A-Za-z]+(?:['-][A-Za-z]+)*/g;
+
+const BOLD_RATIO_MAP: Record<BoldRatio, number> = {
+  low: 0.3,
+  medium: 0.45,
+  high: 0.6,
+};
+
 export function BionicText({ text, onWordSelected }: BionicTextProps) {
   const { settings } = useSettings();
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const deferredText = useDeferredValue(text);
 
-  const html = useMemo(() => {
-    return convertToBionicReading(text, {
-      boldRatio: settings.boldRatio,
-      enableBionic: settings.enableBionic,
-    });
-  }, [settings.boldRatio, settings.enableBionic, text]);
+  const paragraphs = useMemo<Paragraph[]>(() => {
+    if (!deferredText.trim()) return [];
+    return splitIntoParagraphs(deferredText).map((entry, index) => ({
+      id: `p-${index}`,
+      tokens: tokenize(entry.content),
+      isBlank: entry.isBlank,
+    }));
+  }, [deferredText]);
 
-  useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
-
-    const handleInteraction = (target: HTMLElement) => {
-      const word =
-        target.dataset.word ?? target.textContent?.trim() ?? "";
-      if (!word) return;
+  const handleInteraction = useCallback(
+    (word: string, target: HTMLElement) => {
+      if (!word.trim()) return;
 
       playWordSound(word);
+
       target.classList.add("active-highlight");
       window.setTimeout(() => {
         target.classList.remove("active-highlight");
-      }, 300);
+      }, 280);
 
       const rect = target.getBoundingClientRect();
-      const selection: WordSelection = {
+      onWordSelected?.({
         word,
         rect: {
           top: rect.top,
@@ -55,39 +79,56 @@ export function BionicText({ text, onWordSelected }: BionicTextProps) {
           width: rect.width,
           height: rect.height,
         },
+      });
+    },
+    [onWordSelected]
+  );
+
+  const renderWord = useCallback(
+    (word: string, key: string) => {
+      const { lead, tail } = splitWord(word, settings.boldRatio);
+
+      const onClick = (event: React.MouseEvent<HTMLSpanElement>) => {
+        handleInteraction(word, event.currentTarget);
       };
 
-      onWordSelected?.(selection);
-    };
+      const onKeyDown = (event: React.KeyboardEvent<HTMLSpanElement>) => {
+        if (event.key !== "Enter" && event.key !== " ") return;
+        event.preventDefault();
+        handleInteraction(word, event.currentTarget);
+      };
 
-    const handleClick = (event: MouseEvent) => {
-      const target = (event.target as HTMLElement).closest(
-        ".bionic-word"
-      ) as HTMLElement | null;
-      if (!target) return;
-      handleInteraction(target);
-    };
+      return (
+        <span
+          key={key}
+          className="bionic-word"
+          data-word={word}
+          role="button"
+          tabIndex={0}
+          onClick={onClick}
+          onKeyDown={onKeyDown}
+        >
+          {settings.enableBionic ? (
+            <>
+              <b>{lead}</b>
+              {tail}
+            </>
+          ) : (
+            word
+          )}
+        </span>
+      );
+    },
+    [handleInteraction, settings.boldRatio, settings.enableBionic]
+  );
 
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== "Enter" && event.key !== " ") return;
-      const target = (event.target as HTMLElement).closest(
-        ".bionic-word"
-      ) as HTMLElement | null;
-      if (!target) return;
-      event.preventDefault();
-      handleInteraction(target);
-    };
+  useEffect(() => {
+    if (!paragraphs.length && containerRef.current) {
+      containerRef.current.scrollTop = 0;
+    }
+  }, [paragraphs.length]);
 
-    container.addEventListener("click", handleClick);
-    container.addEventListener("keydown", handleKeyDown);
-
-    return () => {
-      container.removeEventListener("click", handleClick);
-      container.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [onWordSelected]);
-
-  if (!html) {
+  if (!paragraphs.length) {
     return (
       <div className="muted-text" ref={containerRef}>
         输入文本后将在此显示仿生阅读效果。
@@ -96,10 +137,101 @@ export function BionicText({ text, onWordSelected }: BionicTextProps) {
   }
 
   return (
-    <div
-      ref={containerRef}
-      className="bionic-content"
-      dangerouslySetInnerHTML={{ __html: html }}
-    />
+    <div className="bionic-shell">
+      <div ref={containerRef} className="bionic-content">
+        {paragraphs.map((paragraph, paragraphIndex) => (
+          <p
+            key={paragraph.id}
+            className={`bionic-paragraph${paragraph.isBlank ? " is-blank" : ""}`}
+            aria-hidden={paragraph.isBlank}
+          >
+            {paragraph.tokens.map((token, tokenIndex) =>
+              token.type === "word"
+                ? renderWord(token.value, `${paragraphIndex}-${tokenIndex}`)
+                : token.value
+            )}
+          </p>
+        ))}
+      </div>
+    </div>
   );
+}
+
+function splitWord(word: string, ratio: BoldRatio): { lead: string; tail: string } {
+  const length = word.length;
+  if (length === 0) return { lead: "", tail: "" };
+
+  const ratioValue = BOLD_RATIO_MAP[ratio] ?? BOLD_RATIO_MAP.medium;
+  const boldCount = Math.min(
+    Math.max(Math.ceil(length * ratioValue), 1),
+    length
+  );
+
+  return {
+    lead: word.slice(0, boldCount),
+    tail: word.slice(boldCount),
+  };
+}
+
+function tokenize(content: string): Token[] {
+  const tokens: Token[] = [];
+  if (!content) return tokens;
+
+  let lastIndex = 0;
+
+  content.replace(WORD_REGEX, (match, offset) => {
+    if (offset > lastIndex) {
+      tokens.push({ type: "text", value: content.slice(lastIndex, offset) });
+    }
+    tokens.push({ type: "word", value: match });
+    lastIndex = offset + match.length;
+    return match;
+  });
+
+  if (lastIndex < content.length) {
+    tokens.push({ type: "text", value: content.slice(lastIndex) });
+  }
+
+  return tokens;
+}
+
+function splitIntoParagraphs(text: string): Array<{ content: string; isBlank: boolean }> {
+  const normalized = text.replace(/\r\n?/g, "\n");
+  const lines = normalized.split("\n");
+
+  const paragraphs: Array<{ content: string; isBlank: boolean }> = [];
+  let buffer: string[] = [];
+  let blankStreak = 0;
+
+  const flushBuffer = () => {
+    if (!buffer.length) return;
+    const content = buffer.join("\n");
+    paragraphs.push({ content, isBlank: false });
+    buffer = [];
+  };
+
+  lines.forEach((line) => {
+    if (line.trim() === "") {
+      flushBuffer();
+      blankStreak += 1;
+    } else {
+      if (blankStreak > 0) {
+        for (let i = 0; i < blankStreak; i += 1) {
+          paragraphs.push({ content: "", isBlank: true });
+        }
+        blankStreak = 0;
+      }
+      buffer.push(line);
+    }
+  });
+
+  flushBuffer();
+
+  if (blankStreak > 0) {
+    for (let i = 0; i < blankStreak; i += 1) {
+      paragraphs.push({ content: "", isBlank: true });
+    }
+  }
+
+  return paragraphs;
 }
