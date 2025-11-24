@@ -4,6 +4,7 @@ export type TextAlign = "left" | "right" | "center" | "justify";
 export interface ReaderSettings {
   fontSize: number;
   lineHeight: number;
+  letterSpacing: number;
   paragraphSpacing: number;
   boldRatio: "low" | "medium" | "high";
   fontFamily: string;
@@ -16,13 +17,14 @@ export interface ReaderSettings {
 
 export const DEFAULT_SETTINGS: ReaderSettings = {
   fontSize: 20,
-  lineHeight: 2.0,
+  lineHeight: 1.75,
+  letterSpacing: 0,
   paragraphSpacing: 1.5,
   boldRatio: "medium",
   fontFamily: "Charter, 'Bitstream Charter', Georgia, serif",
   theme: "sepia",
-  pageWidth: 900,
-  readingPadding: 60,
+  pageWidth: 760,
+  readingPadding: 40,
   textAlign: "justify",
   enableBionic: true,
 };
@@ -45,6 +47,10 @@ export function applySettings(settings: ReaderSettings): void {
 
   root.style.setProperty("--font-size", `${settings.fontSize}px`);
   root.style.setProperty("--line-height", `${settings.lineHeight}`);
+  root.style.setProperty(
+    "--letter-spacing",
+    `${settings.letterSpacing}em`
+  );
   root.style.setProperty(
     "--paragraph-spacing",
     `${settings.paragraphSpacing}em`

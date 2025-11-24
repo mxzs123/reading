@@ -2,6 +2,7 @@
   color-scheme: light;
   --font-size: 20px;
   --line-height: 2;
+  --letter-spacing: 0em;
   --paragraph-spacing: 1.5em;
   --font-family: Charter, "Bitstream Charter", Georgia, serif;
   --page-width: 900px;
@@ -119,6 +120,7 @@ select {
   margin-bottom: var(--paragraph-spacing);
   font-size: var(--font-size);
   line-height: var(--line-height);
+  letter-spacing: var(--letter-spacing);
   text-align: var(--text-align);
 }
 

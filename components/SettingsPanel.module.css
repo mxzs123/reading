@@ -1,41 +1,34 @@
-.backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.3);
-  opacity: 0;
-  visibility: hidden;
-  transition: opacity 0.24s ease;
-  z-index: 9;
-}
-
-.backdropVisible {
-  opacity: 1;
-  visibility: visible;
-}
-
 .panel {
-  width: 320px;
-  padding: 1.6rem;
+  width: 340px;
+  padding: 1.5rem;
   display: flex;
   flex-direction: column;
-  gap: 1.4rem;
+  gap: 1rem;
   position: sticky;
   top: 24px;
   max-height: calc(100vh - 48px);
-  overflow-y: auto;
   z-index: 10;
 }
 
-.panel::-webkit-scrollbar {
-  width: 6px;
+.scrollContent {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  padding-right: 0.4rem; /* Space for scrollbar */
 }
 
-.panel::-webkit-scrollbar-thumb {
+.scrollContent::-webkit-scrollbar {
+  width: 5px;
+}
+
+.scrollContent::-webkit-scrollbar-thumb {
   background: rgba(0, 0, 0, 0.15);
   border-radius: 999px;
 }
 
-.panel::-webkit-scrollbar-track {
+.scrollContent::-webkit-scrollbar-track {
   background: transparent;
 }
 
@@ -46,22 +39,23 @@
 .header {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
-  gap: 1rem;
+  align-items: center;
+  padding-bottom: 0.5rem;
 }
 
 .title {
-  font-size: 1.25rem;
+  font-size: 1.3rem;
   font-weight: 700;
-  margin-bottom: 0.3rem;
+  margin: 0 0 0.2rem;
 }
 
 .closeBtn {
   display: none;
-  font-size: 0.95rem;
-  padding: 0.35rem 0.9rem;
-  background: rgba(0, 0, 0, 0.06);
+  font-size: 0.9rem;
+  padding: 0.4rem 1rem;
+  background: rgba(0, 0, 0, 0.05);
   border-radius: 999px;
+  font-weight: 500;
 }
 
 .section {
@@ -71,17 +65,19 @@
 }
 
 .sectionHeader {
-  font-size: 0.9rem;
-  font-weight: 600;
-  letter-spacing: 0.04em;
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
   color: var(--color-muted);
+  opacity: 0.8;
+  margin-bottom: 0.2rem;
 }
 
 .fieldRow {
   display: flex;
   flex-direction: column;
-  gap: 0.6rem;
+  gap: 0.8rem;
 }
 
 .fieldColumn {
@@ -90,54 +86,118 @@
   gap: 0.6rem;
 }
 
-.fieldHeader {
+/* Grid Layout */
+.grid2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  column-gap: 1rem;
+  row-gap: 1.2rem;
+}
+
+/* Row Group (Switch + Mini Control) */
+.rowGroup {
   display: flex;
-  justify-content: space-between;
+  flex-direction: column;
+  gap: 0.8rem;
+  background: rgba(0, 0, 0, 0.03);
+  padding: 0.8rem;
+  border-radius: 14px;
+}
+
+.miniControl {
+  display: flex;
   align-items: center;
+  justify-content: space-between;
+  padding-left: 0.4rem;
 }
 
-.fieldLabel {
-  font-weight: 600;
-  color: var(--color-muted);
-  font-size: 0.88rem;
-}
-
-.fieldValue {
+.miniLabel {
   font-size: 0.85rem;
   color: var(--color-muted);
+}
+
+.miniSegments {
+  display: flex;
+  background: rgba(0, 0, 0, 0.06);
+  border-radius: 8px;
+  padding: 2px;
+}
+
+.miniSegment {
+  font-size: 0.8rem;
+  padding: 0.2rem 0.6rem;
+  border-radius: 6px;
+  color: var(--color-muted);
+}
+
+.miniSegmentActive {
+  background: #fff;
+  color: var(--color-primary);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  font-weight: 500;
+}
+
+/* Range Field Styles */
+.rangeContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.rangeHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.rangeLabel {
+  font-size: 0.88rem;
+  font-weight: 500;
+  color: var(--color-text);
+}
+
+.rangeValue {
+  font-size: 0.8rem;
+  color: var(--color-muted);
+  font-feature-settings: "tnum";
 }
 
 .rangeInput {
   width: 100%;
   accent-color: var(--color-primary);
+  height: 4px;
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 2px;
+  appearance: none;
+}
+
+.rangeInput::-webkit-slider-thumb {
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  border: 2px solid #fff;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+  cursor: grab;
 }
 
 .switchLabel {
-  position: relative;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 0.8rem;
-  padding: 0.6rem 0.8rem;
-  background: rgba(0, 0, 0, 0.04);
-  border-radius: 12px;
-}
-
-.switchLabel input {
-  position: absolute;
-  opacity: 0;
-  inset: 0;
-  cursor: pointer;
+  padding: 0.2rem 0.4rem;
 }
 
 .switchSlider {
-  width: 48px;
-  height: 26px;
+  width: 44px;
+  height: 24px;
   border-radius: 999px;
-  border: 1px solid rgba(0, 0, 0, 0.15);
-  background: rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  background: rgba(0, 0, 0, 0.08);
   position: relative;
-  transition: background 0.24s ease, border 0.24s ease;
+  transition: all 0.24s ease;
 }
 
 .switchSlider::after {
@@ -145,11 +205,11 @@
   position: absolute;
   top: 2px;
   left: 2px;
-  width: 20px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
   border-radius: 50%;
   background: #fff;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   transition: transform 0.24s ease;
 }
 
@@ -159,55 +219,63 @@
 }
 
 .switchLabel input:checked + .switchSlider::after {
-  transform: translateX(22px);
+  transform: translateX(20px);
 }
 
 .segmentedControl {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
-  gap: 0.4rem;
+  grid-template-columns: repeat(3, 1fr);
+  background: rgba(0, 0, 0, 0.04);
+  padding: 4px;
+  border-radius: 12px;
+  gap: 4px;
 }
 
 .segmentButton {
-  padding: 0.5rem 0.75rem;
-  border-radius: 10px;
-  background: rgba(0, 0, 0, 0.05);
-  color: inherit;
+  padding: 0.5rem 0;
+  border-radius: 8px;
+  color: var(--color-muted);
   font-size: 0.9rem;
-  transition: background 0.2s ease, transform 0.2s ease;
-}
-
-.segmentButton:hover {
-  background: rgba(0, 0, 0, 0.08);
+  transition: all 0.2s ease;
+  text-align: center;
 }
 
 .segmentActive {
-  background: var(--color-primary);
-  color: #fff;
+  background: #fff;
+  color: var(--color-primary);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+  font-weight: 600;
 }
 
 .select {
-  padding: 0.5rem 0.75rem;
-  border-radius: 10px;
-  border: 1px solid var(--color-border);
-  background: rgba(255, 255, 255, 0.8);
+  width: 100%;
+  padding: 0.7rem 1rem;
+  border-radius: 12px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  background: rgba(255, 255, 255, 0.6);
+  font-size: 0.95rem;
 }
 
 .footer {
+  margin-top: auto;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(0,0,0,0.06);
   display: flex;
-  justify-content: flex-end;
+  justify-content: center;
 }
 
 .resetButton {
-  padding: 0.5rem 1.2rem;
-  border-radius: 999px;
-  background: rgba(0, 0, 0, 0.08);
-  color: inherit;
-  font-weight: 500;
+  font-size: 0.9rem;
+  color: var(--color-muted);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  opacity: 0.7;
+  transition: opacity 0.2s;
 }
 
 .resetButton:hover {
-  background: rgba(0, 0, 0, 0.12);
+  opacity: 1;
+  background: none;
 }
 
 @media (max-width: 1024px) {
@@ -221,6 +289,7 @@
     transform: translateY(100%);
     transition: transform 0.32s cubic-bezier(0.32, 0.72, 0, 1);
     box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.2);
+    z-index: 30;
   }
 
   .panelOpen {
@@ -229,7 +298,9 @@
 
   .closeBtn {
     display: inline-flex;
-    padding: 0.4rem 1rem;
-    background: rgba(0, 0, 0, 0.05);
+  }
+  
+  .footer {
+    padding-bottom: 1rem;
   }
 }
