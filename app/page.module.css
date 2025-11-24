@@ -141,6 +141,28 @@
   overflow-x: hidden;
 }
 
+.readingPulse {
+  position: relative;
+  overflow: hidden;
+}
+
+.readingPulse::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    120deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.6) 35%,
+    rgba(255, 255, 255, 0.9) 50%,
+    rgba(255, 255, 255, 0.6) 65%,
+    transparent 100%
+  );
+  animation: shimmer 1s ease forwards;
+  pointer-events: none;
+  mix-blend-mode: screen;
+}
+
 @media (max-width: 1200px) {
   .layout {
     gap: 1.5rem;
@@ -204,6 +226,17 @@
   .outputInner {
     padding: 0.8rem 0;
     min-height: 40vh;
+  }
+}
+
+@keyframes shimmer {
+  from {
+    transform: translateX(-40%);
+    opacity: 0.65;
+  }
+  to {
+    transform: translateX(140%);
+    opacity: 0;
   }
 }
 

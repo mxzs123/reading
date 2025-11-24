@@ -49,6 +49,13 @@ export function BionicText({ text, onWordSelected }: BionicTextProps) {
   const { settings } = useSettings();
   const containerRef = useRef<HTMLDivElement | null>(null);
   const deferredText = useDeferredValue(text);
+  const renderKey = useMemo(() => {
+    const trimmed = deferredText.trim();
+    if (!trimmed) return "bionic-empty";
+    const first = trimmed.charCodeAt(0) || 0;
+    const last = trimmed.charCodeAt(trimmed.length - 1) || 0;
+    return `bionic-${trimmed.length}-${first}-${last}`;
+  }, [deferredText]);
 
   const paragraphs = useMemo<Paragraph[]>(() => {
     if (!deferredText.trim()) return [];
@@ -138,12 +145,21 @@ export function BionicText({ text, onWordSelected }: BionicTextProps) {
 
   return (
     <div className="bionic-shell">
-      <div ref={containerRef} className="bionic-content">
+      <div
+        key={renderKey}
+        ref={containerRef}
+        className="bionic-content"
+      >
         {paragraphs.map((paragraph, paragraphIndex) => (
           <p
             key={paragraph.id}
-            className={`bionic-paragraph${paragraph.isBlank ? " is-blank" : ""}`}
+            className={`bionic-paragraph animate-in${
+              paragraph.isBlank ? " is-blank" : ""
+            }`}
             aria-hidden={paragraph.isBlank}
+            style={{
+              animationDelay: `${Math.min(paragraphIndex, 8) * 60}ms`,
+            }}
           >
             {paragraph.tokens.map((token, tokenIndex) =>
               token.type === "word"

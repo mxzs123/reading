@@ -118,6 +118,14 @@ export default function Home() {
     };
   }, []);
 
+  const readingPulseKey = useMemo(() => {
+    const trimmed = sourceText.trim();
+    if (!trimmed) return "output-static";
+    const first = trimmed.charCodeAt(0) || 0;
+    const last = trimmed.charCodeAt(trimmed.length - 1) || 0;
+    return `output-${trimmed.length}-${first}-${last}`;
+  }, [sourceText]);
+
   const placeholder = useMemo(
     () =>
       [
@@ -259,7 +267,12 @@ export default function Home() {
               <h2>仿生阅读</h2>
               <span className="muted-text">点击单词即可发音与查询释义</span>
             </div>
-            <div className={styles.outputInner}>
+            <div
+              key={readingPulseKey}
+              className={`${styles.outputInner} ${
+                sourceText.trim() ? styles.readingPulse : ""
+              }`}
+            >
               <BionicText text={sourceText} onWordSelected={handleWordSelected} />
             </div>
           </section>

@@ -98,8 +98,9 @@ select {
   display: inline;
   color: inherit;
   position: relative;
-  transition: color 0.2s ease, background 0.2s ease;
+  transition: color 0.2s ease, background 0.2s ease, transform 0.2s ease;
   outline: none;
+  will-change: color, background, transform;
 }
 
 .bionic-word b {
@@ -110,6 +111,7 @@ select {
 .bionic-word:hover {
   background: var(--color-highlight);
   border-radius: 4px;
+  transform: translateY(-1px);
 }
 
 .bionic-word.active-highlight {
@@ -148,10 +150,16 @@ select {
   font-family: var(--font-family);
   white-space: pre-wrap;
   word-break: break-word;
+  animation: contentFade 320ms ease;
 }
 
 .bionic-paragraph {
   margin: 0;
+}
+
+.bionic-paragraph.animate-in {
+  animation: riseFade 320ms ease;
+  animation-fill-mode: both;
 }
 
 .bionic-paragraph.is-blank {
@@ -190,4 +198,24 @@ select {
 
 .muted-text {
   color: var(--color-muted);
+}
+
+@keyframes riseFade {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes contentFade {
+  from {
+    opacity: 0.95;
+  }
+  to {
+    opacity: 1;
+  }
 }
