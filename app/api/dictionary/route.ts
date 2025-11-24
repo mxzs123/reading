@@ -1,5 +1,9 @@
 import { NextRequest } from "next/server";
 
+// 尽量让词典查询在靠近日本/亚太的边缘节点执行，减少跨境延迟
+export const runtime = "edge";
+export const preferredRegion = ["hnd1", "icn1", "hkg1", "sin1"];
+
 const YOUDAO_ENDPOINT = "https://dict.youdao.com/jsonapi";
 
 interface DictionaryMeaning {
