@@ -42,7 +42,10 @@ export async function POST(request: NextRequest) {
     return Response.json({ error: "请求格式错误" }, { status: 400 });
   }
 
-  const { text, apiKey, voice = "Kore" } = body;
+  const { text, apiKey: rawApiKey, voice = "Kore" } = body;
+
+  // 清理 API Key 中的空白字符，避免复制粘贴时带入的空格导致验证失败
+  const apiKey = rawApiKey?.trim();
 
   if (!text || !apiKey) {
     return Response.json(
