@@ -67,10 +67,14 @@ export function BionicText({ text, onWordSelected }: BionicTextProps) {
   }, [deferredText]);
 
   const handleInteraction = useCallback(
-    (word: string, target: HTMLElement) => {
+    async (word: string, target: HTMLElement) => {
       if (!word.trim()) return;
 
-      playWordSound(word);
+      const success = await playWordSound(word);
+      if (!success) {
+        alert("暂不支持非英文单词发音");
+        return;
+      }
 
       target.classList.add("active-highlight");
       window.setTimeout(() => {
