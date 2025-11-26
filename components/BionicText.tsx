@@ -158,7 +158,7 @@ export function BionicText({ text, onWordSelected }: BionicTextProps) {
             }`}
             aria-hidden={paragraph.isBlank}
             style={{
-              animationDelay: `${Math.min(paragraphIndex, 8) * 60}ms`,
+              animationDelay: `${Math.min(paragraphIndex, 5) * 40}ms`,
             }}
           >
             {paragraph.tokens.map((token, tokenIndex) =>

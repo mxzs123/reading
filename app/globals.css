@@ -3,11 +3,11 @@
   --font-size: 20px;
   --line-height: 1.75;
   --letter-spacing: 0em;
-  --paragraph-spacing: 1.5em;
+  --paragraph-spacing: 1.8em;
   --font-family: Charter, "Bitstream Charter", Georgia, serif;
-  --page-width: 900px;
-  --reading-padding: 60px;
-  --text-align: justify;
+  --page-width: 680px;
+  --reading-padding: 40px;
+  --text-align: left;
   --color-background: #f6efe3;
   --color-text: #2d2d2d;
   --color-surface: rgba(255, 255, 255, 0.82);
@@ -97,10 +97,11 @@ select {
 .bionic-word {
   display: inline;
   color: inherit;
-  position: relative;
-  transition: color 0.2s ease, background 0.2s ease, transform 0.2s ease;
+  transition: background 0.15s ease;
   outline: none;
-  will-change: color, background, transform;
+  border-radius: 3px;
+  padding: 0 1px;
+  margin: 0 -1px;
 }
 
 .bionic-word b {
@@ -110,8 +111,6 @@ select {
 .bionic-word:focus-visible,
 .bionic-word:hover {
   background: var(--color-highlight);
-  border-radius: 4px;
-  transform: translateY(-1px);
 }
 
 .bionic-word.active-highlight {
@@ -140,21 +139,23 @@ select {
 .bionic-content {
   width: 100%;
   max-width: var(--page-width);
-  display: flex;
-  flex-direction: column;
-  gap: var(--paragraph-spacing);
+  display: block;
   font-size: var(--font-size);
   line-height: var(--line-height);
   letter-spacing: var(--letter-spacing);
   text-align: var(--text-align);
   font-family: var(--font-family);
-  white-space: pre-wrap;
-  word-break: break-word;
   animation: contentFade 320ms ease;
 }
 
 .bionic-paragraph {
-  margin: 0;
+  margin: 0 0 var(--paragraph-spacing) 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.bionic-paragraph:last-child {
+  margin-bottom: 0;
 }
 
 .bionic-paragraph.animate-in {
@@ -163,7 +164,7 @@ select {
 }
 
 .bionic-paragraph.is-blank {
-  min-height: calc(var(--font-size) * var(--line-height) * 0.6);
+  height: var(--paragraph-spacing);
   pointer-events: none;
 }
 
