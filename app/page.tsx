@@ -4,7 +4,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BionicText } from "@/components/BionicText";
 import { SettingsPanel } from "@/components/SettingsPanel";
 import { DictionaryPanel } from "@/components/DictionaryPanel";
+import AudioPlayer from "@/components/AudioPlayer";
+import ArticleManager from "@/components/ArticleManager";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
+import type { Article } from "@/lib/storage";
 import styles from "./page.module.css";
 
 interface DictionaryMeaning {
@@ -28,6 +31,8 @@ export default function Home() {
   const [sourceText, setSourceText] = useState("");
   // 默认折叠设置面板（桌面与移动端一致）
   const [userSettingsOpen, setUserSettingsOpen] = useState<boolean>(false);
+  // 文章管理弹窗
+  const [articlesOpen, setArticlesOpen] = useState<boolean>(false);
   // 原文输入是否折叠
   const [inputCollapsed, setInputCollapsed] = useState(false);
   const [selectedWord, setSelectedWord] = useState("");
@@ -44,8 +49,10 @@ export default function Home() {
   const [dictionaryLoading, setDictionaryLoading] = useState(false);
   const [dictionaryError, setDictionaryError] = useState<string | undefined>();
   const [dictionaryOpen, setDictionaryOpen] = useState(false);
+  // 文章和音频状态
+  const [currentArticleId, setCurrentArticleId] = useState<string | null>(null);
+  const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   const abortRef = useRef<AbortController | null>(null);
-  const isDesktop = useMediaQuery("(min-width: 1025px)");
   const isMobile = useMediaQuery("(max-width: 768px)");
   const settingsOpen = userSettingsOpen;
   const inputSectionRef = useRef<HTMLElement | null>(null);
@@ -146,6 +153,28 @@ export default function Home() {
     }, 0);
   }, [sourceText]);
 
+  // 加载保存的文章
+  const handleArticleLoad = useCallback((article: Article) => {
+    setSourceText(article.text);
+    setCurrentArticleId(article.id);
+    setAudioBlob(article.audioBlob || null);
+    setInputCollapsed(true);
+    setDictionaryOpen(false);
+    setTimeout(() => {
+      outputSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 0);
+  }, []);
+
+  // 文章保存后更新 ID
+  const handleArticleSaved = useCallback((article: Article) => {
+    setCurrentArticleId(article.id);
+  }, []);
+
+  // 音频生成后保存
+  const handleAudioGenerated = useCallback((blob: Blob) => {
+    setAudioBlob(blob);
+  }, []);
+
   return (
     <div className={styles.page}>
       <header className={styles.header}>
@@ -156,6 +185,12 @@ export default function Home() {
           </p>
         </div>
         <div className={styles.headerActions}>
+          <button
+            className="primary-button"
+            onClick={() => setArticlesOpen((prev) => !prev)}
+          >
+            我的文章
+          </button>
           <button
             className="primary-button"
             onClick={() => setUserSettingsOpen((prev) => !prev)}
@@ -267,6 +302,15 @@ export default function Home() {
               <h2>仿生阅读</h2>
               <span className="muted-text">点击单词即可发音与查询释义</span>
             </div>
+
+            {sourceText.trim() && (
+              <AudioPlayer
+                text={sourceText}
+                audioBlob={audioBlob}
+                onAudioGenerated={handleAudioGenerated}
+              />
+            )}
+
             <div
               key={readingPulseKey}
               className={`${styles.outputInner} ${
@@ -276,21 +320,13 @@ export default function Home() {
               <BionicText text={sourceText} onWordSelected={handleWordSelected} />
             </div>
           </section>
+
         </main>
 
-        {isDesktop ? (
-          settingsOpen && (
-            <SettingsPanel
-              isOpen={true}
-              onClose={() => setUserSettingsOpen(false)}
-            />
-          )
-        ) : (
-          <SettingsPanel
-            isOpen={settingsOpen}
-            onClose={() => setUserSettingsOpen(false)}
-          />
-        )}
+        <SettingsPanel
+          isOpen={settingsOpen}
+          onClose={() => setUserSettingsOpen(false)}
+        />
       </div>
 
       <DictionaryPanel
@@ -302,6 +338,16 @@ export default function Home() {
         anchor={dictionaryAnchor}
         isMobile={isMobile}
         onClose={handleCloseDictionary}
+      />
+
+      <ArticleManager
+        isOpen={articlesOpen}
+        onClose={() => setArticlesOpen(false)}
+        currentText={sourceText}
+        currentAudioBlob={audioBlob}
+        currentArticleId={currentArticleId}
+        onArticleLoad={handleArticleLoad}
+        onArticleSaved={handleArticleSaved}
       />
     </div>
   );

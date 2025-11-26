@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useSettings } from "@/contexts/SettingsContext";
+import type { TTSVoice } from "@/lib/settings";
 import styles from "./SettingsPanel.module.css";
 
 interface SettingsPanelProps {
@@ -24,6 +25,14 @@ const themeOptions = [
 const alignOptions = [
   { value: "left" as const, label: "左对齐" },
   { value: "justify" as const, label: "两端对齐" },
+];
+
+const voiceOptions: { value: TTSVoice; label: string }[] = [
+  { value: "Kore", label: "Kore (男声)" },
+  { value: "Puck", label: "Puck (女声)" },
+  { value: "Charon", label: "Charon" },
+  { value: "Fenrir", label: "Fenrir" },
+  { value: "Aoede", label: "Aoede" },
 ];
 
 const fontFamilies = [
@@ -49,6 +58,7 @@ const fontFamilies = [
 
 export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
   const { settings, updateSettings, resetSettings } = useSettings();
+  const [showApiKey, setShowApiKey] = useState(false);
 
   const fontFamilyOptions = useMemo(() => fontFamilies, []);
 
@@ -231,6 +241,58 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                 step={10}
                 onChange={(value) => updateSettings({ readingPadding: value })}
               />
+            </div>
+          </section>
+
+          <section className={styles.section}>
+            <div className={styles.sectionHeader}>语音朗读</div>
+
+            <div className={styles.fieldColumn}>
+              <label className={styles.fieldLabel}>Gemini API Key</label>
+              <div className={styles.apiKeyWrapper}>
+                <input
+                  type={showApiKey ? "text" : "password"}
+                  className={styles.apiKeyInput}
+                  value={settings.geminiApiKey}
+                  onChange={(e) => updateSettings({ geminiApiKey: e.target.value })}
+                  placeholder="输入您的 API Key"
+                />
+                <button
+                  type="button"
+                  className={styles.apiKeyToggle}
+                  onClick={() => setShowApiKey(!showApiKey)}
+                >
+                  {showApiKey ? "隐藏" : "显示"}
+                </button>
+              </div>
+              <p className={styles.apiKeyHint}>
+                从{" "}
+                <a
+                  href="https://aistudio.google.com/apikey"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Google AI Studio
+                </a>{" "}
+                获取免费 API Key
+              </p>
+            </div>
+
+            <div className={styles.fieldColumn}>
+              <label className={styles.fieldLabel}>朗读声音</label>
+              <select
+                className={styles.select}
+                value={settings.ttsVoice}
+                onChange={(e) =>
+                  updateSettings({ ttsVoice: e.target.value as TTSVoice })
+                }
+              >
+                {voiceOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
             </div>
           </section>
         </div>

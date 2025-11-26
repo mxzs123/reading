@@ -1,5 +1,6 @@
 export type Theme = "sepia" | "white" | "dark";
 export type TextAlign = "left" | "right" | "center" | "justify";
+export type TTSVoice = "Kore" | "Puck" | "Charon" | "Fenrir" | "Aoede";
 
 export interface ReaderSettings {
   fontSize: number;
@@ -13,6 +14,9 @@ export interface ReaderSettings {
   readingPadding: number;
   textAlign: TextAlign;
   enableBionic: boolean;
+  // TTS 设置
+  geminiApiKey: string;
+  ttsVoice: TTSVoice;
 }
 
 export const DEFAULT_SETTINGS: ReaderSettings = {
@@ -27,6 +31,9 @@ export const DEFAULT_SETTINGS: ReaderSettings = {
   readingPadding: 40,
   textAlign: "justify",
   enableBionic: true,
+  // TTS 默认设置
+  geminiApiKey: "",
+  ttsVoice: "Kore",
 };
 
 export const SETTINGS_STORAGE_KEY = "bionicReaderSettings";

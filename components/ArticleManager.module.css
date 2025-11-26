@@ -1,0 +1,271 @@
+.backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.3);
+  z-index: 25;
+}
+
+.panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: 340px;
+  height: 100vh;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  z-index: 30;
+  transform: translateX(100%);
+  transition: transform 0.32s cubic-bezier(0.32, 0.72, 0, 1);
+  overflow: hidden;
+}
+
+.panelOpen {
+  transform: translateX(0);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-shrink: 0;
+}
+
+.title {
+  font-size: 1.3rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+.closeBtn {
+  font-size: 0.9rem;
+  padding: 0.4rem 1rem;
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 999px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.closeBtn:hover {
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.saveSection {
+  flex-shrink: 0;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.saveButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background: var(--color-primary, #2563eb);
+  color: white;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: background 0.2s ease;
+}
+
+.saveButton:hover:not(:disabled) {
+  background: var(--color-primary-hover, #1d4ed8);
+}
+
+.saveButton:disabled {
+  background: rgba(0, 0, 0, 0.15);
+  cursor: not-allowed;
+}
+
+.saveButton svg {
+  width: 18px;
+  height: 18px;
+}
+
+.saveRow {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.saveRow .saveButton {
+  flex-shrink: 0;
+}
+
+.titleInput {
+  width: 100%;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  border-radius: 8px;
+  font-size: 0.9rem;
+  background: white;
+}
+
+.titleInput:focus {
+  outline: none;
+  border-color: var(--color-primary, #2563eb);
+}
+
+.cancelButton {
+  padding: 0.6rem 1rem;
+  background: rgba(0, 0, 0, 0.08);
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  transition: background 0.15s ease;
+}
+
+.cancelButton:hover {
+  background: rgba(0, 0, 0, 0.12);
+}
+
+.listSection {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.listTitle {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-muted, #666);
+  margin: 0 0 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.list {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  overflow-y: auto;
+  padding-right: 0.4rem;
+}
+
+.list::-webkit-scrollbar {
+  width: 5px;
+}
+
+.list::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: 999px;
+}
+
+.list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  background: rgba(0, 0, 0, 0.03);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.item:hover {
+  background: rgba(0, 0, 0, 0.06);
+}
+
+.itemActive {
+  background: rgba(37, 99, 235, 0.1);
+  border: 1px solid rgba(37, 99, 235, 0.3);
+}
+
+.itemActive:hover {
+  background: rgba(37, 99, 235, 0.15);
+}
+
+.itemInfo {
+  flex: 1;
+  min-width: 0;
+}
+
+.itemTitle {
+  font-size: 0.9rem;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.itemMeta {
+  font-size: 0.75rem;
+  color: var(--color-muted, #666);
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.2rem;
+}
+
+.hasAudio {
+  color: var(--color-primary, #2563eb);
+}
+
+.itemActions {
+  display: flex;
+  gap: 0.25rem;
+  flex-shrink: 0;
+}
+
+.iconButton {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  color: var(--color-muted, #666);
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.iconButton:hover {
+  background: rgba(0, 0, 0, 0.08);
+  color: var(--color-text, #333);
+}
+
+.iconButton svg {
+  width: 16px;
+  height: 16px;
+}
+
+.deleteButton:hover {
+  background: rgba(220, 38, 38, 0.1);
+  color: #dc2626;
+}
+
+.empty {
+  padding: 2rem 1rem;
+  text-align: center;
+  color: var(--color-muted, #666);
+  font-size: 0.85rem;
+}
+
+@media (max-width: 768px) {
+  .panel {
+    top: auto;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    height: auto;
+    max-height: 85vh;
+    border-radius: 24px 24px 0 0;
+    padding: 1.4rem 1.2rem calc(1.4rem + env(safe-area-inset-bottom));
+    transform: translateY(100%);
+    box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.2);
+  }
+
+  .panelOpen {
+    transform: translateY(0);
+  }
+}
