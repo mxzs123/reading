@@ -59,6 +59,10 @@ export async function POST(request: NextRequest) {
   }
 
   try {
+    // 给上游请求设置超时，避免长时间挂起导致 504
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10000);
+
     const response = await fetch(GEMINI_TTS_ENDPOINT, {
       method: "POST",
       headers: {
@@ -82,12 +86,32 @@ export async function POST(request: NextRequest) {
           },
         },
       }),
+      signal: controller.signal,
     });
 
+    clearTimeout(timeout);
+
+    const contentType = response.headers.get("content-type") || "";
+
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      const errorMessage =
-        (errorData as GeminiTTSResponse).error?.message || "TTS 服务请求失败";
+      let errorMessage = "TTS 服务请求失败";
+
+      if (contentType.includes("application/json")) {
+        const errorData = (await response.json().catch(() => ({}))) as
+          | GeminiTTSResponse
+          | Record<string, unknown>;
+        errorMessage =
+          (errorData as GeminiTTSResponse).error?.message ||
+          (typeof (errorData as { error?: string }).error === "string"
+            ? (errorData as { error?: string }).error
+            : errorMessage);
+      } else {
+        const text = await response.text().catch(() => "");
+        if (text) {
+          // 截断，避免返回超长 HTML
+          errorMessage = text.slice(0, 300);
+        }
+      }
 
       if (response.status === 401 || response.status === 403) {
         return Response.json(
@@ -99,6 +123,17 @@ export async function POST(request: NextRequest) {
       return Response.json(
         { error: errorMessage },
         { status: response.status }
+      );
+    }
+
+    if (!contentType.includes("application/json")) {
+      const text = await response.text().catch(() => "");
+      return Response.json(
+        {
+          error: "TTS 服务返回非 JSON 响应，可能被代理或防火墙拦截",
+          detail: text.slice(0, 300),
+        },
+        { status: 502 }
       );
     }
 
@@ -122,6 +157,14 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error("TTS 生成失败", error);
+
+    if (error instanceof DOMException && error.name === "AbortError") {
+      return Response.json(
+        { error: "TTS 请求超时，可能被网络阻断或服务不可达" },
+        { status: 504 }
+      );
+    }
+
     return Response.json({ error: "音频生成失败，请稍后重试" }, { status: 500 });
   }
 }
