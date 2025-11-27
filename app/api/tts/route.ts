@@ -1,6 +1,8 @@
 import { NextRequest } from "next/server";
 
 export const runtime = "nodejs";
+// Vercel Hobby 计划最大支持 60 秒，Pro 计划最大 300 秒
+export const maxDuration = 60;
 
 const GEMINI_TTS_ENDPOINT =
   "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent";
@@ -59,10 +61,6 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    // 给上游请求设置超时，避免长时间挂起导致 504
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 20000);
-
     const response = await fetch(GEMINI_TTS_ENDPOINT, {
       method: "POST",
       headers: {
@@ -86,10 +84,7 @@ export async function POST(request: NextRequest) {
           },
         },
       }),
-      signal: controller.signal,
     });
-
-    clearTimeout(timeout);
 
     const contentType = response.headers.get("content-type") || "";
 
@@ -157,14 +152,6 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error("TTS 生成失败", error);
-
-    if (error instanceof DOMException && error.name === "AbortError") {
-      return Response.json(
-        { error: "TTS 请求超时，可能被网络阻断或服务不可达" },
-        { status: 504 }
-      );
-    }
-
     return Response.json({ error: "音频生成失败，请稍后重试" }, { status: 500 });
   }
 }

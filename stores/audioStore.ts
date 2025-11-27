@@ -56,8 +56,8 @@ function getAudio(): HTMLAudioElement {
   return audioElement!;
 }
 
-// 并发控制
-const MAX_CONCURRENT = 5;
+// 并发控制 - 降低并发数避免 Gemini API 429 错误
+const MAX_CONCURRENT = 2;
 let activeGenCount = 0;
 const generatingIds = new Set<string>();
 const pendingQueue: Array<{ id: string; apiKey: string; voice: string }> = [];
