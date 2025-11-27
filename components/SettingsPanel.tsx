@@ -345,11 +345,12 @@ function RangeField({
   unit,
 }: RangeFieldProps) {
   const displayValue = useMemo(() => {
+    const numValue = Number(value);
     if (Math.abs(step) >= 1) {
-      return Math.round(value);
+      return Math.round(numValue);
     }
     // Check for small float precision issues
-    return parseFloat(value.toFixed(2));
+    return parseFloat(numValue.toFixed(2));
   }, [step, value]);
 
   return (
