@@ -162,7 +162,7 @@ export const useAudioStore = create<AudioStore>((set, get) => {
       });
 
       // 重置队列状态
-      activeGenCount = 0;
+      isProcessing = false;
       generatingIds.clear();
       pendingQueue.length = 0;
 
