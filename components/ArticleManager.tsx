@@ -14,7 +14,6 @@ interface ArticleManagerProps {
   isOpen: boolean;
   onClose: () => void;
   currentText: string;
-  currentAudioBlob?: Blob | null;
   currentArticleId?: string | null;
   onArticleLoad: (article: Article) => void;
   onArticleSaved: (article: Article) => void;
@@ -24,29 +23,34 @@ export default function ArticleManager({
   isOpen,
   onClose,
   currentText,
-  currentAudioBlob,
   currentArticleId,
   onArticleLoad,
   onArticleSaved,
 }: ArticleManagerProps) {
   const [articles, setArticles] = useState<Article[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [showSaveInput, setShowSaveInput] = useState(false);
   const [saveTitle, setSaveTitle] = useState("");
 
   // 加载文章列表
   const loadArticles = useCallback(async () => {
+    setIsLoading(true);
     try {
       const list = await getAllArticles();
       setArticles(list);
     } catch (err) {
       console.error("加载文章列表失败", err);
+    } finally {
+      setIsLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    loadArticles();
-  }, [loadArticles]);
+    if (isOpen) {
+      loadArticles();
+    }
+  }, [isOpen, loadArticles]);
 
   // 保存当前文章
   const handleSave = useCallback(async () => {
@@ -54,35 +58,26 @@ export default function ArticleManager({
 
     setIsSaving(true);
     try {
-      let article: Article;
+      let savedArticle: Article;
 
       if (currentArticleId) {
         // 更新现有文章
-        const existing = articles.find((a) => a.id === currentArticleId);
-        if (existing) {
-          article = {
-            ...existing,
-            text: currentText,
-            audioBlob: currentAudioBlob || existing.audioBlob,
-            updatedAt: Date.now(),
-          };
-        } else {
-          article = createArticle(currentText, saveTitle || undefined);
-          if (currentAudioBlob) {
-            article.audioBlob = currentAudioBlob;
-          }
+        const updateData: { id: string; text: string; title?: string } = {
+          id: currentArticleId,
+          text: currentText,
+        };
+        if (saveTitle) {
+          updateData.title = saveTitle;
         }
+        savedArticle = await saveArticle(updateData);
       } else {
         // 创建新文章
-        article = createArticle(currentText, saveTitle || undefined);
-        if (currentAudioBlob) {
-          article.audioBlob = currentAudioBlob;
-        }
+        const newArticle = createArticle(currentText, saveTitle || undefined);
+        savedArticle = await saveArticle(newArticle);
       }
 
-      await saveArticle(article);
       await loadArticles();
-      onArticleSaved(article);
+      onArticleSaved(savedArticle);
       setShowSaveInput(false);
       setSaveTitle("");
     } catch (err) {
@@ -90,15 +85,7 @@ export default function ArticleManager({
     } finally {
       setIsSaving(false);
     }
-  }, [
-    currentText,
-    currentAudioBlob,
-    currentArticleId,
-    articles,
-    saveTitle,
-    loadArticles,
-    onArticleSaved,
-  ]);
+  }, [currentText, currentArticleId, saveTitle, loadArticles, onArticleSaved]);
 
   // 加载文章
   const handleLoad = useCallback(
@@ -215,7 +202,9 @@ export default function ArticleManager({
 
         <div className={styles.listSection}>
           <h3 className={styles.listTitle}>已保存文章</h3>
-          {articles.length > 0 ? (
+          {isLoading ? (
+            <div className={styles.empty}>加载中...</div>
+          ) : articles.length > 0 ? (
             <div className={styles.list}>
               {articles.map((article) => (
                 <div
@@ -231,7 +220,7 @@ export default function ArticleManager({
                     </div>
                     <div className={styles.itemMeta}>
                       <span>{formatDate(article.updatedAt)}</span>
-                      {article.audioBlob && (
+                      {article.audioUrls && article.audioUrls.length > 0 && (
                         <span className={styles.hasAudio}>有音频</span>
                       )}
                     </div>

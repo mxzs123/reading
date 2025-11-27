@@ -352,7 +352,6 @@ export default function Home() {
         isOpen={articlesOpen}
         onClose={() => setArticlesOpen(false)}
         currentText={sourceText}
-        currentAudioBlob={null}
         currentArticleId={currentArticleId}
         onArticleLoad={handleArticleLoad}
         onArticleSaved={handleArticleSaved}

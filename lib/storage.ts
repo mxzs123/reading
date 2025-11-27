@@ -1,171 +1,118 @@
 /**
- * IndexedDB 存储模块 - 用于保存文章和音频
+ * 云存储模块 - 通过 REST API 访问 Vercel KV/Blob
  */
-
-const DB_NAME = "bionicReaderDB";
-const DB_VERSION = 1;
-const STORE_NAME = "articles";
 
 export interface Article {
   id: string;
   title: string;
   text: string;
-  audioBlob?: Blob;
+  audioUrls?: string[];
   createdAt: number;
   updatedAt: number;
-}
-
-let dbPromise: Promise<IDBDatabase> | null = null;
-
-/**
- * 打开数据库连接
- */
-function openDB(): Promise<IDBDatabase> {
-  if (dbPromise) return dbPromise;
-
-  dbPromise = new Promise((resolve, reject) => {
-    if (typeof window === "undefined") {
-      reject(new Error("IndexedDB 仅在浏览器环境可用"));
-      return;
-    }
-
-    const request = indexedDB.open(DB_NAME, DB_VERSION);
-
-    request.onerror = () => {
-      reject(request.error);
-    };
-
-    request.onsuccess = () => {
-      resolve(request.result);
-    };
-
-    request.onupgradeneeded = (event) => {
-      const db = (event.target as IDBOpenDBRequest).result;
-
-      if (!db.objectStoreNames.contains(STORE_NAME)) {
-        const store = db.createObjectStore(STORE_NAME, { keyPath: "id" });
-        store.createIndex("createdAt", "createdAt", { unique: false });
-        store.createIndex("updatedAt", "updatedAt", { unique: false });
-      }
-    };
-  });
-
-  return dbPromise;
-}
-
-/**
- * 生成唯一 ID
- */
-export function generateId(): string {
-  return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-}
-
-/**
- * 保存文章
- */
-export async function saveArticle(article: Article): Promise<void> {
-  const db = await openDB();
-
-  return new Promise((resolve, reject) => {
-    const transaction = db.transaction(STORE_NAME, "readwrite");
-    const store = transaction.objectStore(STORE_NAME);
-    const request = store.put(article);
-
-    request.onerror = () => reject(request.error);
-    request.onsuccess = () => resolve();
-  });
-}
-
-/**
- * 获取单篇文章
- */
-export async function getArticle(id: string): Promise<Article | null> {
-  const db = await openDB();
-
-  return new Promise((resolve, reject) => {
-    const transaction = db.transaction(STORE_NAME, "readonly");
-    const store = transaction.objectStore(STORE_NAME);
-    const request = store.get(id);
-
-    request.onerror = () => reject(request.error);
-    request.onsuccess = () => resolve(request.result || null);
-  });
 }
 
 /**
  * 获取所有文章（按更新时间倒序）
  */
 export async function getAllArticles(): Promise<Article[]> {
-  const db = await openDB();
+  const response = await fetch("/api/articles");
+  if (!response.ok) {
+    throw new Error("获取文章列表失败");
+  }
+  return response.json();
+}
 
-  return new Promise((resolve, reject) => {
-    const transaction = db.transaction(STORE_NAME, "readonly");
-    const store = transaction.objectStore(STORE_NAME);
-    const index = store.index("updatedAt");
-    const request = index.openCursor(null, "prev");
+/**
+ * 获取单篇文章
+ */
+export async function getArticle(id: string): Promise<Article | null> {
+  const response = await fetch(`/api/articles/${id}`);
+  if (response.status === 404) {
+    return null;
+  }
+  if (!response.ok) {
+    throw new Error("获取文章失败");
+  }
+  return response.json();
+}
 
-    const articles: Article[] = [];
-
-    request.onerror = () => reject(request.error);
-    request.onsuccess = (event) => {
-      const cursor = (event.target as IDBRequest<IDBCursorWithValue>).result;
-      if (cursor) {
-        articles.push(cursor.value);
-        cursor.continue();
-      } else {
-        resolve(articles);
-      }
-    };
-  });
+/**
+ * 保存文章（创建或更新）
+ */
+export async function saveArticle(
+  article: Partial<Omit<Article, "createdAt" | "updatedAt">> & { text: string }
+): Promise<Article> {
+  if (article.id) {
+    // 更新
+    const response = await fetch(`/api/articles/${article.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(article),
+    });
+    if (!response.ok) {
+      throw new Error("更新文章失败");
+    }
+    return response.json();
+  } else {
+    // 创建
+    const response = await fetch("/api/articles", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(article),
+    });
+    if (!response.ok) {
+      throw new Error("创建文章失败");
+    }
+    return response.json();
+  }
 }
 
 /**
  * 删除文章
  */
 export async function deleteArticle(id: string): Promise<void> {
-  const db = await openDB();
-
-  return new Promise((resolve, reject) => {
-    const transaction = db.transaction(STORE_NAME, "readwrite");
-    const store = transaction.objectStore(STORE_NAME);
-    const request = store.delete(id);
-
-    request.onerror = () => reject(request.error);
-    request.onsuccess = () => resolve();
+  const response = await fetch(`/api/articles/${id}`, {
+    method: "DELETE",
   });
+  if (!response.ok) {
+    throw new Error("删除文章失败");
+  }
 }
 
 /**
- * 更新文章的音频
+ * 上传音频到云端
  */
-export async function updateArticleAudio(
-  id: string,
+export async function uploadAudio(
+  articleId: string,
+  segmentId: string,
   audioBlob: Blob
-): Promise<void> {
-  const article = await getArticle(id);
-  if (!article) {
-    throw new Error("文章不存在");
+): Promise<string> {
+  const formData = new FormData();
+  formData.append("audio", audioBlob);
+  formData.append("segmentId", segmentId);
+
+  const response = await fetch(`/api/articles/${articleId}/audio`, {
+    method: "POST",
+    body: formData,
+  });
+
+  if (!response.ok) {
+    throw new Error("上传音频失败");
   }
 
-  article.audioBlob = audioBlob;
-  article.updatedAt = Date.now();
-
-  await saveArticle(article);
+  const data = await response.json();
+  return data.url;
 }
 
 /**
- * 创建新文章
+ * 创建新文章对象（仅用于本地构造，需调用 saveArticle 保存）
  */
 export function createArticle(
   text: string,
   title?: string
-): Article {
-  const now = Date.now();
+): Omit<Article, "id" | "createdAt" | "updatedAt"> {
   return {
-    id: generateId(),
-    title: title || `文章 ${new Date(now).toLocaleDateString()}`,
+    title: title || `文章 ${new Date().toLocaleDateString()}`,
     text,
-    createdAt: now,
-    updatedAt: now,
   };
 }
