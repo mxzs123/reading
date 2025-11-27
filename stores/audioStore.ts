@@ -56,16 +56,21 @@ function getAudio(): HTMLAudioElement {
   return audioElement!;
 }
 
-// 并发控制 - 降低并发数避免 Gemini API 429 错误
-const MAX_CONCURRENT = 2;
-let activeGenCount = 0;
+// 速率控制 - Gemini TTS API 限制 RPM=10 (每分钟 10 次请求)
+// 设置 7 秒间隔确保不超限 (60s / 10 = 6s，留 1s 余量)
+const REQUEST_INTERVAL_MS = 7000;
+let isProcessing = false;
 const generatingIds = new Set<string>();
 const pendingQueue: Array<{ id: string; apiKey: string; voice: string }> = [];
 
 export const useAudioStore = create<AudioStore>((set, get) => {
-  // 内部辅助函数：处理生成队列
-  const processQueue = () => {
-    while (activeGenCount < MAX_CONCURRENT && pendingQueue.length > 0) {
+  // 内部辅助函数：处理生成队列（串行 + 间隔）
+  const processQueue = async () => {
+    if (isProcessing || pendingQueue.length === 0) return;
+
+    isProcessing = true;
+
+    while (pendingQueue.length > 0) {
       const task = pendingQueue.shift();
       if (!task) break;
 
@@ -73,16 +78,20 @@ export const useAudioStore = create<AudioStore>((set, get) => {
       if (generatingIds.has(id)) continue;
 
       generatingIds.add(id);
-      activeGenCount++;
 
-      get()
-        .generateSegment(id, apiKey, voice)
-        .finally(() => {
-          activeGenCount--;
-          generatingIds.delete(id);
-          processQueue();
-        });
+      try {
+        await get().generateSegment(id, apiKey, voice);
+      } finally {
+        generatingIds.delete(id);
+      }
+
+      // 如果还有待处理的任务，等待间隔后再继续
+      if (pendingQueue.length > 0) {
+        await new Promise((resolve) => setTimeout(resolve, REQUEST_INTERVAL_MS));
+      }
     }
+
+    isProcessing = false;
   };
 
   // 内部辅助函数：播放下一个段落
