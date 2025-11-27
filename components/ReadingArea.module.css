@@ -1,0 +1,49 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--paragraph-spacing, 1.5rem);
+}
+
+.paragraph {
+  font-size: var(--font-size);
+  line-height: var(--line-height);
+  letter-spacing: var(--letter-spacing);
+  color: var(--color-text);
+  cursor: pointer;
+  padding: 0.5rem 0;
+  margin: 0;
+  border-radius: 4px;
+  transition: background-color 0.15s ease;
+}
+
+.paragraph:hover {
+  background-color: rgba(0, 0, 0, 0.015);
+}
+
+.paragraph.active {
+  background-color: rgba(0, 0, 0, 0.025);
+}
+
+/* 空状态 */
+.empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  padding: 2rem;
+}
+
+.emptyText {
+  color: var(--color-muted);
+  font-size: 0.95rem;
+  text-align: center;
+}
+
+/* 深色主题 */
+:global(body.theme-dark) .paragraph:hover {
+  background-color: rgba(255, 255, 255, 0.02);
+}
+
+:global(body.theme-dark) .paragraph.active {
+  background-color: rgba(255, 255, 255, 0.04);
+}

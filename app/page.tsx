@@ -6,7 +6,10 @@ import { DictionaryPanel } from "@/components/DictionaryPanel";
 import ArticleManager from "@/components/ArticleManager";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import type { Article } from "@/lib/storage";
-import { ParagraphAudioList } from "@/components/ParagraphAudioList";
+import { ReadingArea } from "@/components/ReadingArea";
+import { MiniPlayer } from "@/components/MiniPlayer";
+import { useAudioStore } from "@/stores/audioStore";
+import { useSettings } from "@/contexts/SettingsContext";
 import styles from "./page.module.css";
 
 interface DictionaryMeaning {
@@ -35,6 +38,13 @@ export default function Home() {
   // 原文输入是否折叠
   const [inputCollapsed, setInputCollapsed] = useState(false);
   const [selectedWord, setSelectedWord] = useState("");
+
+  // 音频 store
+  const { settings } = useSettings();
+  const generateAll = useAudioStore((s) => s.generateAll);
+  const readyCount = useAudioStore((s) => s.readyCount);
+  const generatingCount = useAudioStore((s) => s.generatingCount);
+  const total = useAudioStore((s) => s.total);
   const [dictionaryAnchor, setDictionaryAnchor] = useState<
     | {
         top: number;
@@ -57,18 +67,13 @@ export default function Home() {
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const outputSectionRef = useRef<HTMLElement | null>(null);
 
-  const handleWordSelected = useCallback(
-    (
-      selection: {
-        word: string;
-        rect: { top: number; left: number; width: number; height: number };
-      }
-    ) => {
-      const trimmed = selection.word.trim();
+  const handleWordClick = useCallback(
+    (word: string, rect: DOMRect) => {
+      const trimmed = word.trim();
       if (!trimmed) return;
 
       setSelectedWord(trimmed);
-      setDictionaryAnchor(isMobile ? null : selection.rect);
+      setDictionaryAnchor(isMobile ? null : { top: rect.top, left: rect.left, width: rect.width, height: rect.height });
       setDictionaryOpen(true);
       setDictionaryData(undefined);
       setDictionaryLoading(true);
@@ -291,22 +296,37 @@ export default function Home() {
 
           <section ref={outputSectionRef} className={`${styles.outputSection} surface-card`}>
             <div className={styles.sectionHeader}>
-              <h2>仿生阅读</h2>
-              <span className="muted-text">点击单词即可发音与查询释义</span>
+              <div className={styles.sectionHeaderLeft}>
+                <h2>仿生阅读</h2>
+                <span className="muted-text">点击单词发音查词，点击段落播放</span>
+              </div>
+              {sourceText.trim() && total > 0 && (
+                <div className={styles.audioActions}>
+                  {generatingCount > 0 || readyCount > 0 ? (
+                    <span className={styles.progressText}>
+                      {readyCount}/{total}
+                    </span>
+                  ) : null}
+                  <button
+                    type="button"
+                    className={styles.clearButton}
+                    onClick={() => generateAll(settings.geminiApiKey, settings.ttsVoice)}
+                    disabled={generatingCount > 0}
+                  >
+                    {generatingCount > 0 ? "生成中..." : "生成音频"}
+                  </button>
+                </div>
+              )}
             </div>
 
-            {sourceText.trim() ? (
-              <div
-                key={readingPulseKey}
-                className={`${styles.outputInner} ${
-                  sourceText.trim() ? styles.readingPulse : ""
-                }`}
-              >
-                <ParagraphAudioList text={sourceText} onWordSelected={handleWordSelected} />
-              </div>
-            ) : (
-              <div className="muted-text">输入文本后将在此显示仿生阅读与分段播放器。</div>
-            )}
+            <div
+              key={readingPulseKey}
+              className={`${styles.outputInner} ${
+                sourceText.trim() ? styles.readingPulse : ""
+              }`}
+            >
+              <ReadingArea text={sourceText} onWordClick={handleWordClick} />
+            </div>
           </section>
 
         </main>
@@ -337,6 +357,8 @@ export default function Home() {
         onArticleLoad={handleArticleLoad}
         onArticleSaved={handleArticleSaved}
       />
+
+      <MiniPlayer />
     </div>
   );
 }
