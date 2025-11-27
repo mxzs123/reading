@@ -1,13 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { BionicText } from "@/components/BionicText";
 import { SettingsPanel } from "@/components/SettingsPanel";
 import { DictionaryPanel } from "@/components/DictionaryPanel";
-import AudioPlayer from "@/components/AudioPlayer";
 import ArticleManager from "@/components/ArticleManager";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import type { Article } from "@/lib/storage";
+import { ParagraphAudioList } from "@/components/ParagraphAudioList";
 import styles from "./page.module.css";
 
 interface DictionaryMeaning {
@@ -51,7 +50,6 @@ export default function Home() {
   const [dictionaryOpen, setDictionaryOpen] = useState(false);
   // 文章和音频状态
   const [currentArticleId, setCurrentArticleId] = useState<string | null>(null);
-  const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const isMobile = useMediaQuery("(max-width: 768px)");
   const settingsOpen = userSettingsOpen;
@@ -157,7 +155,6 @@ export default function Home() {
   const handleArticleLoad = useCallback((article: Article) => {
     setSourceText(article.text);
     setCurrentArticleId(article.id);
-    setAudioBlob(article.audioBlob || null);
     setInputCollapsed(true);
     setDictionaryOpen(false);
     setTimeout(() => {
@@ -168,11 +165,6 @@ export default function Home() {
   // 文章保存后更新 ID
   const handleArticleSaved = useCallback((article: Article) => {
     setCurrentArticleId(article.id);
-  }, []);
-
-  // 音频生成后保存
-  const handleAudioGenerated = useCallback((blob: Blob) => {
-    setAudioBlob(blob);
   }, []);
 
   return (
@@ -303,22 +295,18 @@ export default function Home() {
               <span className="muted-text">点击单词即可发音与查询释义</span>
             </div>
 
-            {sourceText.trim() && (
-              <AudioPlayer
-                text={sourceText}
-                audioBlob={audioBlob}
-                onAudioGenerated={handleAudioGenerated}
-              />
+            {sourceText.trim() ? (
+              <div
+                key={readingPulseKey}
+                className={`${styles.outputInner} ${
+                  sourceText.trim() ? styles.readingPulse : ""
+                }`}
+              >
+                <ParagraphAudioList text={sourceText} onWordSelected={handleWordSelected} />
+              </div>
+            ) : (
+              <div className="muted-text">输入文本后将在此显示仿生阅读与分段播放器。</div>
             )}
-
-            <div
-              key={readingPulseKey}
-              className={`${styles.outputInner} ${
-                sourceText.trim() ? styles.readingPulse : ""
-              }`}
-            >
-              <BionicText text={sourceText} onWordSelected={handleWordSelected} />
-            </div>
           </section>
 
         </main>
@@ -344,7 +332,7 @@ export default function Home() {
         isOpen={articlesOpen}
         onClose={() => setArticlesOpen(false)}
         currentText={sourceText}
-        currentAudioBlob={audioBlob}
+        currentAudioBlob={null}
         currentArticleId={currentArticleId}
         onArticleLoad={handleArticleLoad}
         onArticleSaved={handleArticleSaved}
