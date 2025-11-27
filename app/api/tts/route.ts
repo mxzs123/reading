@@ -81,7 +81,6 @@ export async function POST(request: NextRequest) {
             },
           },
         },
-        model: "gemini-2.5-flash-preview-tts",
       }),
     });
 
