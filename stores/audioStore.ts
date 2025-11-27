@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { base64ToWavBlob } from "@/lib/paragraphs";
+import { uploadAudio } from "@/lib/storage";
 
 export type SegmentStatus = "idle" | "generating" | "ready" | "error";
 
@@ -9,6 +10,8 @@ export interface SegmentState {
   status: SegmentStatus;
   error?: string;
   audioUrl?: string;
+  audioBlob?: Blob; // 保存原始 blob 用于上传
+  cloudUrl?: string; // 云端 URL
 }
 
 interface AudioStore {
@@ -38,6 +41,8 @@ interface AudioStore {
   stop: () => void;
   seek: (time: number) => void;
   startSequenceFrom: (id: string) => void;
+  uploadAllAudio: (articleId: string) => Promise<void>;
+  loadAudioUrls: (audioUrls: string[]) => void;
 }
 
 // 模块级单例 Audio 元素
@@ -226,7 +231,7 @@ export const useAudioStore = create<AudioStore>((set, get) => {
 
         set((state) => {
           const newSegments = state.segments.map((s) =>
-            s.id === id ? { ...s, status: "ready" as SegmentStatus, audioUrl: url, error: undefined } : s
+            s.id === id ? { ...s, status: "ready" as SegmentStatus, audioUrl: url, audioBlob: blob, error: undefined } : s
           );
           return {
             segments: newSegments,
@@ -314,6 +319,49 @@ export const useAudioStore = create<AudioStore>((set, get) => {
     startSequenceFrom: (id) => {
       set({ sequenceMode: true });
       get().playSegment(id);
+    },
+
+    uploadAllAudio: async (articleId) => {
+      const { segments } = get();
+      const readySegments = segments.filter((s) => s.status === "ready" && s.audioBlob && !s.cloudUrl);
+
+      for (const segment of readySegments) {
+        if (!segment.audioBlob) continue;
+        try {
+          const cloudUrl = await uploadAudio(articleId, segment.id, segment.audioBlob);
+          set((state) => ({
+            segments: state.segments.map((s) =>
+              s.id === segment.id ? { ...s, cloudUrl } : s
+            ),
+          }));
+        } catch (error) {
+          console.error(`上传音频 ${segment.id} 失败:`, error);
+        }
+      }
+    },
+
+    loadAudioUrls: (audioUrls) => {
+      if (!audioUrls || audioUrls.length === 0) return;
+
+      set((state) => {
+        const newSegments = state.segments.map((seg) => {
+          // 从 URL 中提取 segment id (格式: .../seg-0.wav)
+          const matchingUrl = audioUrls.find((url) => url.includes(`/${seg.id}.wav`));
+          if (matchingUrl) {
+            return {
+              ...seg,
+              status: "ready" as SegmentStatus,
+              audioUrl: matchingUrl,
+              cloudUrl: matchingUrl,
+            };
+          }
+          return seg;
+        });
+        return {
+          segments: newSegments,
+          readyCount: newSegments.filter((s) => s.status === "ready").length,
+        };
+      });
     },
   };
 });

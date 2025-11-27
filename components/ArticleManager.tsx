@@ -8,6 +8,7 @@ import {
   getAllArticles,
   saveArticle,
 } from "@/lib/storage";
+import { useAudioStore } from "@/stores/audioStore";
 import styles from "./ArticleManager.module.css";
 
 interface ArticleManagerProps {
@@ -52,6 +53,8 @@ export default function ArticleManager({
     }
   }, [isOpen, loadArticles]);
 
+  const uploadAllAudio = useAudioStore((s) => s.uploadAllAudio);
+
   // 保存当前文章
   const handleSave = useCallback(async () => {
     if (!currentText.trim()) return;
@@ -76,6 +79,9 @@ export default function ArticleManager({
         savedArticle = await saveArticle(newArticle);
       }
 
+      // 上传音频到云端
+      await uploadAllAudio(savedArticle.id);
+
       await loadArticles();
       onArticleSaved(savedArticle);
       setShowSaveInput(false);
@@ -85,7 +91,7 @@ export default function ArticleManager({
     } finally {
       setIsSaving(false);
     }
-  }, [currentText, currentArticleId, saveTitle, loadArticles, onArticleSaved]);
+  }, [currentText, currentArticleId, saveTitle, loadArticles, onArticleSaved, uploadAllAudio]);
 
   // 加载文章
   const handleLoad = useCallback(

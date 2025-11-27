@@ -45,6 +45,10 @@ export default function Home() {
   const readyCount = useAudioStore((s) => s.readyCount);
   const generatingCount = useAudioStore((s) => s.generatingCount);
   const total = useAudioStore((s) => s.total);
+  const loadAudioUrls = useAudioStore((s) => s.loadAudioUrls);
+
+  // 待加载的音频 URLs（文章加载后等 segments 初始化完成再恢复）
+  const [pendingAudioUrls, setPendingAudioUrls] = useState<string[] | null>(null);
   const [dictionaryAnchor, setDictionaryAnchor] = useState<
     | {
         top: number;
@@ -162,6 +166,12 @@ export default function Home() {
     setCurrentArticleId(article.id);
     setInputCollapsed(true);
     setDictionaryOpen(false);
+    // 保存待加载的音频 URLs
+    if (article.audioUrls && article.audioUrls.length > 0) {
+      setPendingAudioUrls(article.audioUrls);
+    } else {
+      setPendingAudioUrls(null);
+    }
     setTimeout(() => {
       outputSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     }, 0);
@@ -171,6 +181,14 @@ export default function Home() {
   const handleArticleSaved = useCallback((article: Article) => {
     setCurrentArticleId(article.id);
   }, []);
+
+  // 当 segments 初始化完成后，加载待恢复的音频
+  useEffect(() => {
+    if (pendingAudioUrls && total > 0) {
+      loadAudioUrls(pendingAudioUrls);
+      setPendingAudioUrls(null);
+    }
+  }, [pendingAudioUrls, total, loadAudioUrls]);
 
   return (
     <div className={styles.page}>
