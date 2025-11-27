@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import { playWordSound } from "@/lib/wordAudio";
 import { tokenize, renderBionicWord } from "@/lib/paragraphs";
 import type { SegmentState } from "@/hooks/useTTSQueue";
@@ -24,10 +24,12 @@ interface ParagraphCardProps {
   boldRatio: "low" | "medium" | "high";
   isExpanded: boolean;
   isActive: boolean;
+  isPlaying: boolean;
   sequenceActive: boolean;
+  currentTime: number;
+  duration: number;
   onWordSelected?: (selection: WordSelection) => void;
-  onPlay: () => void;
-  onPause: () => void;
+  onTogglePlay: () => void;
   onRestart: () => void;
   onStepTime: (delta: number) => void;
   onSeek: (value: number) => void;
@@ -41,10 +43,12 @@ export function ParagraphCard({
   boldRatio,
   isExpanded,
   isActive,
+  isPlaying,
   sequenceActive,
+  currentTime,
+  duration,
   onWordSelected,
-  onPlay,
-  onPause,
+  onTogglePlay,
   onRestart,
   onStepTime,
   onSeek,
@@ -69,11 +73,10 @@ export function ParagraphCard({
   );
 
   const hasAudio = segment.status === "ready" && !!segment.audioUrl;
-  const duration = segment.duration ?? 0;
-  const currentTime = segment.currentTime ?? 0;
   const canPlay = hasAudio;
 
-  const tokens = tokenize(segment.text);
+  // 缓存 tokenize 结果
+  const tokens = useMemo(() => tokenize(segment.text), [segment.text]);
 
   return (
     <div className={`${styles.card} ${isExpanded ? styles.cardActive : ""}`}>
@@ -126,11 +129,11 @@ export function ParagraphCard({
             <button
               type="button"
               className={styles.iconButton}
-              onClick={segment.isPlaying ? onPause : onPlay}
+              onClick={onTogglePlay}
               disabled={!canPlay}
-              title={segment.isPlaying ? "暂停" : "播放"}
+              title={isPlaying ? "暂停" : "播放"}
             >
-              {segment.isPlaying ? "⏸" : "▶"}
+              {isPlaying ? "⏸" : "▶"}
             </button>
             <button
               type="button"
@@ -146,14 +149,13 @@ export function ParagraphCard({
 
       {hasAudio && isExpanded && (
         <PlayerControls
-          isPlaying={!!segment.isPlaying}
+          isPlaying={isPlaying}
           isActive={isActive}
           canPlay={canPlay}
           duration={duration}
           currentTime={currentTime}
           sequenceActive={sequenceActive}
-          onPlay={onPlay}
-          onPause={onPause}
+          onTogglePlay={onTogglePlay}
           onRestart={onRestart}
           onStepBack={() => onStepTime(-SEEK_STEP_SECONDS)}
           onStepForward={() => onStepTime(SEEK_STEP_SECONDS)}

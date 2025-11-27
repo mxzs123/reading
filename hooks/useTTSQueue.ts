@@ -12,9 +12,6 @@ export interface SegmentState {
   error?: string;
   audioUrl?: string;
   blob?: Blob;
-  duration?: number;
-  currentTime?: number;
-  isPlaying?: boolean;
 }
 
 interface UseTTSQueueOptions {
@@ -105,8 +102,6 @@ export function useTTSQueue({
                   error: undefined,
                   blob,
                   audioUrl: url,
-                  isPlaying: false,
-                  currentTime: 0,
                 }
               : item
           )
@@ -181,16 +176,6 @@ export function useTTSQueue({
     return enqueueGeneration(pendingIds);
   }, [enqueueGeneration]);
 
-  const updateSegment = useCallback((id: string, updates: Partial<SegmentState>) => {
-    setSegments((prev) =>
-      prev.map((seg) => (seg.id === id ? { ...seg, ...updates } : seg))
-    );
-  }, []);
-
-  const updateAllSegments = useCallback((updater: (seg: SegmentState) => SegmentState) => {
-    setSegments((prev) => prev.map(updater));
-  }, []);
-
   const resetSegments = useCallback(() => {
     cleanupObjectUrls(segmentsRef.current);
     queueRef.current = [];
@@ -220,8 +205,6 @@ export function useTTSQueue({
     segmentsRef,
     generateAll,
     enqueueGeneration,
-    updateSegment,
-    updateAllSegments,
     stats: {
       readyCount,
       generatingCount,

@@ -11,8 +11,7 @@ interface PlayerControlsProps {
   duration: number;
   currentTime: number;
   sequenceActive: boolean;
-  onPlay: () => void;
-  onPause: () => void;
+  onTogglePlay: () => void;
   onRestart: () => void;
   onStepBack: () => void;
   onStepForward: () => void;
@@ -27,8 +26,7 @@ export function PlayerControls({
   duration,
   currentTime,
   sequenceActive,
-  onPlay,
-  onPause,
+  onTogglePlay,
   onRestart,
   onStepBack,
   onStepForward,
@@ -50,7 +48,7 @@ export function PlayerControls({
         <button
           type="button"
           className={styles.iconButton}
-          onClick={isPlaying ? onPause : onPlay}
+          onClick={onTogglePlay}
           disabled={!canPlay}
           title={isPlaying ? "暂停" : "播放"}
         >

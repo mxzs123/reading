@@ -36,7 +36,7 @@ export function ParagraphAudioList({ text, onWordSelected }: ParagraphAudioListP
     setNotice(message);
   }, []);
 
-  const { segments, segmentsRef, generateAll, stats, updateSegment, updateAllSegments } = useTTSQueue({
+  const { segments, segmentsRef, generateAll, stats } = useTTSQueue({
     paragraphs,
     paragraphKey,
     geminiApiKey: settings.geminiApiKey,
@@ -46,8 +46,6 @@ export function ParagraphAudioList({ text, onWordSelected }: ParagraphAudioListP
 
   const audioController = useAudioController({
     segmentsRef,
-    updateSegment,
-    updateAllSegments,
     onNotice: handleNotice,
   });
 
@@ -55,10 +53,12 @@ export function ParagraphAudioList({ text, onWordSelected }: ParagraphAudioListP
     activeId,
     expandedId,
     sequenceActive,
+    isPaused,
+    currentTime,
+    duration,
     setExpandedId,
     stopPlayback,
-    playSegment,
-    pausePlayback,
+    togglePlayback,
     restartPlayback,
     stepTime,
     handleSeek,
@@ -96,13 +96,14 @@ export function ParagraphAudioList({ text, onWordSelected }: ParagraphAudioListP
   }
 
   const primaryOpenId = expandedId ?? activeId;
+  const isPlaying = !!activeId && !isPaused;
 
   return (
     <div className={styles.list}>
       <ParagraphToolbar
         onGenerateAll={handleGenerateAll}
         onStopPlayback={handleStopPlayback}
-        isPlaying={!!activeId}
+        isPlaying={isPlaying}
         stats={stats}
       />
 
@@ -119,6 +120,7 @@ export function ParagraphAudioList({ text, onWordSelected }: ParagraphAudioListP
         const hasAudio = segment.status === "ready" && !!segment.audioUrl;
         const isExpanded = hasAudio && primaryOpenId === segment.id;
         const isActive = activeId === segment.id;
+        const segmentIsPlaying = isActive && !isPaused;
 
         return (
           <ParagraphCard
@@ -128,10 +130,12 @@ export function ParagraphAudioList({ text, onWordSelected }: ParagraphAudioListP
             boldRatio={settings.boldRatio}
             isExpanded={isExpanded}
             isActive={isActive}
+            isPlaying={segmentIsPlaying}
             sequenceActive={sequenceActive}
+            currentTime={isActive ? currentTime : 0}
+            duration={isActive ? duration : 0}
             onWordSelected={onWordSelected}
-            onPlay={() => playSegment(segment.id)}
-            onPause={pausePlayback}
+            onTogglePlay={() => togglePlayback(segment.id)}
             onRestart={() => restartPlayback(segment.id)}
             onStepTime={stepTime}
             onSeek={(value) => handleSeek(value, segment.id)}
@@ -140,7 +144,6 @@ export function ParagraphAudioList({ text, onWordSelected }: ParagraphAudioListP
               if (isExpanded) {
                 setExpandedId(null);
               } else {
-                stopPlayback();
                 setExpandedId(segment.id);
               }
             }}
