@@ -562,35 +562,20 @@ function buildParagraphs(text: string): string[] {
   const normalized = text.replace(/\r\n?/g, "\n");
   if (!normalized.trim()) return [];
 
-  // 按自然段（空行分隔）拆分
-  const lines = normalized.split("\n");
-  const paras: string[] = [];
-  let buffer: string[] = [];
+  // 先按“空行”切自然段（两个及以上换行）
+  const rawParagraphs = normalized
+    .split(/\n\s*\n+/)
+    .map((p) => p.trim())
+    .filter(Boolean);
 
-  const flush = () => {
-    if (!buffer.length) return;
-    const content = buffer.join(" ").trim();
-    if (content) paras.push(content);
-    buffer = [];
-  };
-
-  lines.forEach((line) => {
-    if (line.trim() === "") {
-      flush();
-    } else {
-      buffer.push(line.trim());
-    }
-  });
-  flush();
-
-  // 超长段落按单词再切块，避免 TTS 超时
   const result: string[] = [];
-  paras.forEach((para) => {
+  rawParagraphs.forEach((para) => {
     if (para.length <= MAX_CHUNK_LENGTH) {
       result.push(para);
       return;
     }
 
+    // 超长段落再按单词切块，保持段落顺序
     const words = para.split(/\s+/);
     let acc: string[] = [];
     words.forEach((word) => {

@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 
-export const runtime = "edge";
+export const runtime = "nodejs";
 
 const GEMINI_TTS_ENDPOINT =
   "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent";
@@ -61,7 +61,7 @@ export async function POST(request: NextRequest) {
   try {
     // 给上游请求设置超时，避免长时间挂起导致 504
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 10000);
+    const timeout = setTimeout(() => controller.abort(), 20000);
 
     const response = await fetch(GEMINI_TTS_ENDPOINT, {
       method: "POST",
