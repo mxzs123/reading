@@ -100,11 +100,11 @@ export async function POST(request: NextRequest) {
         const errorData = (await response.json().catch(() => ({}))) as
           | GeminiTTSResponse
           | Record<string, unknown>;
+        const geminiError = (errorData as GeminiTTSResponse).error?.message;
+        const stringError = (errorData as { error?: string }).error;
         errorMessage =
-          (errorData as GeminiTTSResponse).error?.message ||
-          (typeof (errorData as { error?: string }).error === "string"
-            ? (errorData as { error?: string }).error
-            : errorMessage);
+          geminiError ||
+          (typeof stringError === "string" ? stringError : errorMessage);
       } else {
         const text = await response.text().catch(() => "");
         if (text) {

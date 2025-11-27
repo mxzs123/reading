@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useSettings } from "@/contexts/SettingsContext";
-import type { TTSVoice } from "@/lib/settings";
+import { DEFAULT_SETTINGS, type TTSVoice } from "@/lib/settings";
 import styles from "./SettingsPanel.module.css";
 
 interface SettingsPanelProps {
@@ -293,6 +293,24 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                   </option>
                 ))}
               </select>
+            </div>
+
+            <div className={styles.fieldColumn}>
+              <label className={styles.fieldLabel}>生成并发（1-10）</label>
+              <input
+                type="number"
+                min={1}
+                max={10}
+                step={1}
+                className={styles.numberInput}
+                value={settings.ttsConcurrency}
+                onChange={(e) => {
+                  const next = Number(e.target.value) || DEFAULT_SETTINGS.ttsConcurrency;
+                  const bounded = Math.min(10, Math.max(1, next));
+                  updateSettings({ ttsConcurrency: bounded });
+                }}
+              />
+              <p className={styles.fieldHint}>控制生成整篇音频时的并发数，默认 5。</p>
             </div>
           </section>
         </div>

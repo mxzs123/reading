@@ -17,6 +17,7 @@ export interface ReaderSettings {
   // TTS 设置
   geminiApiKey: string;
   ttsVoice: TTSVoice;
+  ttsConcurrency: number;
 }
 
 export const DEFAULT_SETTINGS: ReaderSettings = {
@@ -34,6 +35,7 @@ export const DEFAULT_SETTINGS: ReaderSettings = {
   // TTS 默认设置
   geminiApiKey: "",
   ttsVoice: "Kore",
+  ttsConcurrency: 5,
 };
 
 export const SETTINGS_STORAGE_KEY = "bionicReaderSettings";

@@ -4,12 +4,110 @@
   gap: 1rem;
 }
 
+.toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: 12px;
+  background: linear-gradient(135deg, #f7fbff 0%, #f5f7fb 100%);
+}
+
+.toolbarActions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.secondaryButton {
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  background: #fff;
+  border-radius: 10px;
+  padding: 0.6rem 1rem;
+  cursor: pointer;
+  font-weight: 600;
+  color: #1f2937;
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+
+.secondaryButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.secondaryButton:not(:disabled):hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06);
+}
+
+.progressSection {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.progressHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: 600;
+}
+
+.progressMeta {
+  color: #6b7280;
+  font-size: 0.9rem;
+}
+
+.progressBar {
+  position: relative;
+  width: 100%;
+  height: 8px;
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.progressFill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  background: linear-gradient(90deg, #2563eb, #6366f1);
+  transition: width 0.15s ease;
+}
+
+.notice {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  border-radius: 10px;
+  background: #fff4e6;
+  color: #a15c05;
+  border: 1px solid #ffe0b3;
+}
+
+.noticeClose {
+  border: none;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font-weight: 600;
+}
+
 .card {
   border: 1px solid rgba(0, 0, 0, 0.06);
   border-radius: 12px;
   padding: 1rem;
   background: var(--surface, #fff);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.04);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.cardActive {
+  border-color: #2563eb;
+  box-shadow: 0 12px 28px rgba(37, 99, 235, 0.12);
 }
 
 .paragraphText {
@@ -27,10 +125,35 @@
   font-size: 1.05rem;
 }
 
+.segmentBar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  padding: 0.65rem 0.75rem;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.02);
+}
+
+.statusGroup {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.compactControls {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
 .playerRow {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+  margin-top: 0.65rem;
 }
 
 .controls {
@@ -42,9 +165,9 @@
 
 .iconButton {
   border: 1px solid rgba(0, 0, 0, 0.1);
-  background: #f6f6f6;
+  background: #f8fafc;
   border-radius: 8px;
-  padding: 0.35rem 0.5rem;
+  padding: 0.4rem 0.55rem;
   cursor: pointer;
   font-size: 0.95rem;
   transition: transform 0.1s ease, box-shadow 0.1s ease;
@@ -60,20 +183,50 @@
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
 }
 
+.iconButtonActive {
+  border-color: #2563eb;
+  color: #2563eb;
+  background: #eef2ff;
+}
+
 .badge {
   background: #eef4ff;
   color: #274c9c;
-  padding: 0.2rem 0.5rem;
+  padding: 0.2rem 0.55rem;
   border-radius: 999px;
-  font-size: 0.85rem;
+  font-size: 0.9rem;
+}
+
+.badgeReady {
+  background: #ecfdf3;
+  color: #166534;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.9rem;
+}
+
+.badgeMuted {
+  background: #f3f4f6;
+  color: #4b5563;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.9rem;
 }
 
 .badgeError {
   background: #ffecec;
   color: #b32626;
-  padding: 0.2rem 0.5rem;
+  padding: 0.2rem 0.55rem;
   border-radius: 999px;
-  font-size: 0.85rem;
+  font-size: 0.9rem;
+}
+
+.linkButton {
+  border: none;
+  background: none;
+  color: #2563eb;
+  cursor: pointer;
+  font-weight: 600;
 }
 
 .progressArea {
@@ -82,43 +235,26 @@
   gap: 0.35rem;
 }
 
-.progressBar {
-  position: relative;
-  width: 100%;
-  height: 6px;
-  background: rgba(0, 0, 0, 0.05);
-  border-radius: 999px;
-  overflow: hidden;
-}
-
-.progressFill {
-  position: absolute;
-  left: 0;
-  top: 0;
-  height: 100%;
-  background: linear-gradient(90deg, #3b82f6, #6366f1);
-  transition: width 0.15s ease;
-}
-
-.seek {
-  accent-color: #3b82f6;
-  width: 100%;
-}
-
 .timeRow {
   display: flex;
   justify-content: space-between;
   color: var(--muted, #666);
-  font-size: 0.85rem;
+  font-size: 0.9rem;
 }
 
-.statusText {
-  color: var(--muted, #666);
-  font-size: 0.9rem;
+.seek {
+  accent-color: #2563eb;
+  width: 100%;
+  height: 6px;
+  cursor: pointer;
 }
 
 @media (max-width: 768px) {
   .bionicParagraph {
     font-size: 1rem;
+  }
+
+  .toolbar {
+    padding: 0.85rem;
   }
 }
