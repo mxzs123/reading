@@ -40,8 +40,8 @@ interface QueueOptions {
   sequence?: boolean;
 }
 
-const MAX_CONCURRENT = 3;
-const MAX_CHUNK_LENGTH = 600;
+const MAX_CONCURRENT = 2;
+const MAX_CHUNK_LENGTH = 400;
 
 export function ParagraphAudioList({ text, onWordSelected }: ParagraphAudioListProps) {
   const { settings } = useSettings();
@@ -559,38 +559,55 @@ function base64ToWavBlob(base64: string): Blob {
 }
 
 function buildParagraphs(text: string): string[] {
-  const normalized = text.replace(/\r\n?/g, "\n").trim();
-  if (!normalized) return [];
-  const rawParagraphs = normalized.split(/\n\s*\n+/).map((p) => p.trim()).filter(Boolean);
+  const normalized = text.replace(/\r\n?/g, "\n");
+  if (!normalized.trim()) return [];
 
+  // 按自然段（空行分隔）拆分
+  const lines = normalized.split("\n");
+  const paras: string[] = [];
+  let buffer: string[] = [];
+
+  const flush = () => {
+    if (!buffer.length) return;
+    const content = buffer.join(" ").trim();
+    if (content) paras.push(content);
+    buffer = [];
+  };
+
+  lines.forEach((line) => {
+    if (line.trim() === "") {
+      flush();
+    } else {
+      buffer.push(line.trim());
+    }
+  });
+  flush();
+
+  // 超长段落按单词再切块，避免 TTS 超时
   const result: string[] = [];
-  rawParagraphs.forEach((para) => {
+  paras.forEach((para) => {
     if (para.length <= MAX_CHUNK_LENGTH) {
       result.push(para);
       return;
     }
 
-    // 大段落再按单词长度切分，避免超时
     const words = para.split(/\s+/);
-    let buffer: string[] = [];
+    let acc: string[] = [];
     words.forEach((word) => {
-      const candidate = buffer.length ? `${buffer.join(" ")} ${word}` : word;
+      const candidate = acc.length ? `${acc.join(" ")} ${word}` : word;
       if (candidate.length > MAX_CHUNK_LENGTH) {
-        if (buffer.length) {
-          result.push(buffer.join(" "));
-          buffer = [word];
+        if (acc.length) {
+          result.push(acc.join(" "));
+          acc = [word];
         } else {
-          // 单个单词超长，直接推入
           result.push(word);
-          buffer = [];
+          acc = [];
         }
       } else {
-        buffer.push(word);
+        acc.push(word);
       }
     });
-    if (buffer.length) {
-      result.push(buffer.join(" "));
-    }
+    if (acc.length) result.push(acc.join(" "));
   });
 
   return result;
