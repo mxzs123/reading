@@ -72,7 +72,8 @@ export function SettingsProvider({
   const syncToCloud = useCallback(async (value: ReaderSettings) => {
     try {
       // 移除敏感字段
-      const { azureApiKey: _, ...cloudSettings } = value;
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { azureApiKey: _azureApiKey, ...cloudSettings } = value;
 
       await fetch("/api/settings", {
         method: "PUT",

@@ -10,7 +10,6 @@ export function MiniPlayer() {
   const currentTime = useAudioStore((s) => s.currentTime);
   const duration = useAudioStore((s) => s.duration);
   const togglePlayPause = useAudioStore((s) => s.togglePlayPause);
-  const stop = useAudioStore((s) => s.stop);
   const seek = useAudioStore((s) => s.seek);
 
   // 没有活动音频时不显示
@@ -46,12 +45,6 @@ export function MiniPlayer() {
           {formatTime(currentTime)} / {formatTime(duration)}
         </span>
       </div>
-
-      <button className={styles.button} onClick={stop} aria-label="停止">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-          <rect x="6" y="6" width="12" height="12" rx="1" />
-        </svg>
-      </button>
     </div>
   );
 }

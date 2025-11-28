@@ -20,6 +20,7 @@ export function Paragraph({ id, text, onWordClick }: ParagraphProps) {
   const activeSegmentId = useAudioStore((s) => s.activeSegmentId);
   const isPlaying = useAudioStore((s) => s.isPlaying);
   const playSegment = useAudioStore((s) => s.playSegment);
+  const startSequenceFrom = useAudioStore((s) => s.startSequenceFrom);
   const generateSegment = useAudioStore((s) => s.generateSegment);
   const segment = useAudioStore((s) => s.segments.find((seg) => seg.id === id));
 
@@ -32,17 +33,19 @@ export function Paragraph({ id, text, onWordClick }: ParagraphProps) {
       // 如果点击的是单词，不处理
       if ((e.target as HTMLElement).closest(".bionic-word")) return;
 
+      const play = settings.autoPlayNext ? startSequenceFrom : playSegment;
+
       // 如果已生成，直接播放
       if (segment?.status === "ready") {
-        playSegment(id);
+        play(id);
       } else if (segment?.status !== "generating") {
         // 未生成则先生成再播放
         await generateSegment(id, settings.azureApiKey, settings.azureRegion, settings.azureVoice);
         // 生成完成后播放
-        playSegment(id);
+        play(id);
       }
     },
-    [id, segment, playSegment, generateSegment, settings.azureApiKey, settings.azureRegion, settings.azureVoice]
+    [id, segment, playSegment, startSequenceFrom, generateSegment, settings.autoPlayNext, settings.azureApiKey, settings.azureRegion, settings.azureVoice]
   );
 
   // 单词点击处理

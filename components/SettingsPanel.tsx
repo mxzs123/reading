@@ -279,6 +279,17 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
               </select>
             </div>
 
+            <label className={styles.switchLabel}>
+              <span className={styles.fieldLabel}>自动播放下一段</span>
+              <input
+                type="checkbox"
+                hidden
+                checked={settings.autoPlayNext}
+                onChange={(e) => updateSettings({ autoPlayNext: e.target.checked })}
+              />
+              <span className={styles.switchSlider}></span>
+            </label>
+
           </section>
         </div>
 

@@ -22,6 +22,8 @@ export interface ReaderSettings {
   azureApiKey: string;
   azureRegion: AzureRegion;
   azureVoice: AzureTTSVoice;
+  // 播放设置
+  autoPlayNext: boolean;
 }
 
 export const DEFAULT_SETTINGS: ReaderSettings = {
@@ -39,6 +41,8 @@ export const DEFAULT_SETTINGS: ReaderSettings = {
   azureApiKey: "",
   azureRegion: "eastus2",
   azureVoice: "en-US-Ava:DragonHDLatestNeural",
+  // 播放设置
+  autoPlayNext: true,
 };
 
 export const SETTINGS_STORAGE_KEY = "bionicReaderSettings";
