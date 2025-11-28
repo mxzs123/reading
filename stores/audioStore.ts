@@ -246,11 +246,15 @@ export const useAudioStore = create<AudioStore>((set, get) => {
       if (!segment?.audioUrl) return;
 
       const audio = getAudio();
-      const { activeSegmentId } = get();
+      const { activeSegmentId, isPlaying } = get();
 
       // 如果是切换到新段落
       if (activeSegmentId !== id) {
         audio.src = segment.audioUrl;
+        audio.currentTime = 0;
+        set({ currentTime: 0 });
+      } else if (isPlaying) {
+        // 如果是同一段落且正在播放，重置到开头重新播放
         audio.currentTime = 0;
         set({ currentTime: 0 });
       }
