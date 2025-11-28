@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { SettingsPanel } from "@/components/SettingsPanel";
-import { DictionaryPanel } from "@/components/DictionaryPanel";
+import { DictionaryPanel, type DictionaryData } from "@/components/DictionaryPanel";
 import ArticleManager from "@/components/ArticleManager";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import type { Article } from "@/lib/storage";
@@ -11,23 +11,6 @@ import { MiniPlayer } from "@/components/MiniPlayer";
 import { useAudioStore } from "@/stores/audioStore";
 import { useSettings } from "@/contexts/SettingsContext";
 import styles from "./page.module.css";
-
-interface DictionaryMeaning {
-  pos?: string | null;
-  translation: string;
-}
-
-interface DictionaryData {
-  phonetics?: {
-    us?: string;
-    uk?: string;
-  };
-  meanings: DictionaryMeaning[];
-  webTranslations: Array<{
-    key: string;
-    translations: string[];
-  }>;
-}
 
 export default function Home() {
   const [sourceText, setSourceText] = useState("");

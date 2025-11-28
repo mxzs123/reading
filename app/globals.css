@@ -117,14 +117,6 @@ select {
   background: var(--color-highlight);
 }
 
-.converted-paragraph {
-  margin: 0;
-  font-size: var(--font-size);
-  line-height: var(--line-height);
-  letter-spacing: var(--letter-spacing);
-  text-align: var(--text-align);
-}
-
 :root {
   --panel-blur: blur(18px);
 }

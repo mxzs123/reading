@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useSettings } from "@/contexts/SettingsContext";
-import { DEFAULT_SETTINGS, type TTSVoice } from "@/lib/settings";
+import { type TTSVoice } from "@/lib/settings";
 import styles from "./SettingsPanel.module.css";
 
 interface SettingsPanelProps {
@@ -107,40 +107,24 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
               </div>
             </div>
 
-            <div className={styles.rowGroup}>
-              <label className={styles.switchLabel}>
-                <span>仿生阅读</span>
-                <input
-                  type="checkbox"
-                  checked={settings.enableBionic}
-                  onChange={(e) =>
-                    updateSettings({ enableBionic: e.target.checked })
-                  }
-                />
-                <span className={styles.switchSlider} />
-              </label>
-
-              {settings.enableBionic && (
-                 <div className={styles.miniControl}>
-                   <span className={styles.miniLabel}>强度</span>
-                   <div className={styles.miniSegments}>
-                    {boldOptions.map((option) => (
-                      <button
-                        key={option.value}
-                        className={`${styles.miniSegment} ${
-                          settings.boldRatio === option.value
-                            ? styles.miniSegmentActive
-                            : ""
-                        }`}
-                        onClick={() => updateSettings({ boldRatio: option.value })}
-                        type="button"
-                      >
-                        {option.label}
-                      </button>
-                    ))}
-                   </div>
-                 </div>
-              )}
+            <div className={styles.fieldRow}>
+              <span className={styles.fieldLabel}>仿生强度</span>
+              <div className={styles.segmentedControl}>
+                {boldOptions.map((option) => (
+                  <button
+                    key={option.value}
+                    className={`${styles.segmentButton} ${
+                      settings.boldRatio === option.value
+                        ? styles.segmentActive
+                        : ""
+                    }`}
+                    onClick={() => updateSettings({ boldRatio: option.value })}
+                    type="button"
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
             </div>
           </section>
 
@@ -295,23 +279,6 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
               </select>
             </div>
 
-            <div className={styles.fieldColumn}>
-              <label className={styles.fieldLabel}>生成并发（1-10）</label>
-              <input
-                type="number"
-                min={1}
-                max={10}
-                step={1}
-                className={styles.numberInput}
-                value={settings.ttsConcurrency}
-                onChange={(e) => {
-                  const next = Number(e.target.value) || DEFAULT_SETTINGS.ttsConcurrency;
-                  const bounded = Math.min(10, Math.max(1, next));
-                  updateSettings({ ttsConcurrency: bounded });
-                }}
-              />
-              <p className={styles.fieldHint}>控制生成整篇音频时的并发数，默认 5。</p>
-            </div>
           </section>
         </div>
 

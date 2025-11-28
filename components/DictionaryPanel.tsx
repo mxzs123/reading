@@ -11,12 +11,12 @@ import type React from "react";
 import { playWordSound } from "@/lib/wordAudio";
 import styles from "./DictionaryPanel.module.css";
 
-interface DictionaryMeaning {
+export interface DictionaryMeaning {
   pos?: string | null;
   translation: string;
 }
 
-interface DictionaryData {
+export interface DictionaryData {
   phonetics?: {
     us?: string;
     uk?: string;

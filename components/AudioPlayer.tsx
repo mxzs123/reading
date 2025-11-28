@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useSettings } from "@/contexts/SettingsContext";
+import { formatTime } from "@/lib/paragraphs";
 import styles from "./AudioPlayer.module.css";
 
 interface AudioPlayerProps {
@@ -139,12 +140,6 @@ export default function AudioPlayer({
       setIsGenerating(false);
     }
   }, [text, settings.geminiApiKey, settings.ttsVoice, onAudioGenerated]);
-
-  const formatTime = (seconds: number): string => {
-    const mins = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
-    return `${mins}:${secs.toString().padStart(2, "0")}`;
-  };
 
   // 没有 API Key
   if (!settings.geminiApiKey) {

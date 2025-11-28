@@ -26,12 +26,15 @@ npm run lint         # 运行 ESLint 检查
 
 ### Core Modules
 
-**仿生阅读转换** (`lib/bionicReading.ts`)
-- `convertToBionicReading(text, options)` - 主转换函数，将纯文本转为仿生阅读 HTML
-- 支持三种加粗比例：`low` (30%), `medium` (45%), `high` (60%)
-- 使用正则表达式 `/\b([a-zA-Z]+(?:['\-][a-zA-Z]+)*)\b/g` 识别单词
-- 每个单词包装为 `<span class="bionic-word" data-word="..." role="button" tabindex="0">`
-- 测试文件：`lib/__tests__/bionicReading.test.ts`
+**仿生阅读渲染** (`lib/paragraphs.ts` + `components/Paragraph.tsx`)
+- 使用 `tokenize()` 函数将文本拆分为单词和标点
+- `renderBionicWord()` 根据加粗比例渲染单词（支持 `low`/`medium`/`high`）
+- `Paragraph` 组件实时渲染仿生阅读效果，支持单词点击交互
+
+**音频播放** (`stores/audioStore.ts`)
+- 使用 Zustand 管理全局音频状态
+- 支持段落音频生成、播放、暂停、顺序播放
+- 音频通过 Gemini TTS API 生成，存储到 Vercel Blob
 
 **设置管理** (`lib/settings.ts` + `contexts/SettingsContext.tsx`)
 - 使用 React Context 进行全局状态管理
@@ -57,11 +60,10 @@ npm run lint         # 运行 ESLint 检查
 - 处理单词选中事件并触发发音与词典查询
 - 使用 `AbortController` 管理并发查询请求
 
-**BionicText 组件** (`components/BionicText.tsx`)
-- 渲染转换后的仿生阅读内容
-- 事件委托处理单词点击和键盘交互 (Enter/Space)
-- 点击后添加 `active-highlight` 类实现视觉反馈 (300ms)
-- 使用 `dangerouslySetInnerHTML` 渲染 HTML，但输入已通过 `escapeHtml()` 清理
+**ReadingArea 组件** (`components/ReadingArea.tsx`)
+- 将文本分割为段落并渲染为 `Paragraph` 组件
+- 管理段落音频生成和播放状态
+- 集成 `MiniPlayer` 控制音频播放
 
 **SettingsPanel 组件** (`components/SettingsPanel.tsx`)
 - 提供所有阅读设置的 UI 控制
@@ -83,8 +85,7 @@ npm run lint         # 运行 ESLint 检查
 ## Testing
 
 - 测试框架：Vitest
-- 当前覆盖：`bionicReading.ts` 核心转换逻辑
-- 运行单个测试文件：`npm test -- lib/__tests__/bionicReading.test.ts`
+- 运行测试：`npm run test`
 
 ## Important Notes
 
