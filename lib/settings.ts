@@ -22,7 +22,6 @@ export interface ReaderSettings {
   azureApiKey: string;
   azureRegion: AzureRegion;
   azureVoice: AzureTTSVoice;
-  clickToPlay: boolean;
 }
 
 export const DEFAULT_SETTINGS: ReaderSettings = {
@@ -40,7 +39,6 @@ export const DEFAULT_SETTINGS: ReaderSettings = {
   azureApiKey: "",
   azureRegion: "eastus2",
   azureVoice: "en-US-Ava:DragonHDLatestNeural",
-  clickToPlay: false,
 };
 
 export const SETTINGS_STORAGE_KEY = "bionicReaderSettings";

@@ -279,18 +279,6 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
               </select>
             </div>
 
-            <div className={styles.fieldRow}>
-              <span className={styles.fieldLabel}>点击段落播放</span>
-              <label className={styles.switchLabel}>
-                <input
-                  type="checkbox"
-                  checked={settings.clickToPlay}
-                  onChange={(e) => updateSettings({ clickToPlay: e.target.checked })}
-                />
-                <span className={styles.switchSlider} />
-              </label>
-            </div>
-
           </section>
         </div>
 
