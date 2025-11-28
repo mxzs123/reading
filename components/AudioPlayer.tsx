@@ -95,8 +95,8 @@ export default function AudioPlayer({
   );
 
   const generateAudio = useCallback(async () => {
-    if (!settings.geminiApiKey) {
-      setError("请先在设置中填入 Gemini API Key");
+    if (!settings.azureApiKey) {
+      setError("请先在设置中填入 Azure API Key");
       return;
     }
 
@@ -114,8 +114,9 @@ export default function AudioPlayer({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           text: text.trim(),
-          apiKey: settings.geminiApiKey,
-          voice: settings.ttsVoice,
+          apiKey: settings.azureApiKey,
+          region: settings.azureRegion,
+          voice: settings.azureVoice,
         }),
       });
 
@@ -131,7 +132,8 @@ export default function AudioPlayer({
       for (let i = 0; i < binaryString.length; i++) {
         bytes[i] = binaryString.charCodeAt(i);
       }
-      const blob = new Blob([bytes], { type: "audio/wav" });
+      const mimeType = data.mimeType || "audio/mpeg";
+      const blob = new Blob([bytes], { type: mimeType });
 
       onAudioGenerated?.(blob);
     } catch (err) {
@@ -139,13 +141,13 @@ export default function AudioPlayer({
     } finally {
       setIsGenerating(false);
     }
-  }, [text, settings.geminiApiKey, settings.ttsVoice, onAudioGenerated]);
+  }, [text, settings.azureApiKey, settings.azureRegion, settings.azureVoice, onAudioGenerated]);
 
   // 没有 API Key
-  if (!settings.geminiApiKey) {
+  if (!settings.azureApiKey) {
     return (
       <div className={styles.noApiKey}>
-        请在设置面板中填入 Gemini API Key 以使用朗读功能
+        请在设置面板中填入 Azure API Key 以使用朗读功能
       </div>
     );
   }

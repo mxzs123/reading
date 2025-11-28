@@ -32,17 +32,20 @@ export function Paragraph({ id, text, onWordClick }: ParagraphProps) {
       // 如果点击的是单词，不处理
       if ((e.target as HTMLElement).closest(".bionic-word")) return;
 
+      // 如果未开启点击播放，不处理
+      if (!settings.clickToPlay) return;
+
       // 如果已生成，直接播放
       if (segment?.status === "ready") {
         playSegment(id);
       } else if (segment?.status !== "generating") {
         // 未生成则先生成再播放
-        await generateSegment(id, settings.geminiApiKey, settings.ttsVoice);
+        await generateSegment(id, settings.azureApiKey, settings.azureRegion, settings.azureVoice);
         // 生成完成后播放
         playSegment(id);
       }
     },
-    [id, segment, playSegment, generateSegment, settings.geminiApiKey, settings.ttsVoice]
+    [id, segment, playSegment, generateSegment, settings.clickToPlay, settings.azureApiKey, settings.azureRegion, settings.azureVoice]
   );
 
   // 单词点击处理

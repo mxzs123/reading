@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { base64ToWavBlob } from "@/lib/paragraphs";
+import { base64ToAudioBlob } from "@/lib/paragraphs";
 import { uploadAudio } from "@/lib/storage";
 
 export type SegmentStatus = "idle" | "generating" | "ready" | "error";
@@ -34,8 +34,8 @@ interface AudioStore {
 
   // Actions
   initSegments: (paragraphs: string[]) => void;
-  generateSegment: (id: string, apiKey: string, voice: string) => Promise<void>;
-  generateAll: (apiKey: string, voice: string) => void;
+  generateSegment: (id: string, apiKey: string, region: string, voice: string) => Promise<void>;
+  generateAll: (apiKey: string, region: string, voice: string) => void;
   playSegment: (id: string) => void;
   togglePlayPause: () => void;
   stop: () => void;
@@ -56,44 +56,10 @@ function getAudio(): HTMLAudioElement {
   return audioElement!;
 }
 
-// 速率控制 - Gemini TTS API 限制 RPM=10 (每分钟 10 次请求)
-// 设置 7 秒间隔确保不超限 (60s / 10 = 6s，留 1s 余量)
-const REQUEST_INTERVAL_MS = 7000;
-let isProcessing = false;
+// 追踪正在生成的段落，避免重复生成
 const generatingIds = new Set<string>();
-const pendingQueue: Array<{ id: string; apiKey: string; voice: string }> = [];
 
 export const useAudioStore = create<AudioStore>((set, get) => {
-  // 内部辅助函数：处理生成队列（串行 + 间隔）
-  const processQueue = async () => {
-    if (isProcessing || pendingQueue.length === 0) return;
-
-    isProcessing = true;
-
-    while (pendingQueue.length > 0) {
-      const task = pendingQueue.shift();
-      if (!task) break;
-
-      const { id, apiKey, voice } = task;
-      if (generatingIds.has(id)) continue;
-
-      generatingIds.add(id);
-
-      try {
-        await get().generateSegment(id, apiKey, voice);
-      } finally {
-        generatingIds.delete(id);
-      }
-
-      // 如果还有待处理的任务，等待间隔后再继续
-      if (pendingQueue.length > 0) {
-        await new Promise((resolve) => setTimeout(resolve, REQUEST_INTERVAL_MS));
-      }
-    }
-
-    isProcessing = false;
-  };
-
   // 内部辅助函数：播放下一个段落
   const playNextInSequence = () => {
     const { segments, activeSegmentId, sequenceMode } = get();
@@ -161,10 +127,8 @@ export const useAudioStore = create<AudioStore>((set, get) => {
         if (seg.audioUrl) URL.revokeObjectURL(seg.audioUrl);
       });
 
-      // 重置队列状态
-      isProcessing = false;
+      // 重置生成状态
       generatingIds.clear();
-      pendingQueue.length = 0;
 
       // 停止当前播放
       const audio = getAudio();
@@ -193,7 +157,7 @@ export const useAudioStore = create<AudioStore>((set, get) => {
       });
     },
 
-    generateSegment: async (id, apiKey, voice) => {
+    generateSegment: async (id, apiKey, region, voice) => {
       const segment = get().segments.find((s) => s.id === id);
       if (!segment || segment.status === "ready" || segment.status === "generating") {
         return;
@@ -202,11 +166,15 @@ export const useAudioStore = create<AudioStore>((set, get) => {
       if (!apiKey) {
         set((state) => ({
           segments: state.segments.map((s) =>
-            s.id === id ? { ...s, status: "error" as SegmentStatus, error: "请先在设置中填入 Gemini API Key" } : s
+            s.id === id ? { ...s, status: "error" as SegmentStatus, error: "请先在设置中填入 Azure API Key" } : s
           ),
         }));
         return;
       }
+
+      // 防止重复生成
+      if (generatingIds.has(id)) return;
+      generatingIds.add(id);
 
       // 标记为生成中
       set((state) => ({
@@ -220,7 +188,7 @@ export const useAudioStore = create<AudioStore>((set, get) => {
         const response = await fetch("/api/tts", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ text: segment.text.trim(), apiKey, voice }),
+          body: JSON.stringify({ text: segment.text.trim(), apiKey, region, voice }),
         });
 
         const contentType = response.headers.get("content-type") || "";
@@ -231,11 +199,12 @@ export const useAudioStore = create<AudioStore>((set, get) => {
         }
 
         const audioBase64 = (data as { audio?: string }).audio;
+        const mimeType = (data as { mimeType?: string }).mimeType || "audio/mpeg";
         if (!audioBase64) {
           throw new Error("未收到音频数据");
         }
 
-        const blob = base64ToWavBlob(audioBase64);
+        const blob = base64ToAudioBlob(audioBase64, mimeType);
         const url = URL.createObjectURL(blob);
 
         set((state) => {
@@ -257,20 +226,19 @@ export const useAudioStore = create<AudioStore>((set, get) => {
           ),
           generatingCount: state.generatingCount - 1,
         }));
+      } finally {
+        generatingIds.delete(id);
       }
     },
 
-    generateAll: (apiKey, voice) => {
+    generateAll: (apiKey, region, voice) => {
       const { segments } = get();
-      const pendingIds = segments.filter((seg) => seg.status !== "ready" && seg.status !== "generating").map((seg) => seg.id);
-
-      pendingIds.forEach((id) => {
-        if (!generatingIds.has(id)) {
-          pendingQueue.push({ id, apiKey, voice });
-        }
-      });
-
-      processQueue();
+      // Azure TTS 支持高并发 (200次/秒)，可以并行生成所有段落
+      segments
+        .filter((seg) => seg.status !== "ready" && seg.status !== "generating")
+        .forEach((seg) => {
+          get().generateSegment(seg.id, apiKey, region, voice);
+        });
     },
 
     playSegment: (id) => {

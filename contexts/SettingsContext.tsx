@@ -27,7 +27,7 @@ interface SettingsContextValue {
 const SettingsContext = createContext<SettingsContextValue | null>(null);
 
 // 敏感字段只存本地，不同步云端
-const LOCAL_ONLY_FIELDS = ["geminiApiKey"] as const;
+const LOCAL_ONLY_FIELDS = ["azureApiKey"] as const;
 
 export function SettingsProvider({
   children,
@@ -72,7 +72,7 @@ export function SettingsProvider({
   const syncToCloud = useCallback(async (value: ReaderSettings) => {
     try {
       // 移除敏感字段
-      const { geminiApiKey: _, ...cloudSettings } = value;
+      const { azureApiKey: _, ...cloudSettings } = value;
 
       await fetch("/api/settings", {
         method: "PUT",

@@ -81,14 +81,14 @@ export function renderBionicWord(word: string, ratio: "low" | "medium" | "high")
   return { lead, tail };
 }
 
-export function base64ToWavBlob(base64: string): Blob {
+export function base64ToAudioBlob(base64: string, mimeType: string = "audio/mpeg"): Blob {
   const binaryString = atob(base64);
   const len = binaryString.length;
   const bytes = new Uint8Array(len);
   for (let i = 0; i < len; i++) {
     bytes[i] = binaryString.charCodeAt(i);
   }
-  return new Blob([bytes], { type: "audio/wav" });
+  return new Blob([bytes], { type: mimeType });
 }
 
 export function formatTime(seconds: number): string {

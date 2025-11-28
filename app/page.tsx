@@ -311,7 +311,7 @@ export default function Home() {
                   <button
                     type="button"
                     className={styles.clearButton}
-                    onClick={() => generateAll(settings.geminiApiKey, settings.ttsVoice)}
+                    onClick={() => generateAll(settings.azureApiKey, settings.azureRegion, settings.azureVoice)}
                     disabled={generatingCount > 0}
                   >
                     {generatingCount > 0 ? "生成中..." : "生成音频"}

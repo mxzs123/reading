@@ -1,6 +1,11 @@
 export type Theme = "sepia" | "white" | "dark";
 export type TextAlign = "left" | "right" | "center" | "justify";
-export type TTSVoice = "Kore" | "Puck" | "Charon" | "Fenrir" | "Aoede";
+export type AzureRegion = "eastus2";
+export type AzureTTSVoice =
+  | "en-US-Ava:DragonHDLatestNeural"
+  | "en-US-JennyNeural"
+  | "en-US-GuyNeural"
+  | "en-GB-SoniaNeural";
 
 export interface ReaderSettings {
   fontSize: number;
@@ -13,9 +18,11 @@ export interface ReaderSettings {
   pageWidth: number;
   readingPadding: number;
   textAlign: TextAlign;
-  // TTS 设置
-  geminiApiKey: string;
-  ttsVoice: TTSVoice;
+  // Azure TTS 设置
+  azureApiKey: string;
+  azureRegion: AzureRegion;
+  azureVoice: AzureTTSVoice;
+  clickToPlay: boolean;
 }
 
 export const DEFAULT_SETTINGS: ReaderSettings = {
@@ -29,9 +36,11 @@ export const DEFAULT_SETTINGS: ReaderSettings = {
   pageWidth: 680,
   readingPadding: 40,
   textAlign: "left",
-  // TTS 默认设置
-  geminiApiKey: "",
-  ttsVoice: "Kore",
+  // Azure TTS 默认设置
+  azureApiKey: "",
+  azureRegion: "eastus2",
+  azureVoice: "en-US-Ava:DragonHDLatestNeural",
+  clickToPlay: false,
 };
 
 export const SETTINGS_STORAGE_KEY = "bionicReaderSettings";
