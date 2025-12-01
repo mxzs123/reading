@@ -11,9 +11,10 @@ interface ParagraphProps {
   id: string;
   text: string;
   onWordClick: (word: string, rect: DOMRect) => void;
+  onWordPrefetch?: (word: string) => void;
 }
 
-export function Paragraph({ id, text, onWordClick }: ParagraphProps) {
+export function Paragraph({ id, text, onWordClick, onWordPrefetch }: ParagraphProps) {
   const { settings } = useSettings();
 
   // 从 store 订阅状态
@@ -82,6 +83,8 @@ export function Paragraph({ id, text, onWordClick }: ParagraphProps) {
                 handleWordClick(token.value, e.currentTarget);
               }
             }}
+            onMouseEnter={() => onWordPrefetch?.(token.value)}
+            onFocus={() => onWordPrefetch?.(token.value)}
           >
             {(() => {
               const { lead, tail } = renderBionicWord(token.value, settings.boldRatio);

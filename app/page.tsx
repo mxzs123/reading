@@ -48,47 +48,89 @@ export default function Home() {
   // 文章和音频状态
   const [currentArticleId, setCurrentArticleId] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const dictionaryCacheRef = useRef<Map<string, DictionaryData>>(new Map());
+  const dictionaryPrefetchControllersRef = useRef<Map<string, AbortController>>(new Map());
   const isMobile = useMediaQuery("(max-width: 768px)");
   const settingsOpen = userSettingsOpen;
   const inputSectionRef = useRef<HTMLElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const outputSectionRef = useRef<HTMLElement | null>(null);
 
+  const requestDictionary = useCallback(async (word: string, signal?: AbortSignal): Promise<DictionaryData> => {
+    const response = await fetch(`/api/dictionary?word=${encodeURIComponent(word)}`, {
+      signal,
+    });
+    if (!response.ok) {
+      throw new Error("查询失败");
+    }
+    const data = (await response.json()) as DictionaryData & { error?: string };
+    if (data.error) {
+      throw new Error(data.error);
+    }
+    return {
+      phonetics: data.phonetics,
+      meanings: data.meanings ?? [],
+      webTranslations: data.webTranslations ?? [],
+    };
+  }, []);
+
+  const prefetchDictionary = useCallback(
+    (word: string) => {
+      const normalized = word.trim().toLowerCase();
+      if (!normalized) return;
+      if (dictionaryCacheRef.current.has(normalized) || dictionaryPrefetchControllersRef.current.has(normalized)) {
+        return;
+      }
+
+      const controller = new AbortController();
+      dictionaryPrefetchControllersRef.current.set(normalized, controller);
+
+      requestDictionary(normalized, controller.signal)
+        .then((data) => {
+          dictionaryCacheRef.current.set(normalized, data);
+        })
+        .catch((error) => {
+          if (controller.signal.aborted) return;
+          console.debug("词典预取失败", error);
+        })
+        .finally(() => {
+          dictionaryPrefetchControllersRef.current.delete(normalized);
+        });
+    },
+    [requestDictionary]
+  );
+
   const handleWordClick = useCallback(
     (word: string, rect: DOMRect) => {
       const trimmed = word.trim();
       if (!trimmed) return;
+      const normalized = trimmed.toLowerCase();
 
       setSelectedWord(trimmed);
-      setDictionaryAnchor(isMobile ? null : { top: rect.top, left: rect.left, width: rect.width, height: rect.height });
+      setDictionaryAnchor(
+        isMobile ? null : { top: rect.top, left: rect.left, width: rect.width, height: rect.height }
+      );
       setDictionaryOpen(true);
-      setDictionaryData(undefined);
-      setDictionaryLoading(true);
       setDictionaryError(undefined);
+
+      const cached = dictionaryCacheRef.current.get(normalized);
+      if (cached) {
+        setDictionaryData(cached);
+        setDictionaryLoading(false);
+      } else {
+        setDictionaryData(undefined);
+        setDictionaryLoading(true);
+      }
 
       abortRef.current?.abort();
       const controller = new AbortController();
       abortRef.current = controller;
 
-      fetch(`/api/dictionary?word=${encodeURIComponent(trimmed.toLowerCase())}`, {
-        signal: controller.signal,
-      })
-        .then(async (response) => {
-          if (!response.ok) {
-            throw new Error("查询失败");
-          }
-          const data = (await response.json()) as DictionaryData & {
-            error?: string;
-          };
-          if (data.error) {
-            throw new Error(data.error);
-          }
-          setDictionaryError(undefined);
-          setDictionaryData({
-            phonetics: data.phonetics,
-            meanings: data.meanings ?? [],
-            webTranslations: data.webTranslations ?? [],
-          });
+      requestDictionary(normalized, controller.signal)
+        .then((data) => {
+          dictionaryCacheRef.current.set(normalized, data);
+          if (controller.signal.aborted) return;
+          setDictionaryData(data);
         })
         .catch((error: Error) => {
           if (controller.signal.aborted) return;
@@ -97,11 +139,12 @@ export default function Home() {
           setDictionaryError("查询失败，请稍后再试");
         })
         .finally(() => {
-          if (controller.signal.aborted) return;
-          setDictionaryLoading(false);
+          if (!controller.signal.aborted) {
+            setDictionaryLoading(false);
+          }
         });
     },
-    [isMobile]
+    [isMobile, requestDictionary]
   );
 
   const handleCloseDictionary = useCallback(() => {
@@ -110,10 +153,17 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
+    const controllers = dictionaryPrefetchControllersRef.current;
     return () => {
       abortRef.current?.abort();
+      controllers.forEach((controller) => controller.abort());
+      controllers.clear();
     };
   }, []);
+
+  useEffect(() => {
+    prefetchDictionary("warmup");
+  }, [prefetchDictionary]);
 
   const readingPulseKey = useMemo(() => {
     const trimmed = sourceText.trim();
@@ -326,7 +376,11 @@ export default function Home() {
                 sourceText.trim() ? styles.readingPulse : ""
               }`}
             >
-              <ReadingArea text={sourceText} onWordClick={handleWordClick} />
+              <ReadingArea
+                text={sourceText}
+                onWordClick={handleWordClick}
+                onWordPrefetch={prefetchDictionary}
+              />
             </div>
           </section>
 

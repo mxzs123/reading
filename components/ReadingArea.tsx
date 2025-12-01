@@ -9,9 +9,10 @@ import styles from "./ReadingArea.module.css";
 interface ReadingAreaProps {
   text: string;
   onWordClick: (word: string, rect: DOMRect) => void;
+  onWordPrefetch?: (word: string) => void;
 }
 
-export function ReadingArea({ text, onWordClick }: ReadingAreaProps) {
+export function ReadingArea({ text, onWordClick, onWordPrefetch }: ReadingAreaProps) {
   const segments = useAudioStore((s) => s.segments);
   const initSegments = useAudioStore((s) => s.initSegments);
 
@@ -35,7 +36,13 @@ export function ReadingArea({ text, onWordClick }: ReadingAreaProps) {
   return (
     <div className={styles.container}>
       {segments.map((seg) => (
-        <Paragraph key={seg.id} id={seg.id} text={seg.text} onWordClick={onWordClick} />
+        <Paragraph
+          key={seg.id}
+          id={seg.id}
+          text={seg.text}
+          onWordClick={onWordClick}
+          onWordPrefetch={onWordPrefetch}
+        />
       ))}
     </div>
   );
