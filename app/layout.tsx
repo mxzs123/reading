@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Providers } from "@/components/Providers";
+import { PWARegistry } from "@/components/PWARegistry";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -16,6 +17,12 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "仿生阅读器 Next 版",
   description: "基于 Next.js 的仿生阅读器，支持多端访问",
+  manifest: "/manifest.webmanifest",
+  themeColor: "#0f766e",
+  icons: {
+    icon: "/icon-192.png",
+    apple: "/icon-192.png",
+  },
 };
 
 export default function RootLayout({
@@ -26,7 +33,10 @@ export default function RootLayout({
   return (
     <html lang="zh-CN">
       <body className={`${geistSans.variable} ${geistMono.variable}`}>
-        <Providers>{children}</Providers>
+        <Providers>
+          <PWARegistry />
+          {children}
+        </Providers>
       </body>
     </html>
   );
