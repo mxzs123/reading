@@ -2,6 +2,9 @@ import { create } from "zustand";
 import { base64ToAudioBlob } from "@/lib/paragraphs";
 import { uploadAudio } from "@/lib/storage";
 
+const DEFAULT_TTS_CONCURRENCY = 4;
+const MAX_CONCURRENCY = 128;
+
 export type SegmentStatus = "idle" | "generating" | "ready" | "error";
 
 export interface SegmentState {
@@ -12,6 +15,14 @@ export interface SegmentState {
   audioUrl?: string;
   audioBlob?: Blob; // 保存原始 blob 用于上传
   cloudUrl?: string; // 云端 URL
+}
+
+interface GenerationTask {
+  id: string;
+  apiKey: string;
+  region: string;
+  voice: string;
+  settle: () => void;
 }
 
 interface AudioStore {
@@ -31,6 +42,7 @@ interface AudioStore {
   readyCount: number;
   generatingCount: number;
   total: number;
+  concurrencyLimit: number;
 
   // Actions
   initSegments: (paragraphs: string[]) => void;
@@ -43,6 +55,7 @@ interface AudioStore {
   startSequenceFrom: (id: string) => void;
   uploadAllAudio: (articleId: string) => Promise<void>;
   loadAudioUrls: (audioUrls: string[]) => void;
+  setConcurrencyLimit: (limit: number) => void;
 }
 
 // 模块级单例 Audio 元素
@@ -56,8 +69,8 @@ function getAudio(): HTMLAudioElement {
   return audioElement!;
 }
 
-// 追踪正在生成的段落，避免重复生成
-const generatingIds = new Set<string>();
+// 追踪排队或正在生成的段落，避免重复生成
+const pendingGenerationIds = new Set<string>();
 
 export const useAudioStore = create<AudioStore>((set, get) => {
   // 内部辅助函数：播放下一个段落
@@ -109,6 +122,108 @@ export const useAudioStore = create<AudioStore>((set, get) => {
     });
   }
 
+  const generationQueue: GenerationTask[] = [];
+  let activeBatchCount = 0;
+  let concurrencyLimitInternal = DEFAULT_TTS_CONCURRENCY;
+
+  const runGenerationTask = async (task: GenerationTask) => {
+    const { id, apiKey, region, voice } = task;
+    const segment = get().segments.find((s) => s.id === id);
+    if (!segment) {
+      return;
+    }
+
+    set((state) => ({
+      segments: state.segments.map((s) =>
+        s.id === id ? { ...s, status: "generating" as SegmentStatus, error: undefined } : s
+      ),
+      generatingCount: state.generatingCount + 1,
+    }));
+
+    try {
+      const response = await fetch("/api/tts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: segment.text.trim(), apiKey, region, voice }),
+      });
+
+      const contentType = response.headers.get("content-type") || "";
+      const data = contentType.includes("application/json")
+        ? await response.json()
+        : { error: await response.text() };
+
+      if (!response.ok) {
+        throw new Error((data as { error?: string }).error || "生成失败");
+      }
+
+      const audioBase64 = (data as { audio?: string }).audio;
+      const mimeType = (data as { mimeType?: string }).mimeType || "audio/mpeg";
+      if (!audioBase64) {
+        throw new Error("未收到音频数据");
+      }
+
+      const blob = base64ToAudioBlob(audioBase64, mimeType);
+      const url = URL.createObjectURL(blob);
+
+      set((state) => {
+        const newSegments = state.segments.map((s) =>
+          s.id === id
+            ? { ...s, status: "ready" as SegmentStatus, audioUrl: url, audioBlob: blob, error: undefined }
+            : s
+        );
+        return {
+          segments: newSegments,
+          generatingCount: Math.max(0, state.generatingCount - 1),
+          readyCount: newSegments.filter((s) => s.status === "ready").length,
+        };
+      });
+    } catch (err) {
+      set((state) => ({
+        segments: state.segments.map((s) =>
+          s.id === id
+            ? {
+                ...s,
+                status: "error" as SegmentStatus,
+                error: err instanceof Error ? err.message : "生成失败",
+              }
+            : s
+        ),
+        generatingCount: Math.max(0, state.generatingCount - 1),
+      }));
+    }
+  };
+
+  const startNextBatch = () => {
+    if (activeBatchCount !== 0) return;
+    if (generationQueue.length === 0) return;
+
+    const batchSize = Math.min(Math.max(1, concurrencyLimitInternal), generationQueue.length);
+    const batch = generationQueue.splice(0, batchSize);
+    activeBatchCount = batch.length;
+
+    batch.forEach((task) => {
+      runGenerationTask(task)
+        .catch(() => {
+          // 错误已在 runGenerationTask 内处理
+        })
+        .finally(() => {
+          pendingGenerationIds.delete(task.id);
+          task.settle();
+          activeBatchCount -= 1;
+          if (activeBatchCount === 0) {
+            startNextBatch();
+          }
+        });
+    });
+  };
+
+  const enqueueGenerationTask = (task: GenerationTask) => {
+    generationQueue.push(task);
+    if (activeBatchCount === 0) {
+      startNextBatch();
+    }
+  };
+
   return {
     // 初始状态
     segments: [],
@@ -120,6 +235,7 @@ export const useAudioStore = create<AudioStore>((set, get) => {
     readyCount: 0,
     generatingCount: 0,
     total: 0,
+    concurrencyLimit: DEFAULT_TTS_CONCURRENCY,
 
     initSegments: (paragraphs) => {
       // 清理旧的 Object URLs
@@ -128,7 +244,11 @@ export const useAudioStore = create<AudioStore>((set, get) => {
       });
 
       // 重置生成状态
-      generatingIds.clear();
+      pendingGenerationIds.clear();
+      if (generationQueue.length) {
+        const pendingTasks = generationQueue.splice(0);
+        pendingTasks.forEach((task) => task.settle());
+      }
 
       // 停止当前播放
       const audio = getAudio();
@@ -172,68 +292,25 @@ export const useAudioStore = create<AudioStore>((set, get) => {
         return;
       }
 
-      // 防止重复生成
-      if (generatingIds.has(id)) return;
-      generatingIds.add(id);
-
-      // 标记为生成中
-      set((state) => ({
-        segments: state.segments.map((s) =>
-          s.id === id ? { ...s, status: "generating" as SegmentStatus, error: undefined } : s
-        ),
-        generatingCount: state.generatingCount + 1,
-      }));
-
-      try {
-        const response = await fetch("/api/tts", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ text: segment.text.trim(), apiKey, region, voice }),
-        });
-
-        const contentType = response.headers.get("content-type") || "";
-        const data = contentType.includes("application/json") ? await response.json() : { error: await response.text() };
-
-        if (!response.ok) {
-          throw new Error((data as { error?: string }).error || "生成失败");
-        }
-
-        const audioBase64 = (data as { audio?: string }).audio;
-        const mimeType = (data as { mimeType?: string }).mimeType || "audio/mpeg";
-        if (!audioBase64) {
-          throw new Error("未收到音频数据");
-        }
-
-        const blob = base64ToAudioBlob(audioBase64, mimeType);
-        const url = URL.createObjectURL(blob);
-
-        set((state) => {
-          const newSegments = state.segments.map((s) =>
-            s.id === id ? { ...s, status: "ready" as SegmentStatus, audioUrl: url, audioBlob: blob, error: undefined } : s
-          );
-          return {
-            segments: newSegments,
-            generatingCount: state.generatingCount - 1,
-            readyCount: newSegments.filter((s) => s.status === "ready").length,
-          };
-        });
-      } catch (err) {
-        set((state) => ({
-          segments: state.segments.map((s) =>
-            s.id === id
-              ? { ...s, status: "error" as SegmentStatus, error: err instanceof Error ? err.message : "生成失败" }
-              : s
-          ),
-          generatingCount: state.generatingCount - 1,
-        }));
-      } finally {
-        generatingIds.delete(id);
+      if (pendingGenerationIds.has(id)) {
+        return;
       }
+      pendingGenerationIds.add(id);
+
+      return new Promise<void>((resolve) => {
+        enqueueGenerationTask({
+          id,
+          apiKey,
+          region,
+          voice,
+          settle: resolve,
+        });
+      });
     },
 
     generateAll: (apiKey, region, voice) => {
       const { segments } = get();
-      // Azure TTS 支持高并发 (200次/秒)，可以并行生成所有段落
+      // 将所有段落加入队列，由调度器按批次生成
       segments
         .filter((seg) => seg.status !== "ready" && seg.status !== "generating")
         .forEach((seg) => {
@@ -343,6 +420,15 @@ export const useAudioStore = create<AudioStore>((set, get) => {
           readyCount: newSegments.filter((s) => s.status === "ready").length,
         };
       });
+    },
+
+    setConcurrencyLimit: (limit) => {
+      const next = Math.max(1, Math.min(limit, MAX_CONCURRENCY));
+      concurrencyLimitInternal = next;
+      set({ concurrencyLimit: next });
+      if (activeBatchCount === 0) {
+        startNextBatch();
+      }
     },
   };
 });

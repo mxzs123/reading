@@ -290,6 +290,23 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
               <span className={styles.switchSlider}></span>
             </label>
 
+            <div className={styles.fieldColumn}>
+              <label className={styles.fieldLabel}>并发生成上限</label>
+              <input
+                type="number"
+                min={1}
+                className={styles.apiKeyInput}
+                value={settings.ttsConcurrency}
+                onChange={(e) => {
+                  const parsed = parseInt(e.target.value, 10);
+                  updateSettings({ ttsConcurrency: Number.isNaN(parsed) ? 1 : Math.max(1, parsed) });
+                }}
+              />
+              <p className={styles.apiKeyHint}>
+                每批请求会并行发送至多该数量的段落音频，完成后再继续下一批；并发越高越易触发配额限制。
+              </p>
+            </div>
+
           </section>
         </div>
 

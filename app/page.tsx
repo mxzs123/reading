@@ -29,6 +29,7 @@ export default function Home() {
   const generatingCount = useAudioStore((s) => s.generatingCount);
   const total = useAudioStore((s) => s.total);
   const loadAudioUrls = useAudioStore((s) => s.loadAudioUrls);
+  const setConcurrencyLimit = useAudioStore((s) => s.setConcurrencyLimit);
 
   // 待加载的音频 URLs（文章加载后等 segments 初始化完成再恢复）
   const pendingAudioUrlsRef = useRef<string[] | null>(null);
@@ -164,6 +165,10 @@ export default function Home() {
   useEffect(() => {
     prefetchDictionary("warmup");
   }, [prefetchDictionary]);
+
+  useEffect(() => {
+    setConcurrencyLimit(settings.ttsConcurrency);
+  }, [settings.ttsConcurrency, setConcurrencyLimit]);
 
   const readingPulseKey = useMemo(() => {
     const trimmed = sourceText.trim();

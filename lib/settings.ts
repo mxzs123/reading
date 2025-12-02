@@ -24,6 +24,7 @@ export interface ReaderSettings {
   azureVoice: AzureTTSVoice;
   // 播放设置
   autoPlayNext: boolean;
+  ttsConcurrency: number;
 }
 
 export const DEFAULT_SETTINGS: ReaderSettings = {
@@ -43,6 +44,7 @@ export const DEFAULT_SETTINGS: ReaderSettings = {
   azureVoice: "en-US-Ava:DragonHDLatestNeural",
   // 播放设置
   autoPlayNext: true,
+  ttsConcurrency: 4,
 };
 
 export const SETTINGS_STORAGE_KEY = "bionicReaderSettings";
