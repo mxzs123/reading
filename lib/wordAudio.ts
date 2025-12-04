@@ -1,8 +1,15 @@
 let sharedAudio: HTMLAudioElement | null = null;
 
-export function playWordSound(word: string) {
+export function playWordSound(
+  word: string,
+  onStopArticleAudio?: () => void,
+  onCloseDictionary?: () => void
+) {
   if (typeof window === "undefined") return;
   if (!word.trim()) return;
+
+  if (onStopArticleAudio) onStopArticleAudio();
+  if (onCloseDictionary) onCloseDictionary();
 
   const audioUrl = `https://dict.youdao.com/dictvoice?audio=${encodeURIComponent(
     word

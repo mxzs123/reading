@@ -153,6 +153,13 @@ export default function Home() {
     setDictionaryOpen(false);
   }, []);
 
+  const handleStopArticleAudio = useCallback(() => {
+    const { isPlaying, togglePlayPause } = useAudioStore.getState();
+    if (isPlaying) {
+      togglePlayPause();
+    }
+  }, []);
+
   useEffect(() => {
     const controllers = dictionaryPrefetchControllersRef.current;
     return () => {
@@ -406,6 +413,7 @@ export default function Home() {
         anchor={dictionaryAnchor}
         isMobile={isMobile}
         onClose={handleCloseDictionary}
+        onStopArticleAudio={handleStopArticleAudio}
       />
 
       <ArticleManager
