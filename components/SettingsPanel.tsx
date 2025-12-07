@@ -22,6 +22,7 @@ const themeOptions = [
   { value: "sepia" as const, label: "米色" },
   { value: "white" as const, label: "纯白" },
   { value: "dark" as const, label: "深色" },
+  { value: "oled" as const, label: "纯黑" },
 ];
 
 const alignOptions = [

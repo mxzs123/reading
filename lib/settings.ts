@@ -1,4 +1,4 @@
-export type Theme = "sepia" | "white" | "dark";
+export type Theme = "sepia" | "white" | "dark" | "oled";
 export type TextAlign = "left" | "right" | "center" | "justify";
 export type AzureRegion = "eastus2";
 export type AzureTTSVoice =
@@ -55,6 +55,7 @@ const THEME_CLASS_MAP: Record<Theme, string | null> = {
   sepia: null,
   white: "theme-white",
   dark: "theme-dark",
+  oled: "theme-oled",
 };
 
 /**
@@ -110,7 +111,7 @@ export function applySettings(settings: ReaderSettings): void {
     const { body } = document;
     if (!body) return;
 
-    body.classList.remove("theme-white", "theme-dark");
+    body.classList.remove("theme-white", "theme-dark", "theme-oled");
 
     const themeClass = THEME_CLASS_MAP[settings.theme];
     if (themeClass) {

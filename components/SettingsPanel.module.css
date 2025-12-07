@@ -1,7 +1,7 @@
 .backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.3);
+  background: var(--panel-backdrop);
   z-index: 25;
   opacity: 0;
   pointer-events: none;
@@ -47,7 +47,7 @@
 }
 
 .scrollContent::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.15);
+  background: var(--scrollbar-thumb);
   border-radius: 999px;
 }
 
@@ -71,14 +71,14 @@
 .closeBtn {
   font-size: 0.9rem;
   padding: 0.4rem 1rem;
-  background: rgba(0, 0, 0, 0.05);
+  background: var(--panel-muted-bg);
   border-radius: 999px;
   font-weight: 500;
   white-space: nowrap;
 }
 
 .closeBtn:hover {
-  background: rgba(0, 0, 0, 0.1);
+  background: var(--panel-strong-bg);
 }
 
 .section {
@@ -122,7 +122,7 @@
   display: flex;
   flex-direction: column;
   gap: 0.8rem;
-  background: rgba(0, 0, 0, 0.03);
+  background: var(--panel-muted-bg);
   padding: 0.8rem;
   border-radius: 14px;
 }
@@ -141,7 +141,7 @@
 
 .miniSegments {
   display: flex;
-  background: rgba(0, 0, 0, 0.06);
+  background: var(--panel-strong-bg);
   border-radius: 8px;
   padding: 2px;
 }
@@ -154,9 +154,9 @@
 }
 
 .miniSegmentActive {
-  background: #fff;
+  background: var(--control-active-surface);
   color: var(--color-primary);
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  box-shadow: 0 1px 3px var(--color-border);
   font-weight: 500;
 }
 
@@ -189,7 +189,7 @@
   width: 100%;
   accent-color: var(--color-primary);
   height: 4px;
-  background: rgba(0, 0, 0, 0.1);
+  background: var(--control-track);
   border-radius: 2px;
   appearance: none;
 }
@@ -200,7 +200,7 @@
   height: 16px;
   border-radius: 50%;
   background: var(--color-primary);
-  border: 2px solid #fff;
+  border: 2px solid var(--input-border);
   box-shadow: 0 1px 4px rgba(0,0,0,0.2);
   cursor: grab;
 }
@@ -217,8 +217,8 @@
   width: 44px;
   height: 24px;
   border-radius: 999px;
-  border: 1px solid rgba(0, 0, 0, 0.1);
-  background: rgba(0, 0, 0, 0.08);
+  border: 1px solid var(--input-border);
+  background: var(--control-track);
   position: relative;
   transition: all 0.24s ease;
 }
@@ -248,7 +248,7 @@
 .segmentedControl {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
-  background: rgba(0, 0, 0, 0.04);
+  background: var(--panel-muted-bg);
   padding: 4px;
   border-radius: 12px;
   gap: 4px;
@@ -264,9 +264,9 @@
 }
 
 .segmentActive {
-  background: #fff;
+  background: var(--control-active-surface);
   color: var(--color-primary);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 2px 6px var(--color-border);
   font-weight: 600;
 }
 
@@ -274,8 +274,8 @@
   width: 100%;
   padding: 0.7rem 1rem;
   border-radius: 12px;
-  border: 1px solid rgba(0, 0, 0, 0.1);
-  background: rgba(255, 255, 255, 0.6);
+  border: 1px solid var(--input-border);
+  background: var(--input-surface);
   font-size: 0.95rem;
 }
 
@@ -294,8 +294,8 @@
   flex: 1;
   padding: 0.7rem 1rem;
   border-radius: 12px;
-  border: 1px solid rgba(0, 0, 0, 0.1);
-  background: rgba(255, 255, 255, 0.6);
+  border: 1px solid var(--input-border);
+  background: var(--input-surface);
   font-size: 0.95rem;
   font-family: monospace;
 }
@@ -308,7 +308,7 @@
 .apiKeyToggle {
   padding: 0 1rem;
   border-radius: 10px;
-  background: rgba(0, 0, 0, 0.05);
+  background: var(--panel-muted-bg);
   font-size: 0.85rem;
   font-weight: 500;
   color: var(--color-muted);
@@ -316,15 +316,15 @@
 }
 
 .apiKeyToggle:hover {
-  background: rgba(0, 0, 0, 0.1);
+  background: var(--panel-strong-bg);
 }
 
 .numberInput {
   width: 120px;
   padding: 0.6rem 0.8rem;
   border-radius: 10px;
-  border: 1px solid rgba(0, 0, 0, 0.1);
-  background: rgba(255, 255, 255, 0.6);
+  border: 1px solid var(--input-border);
+  background: var(--input-surface);
   font-size: 0.95rem;
 }
 
@@ -343,7 +343,7 @@
 .footer {
   margin-top: auto;
   padding-top: 1rem;
-  border-top: 1px solid rgba(0,0,0,0.06);
+  border-top: 1px solid var(--color-border);
   display: flex;
   justify-content: center;
 }
