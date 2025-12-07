@@ -45,6 +45,7 @@ interface AudioStore {
   concurrencyLimit: number;
 
   // Actions
+  pause: () => void;
   initSegments: (paragraphs: string[]) => void;
   generateSegment: (id: string, apiKey: string, region: string, voice: string) => Promise<void>;
   generateAll: (apiKey: string, region: string, voice: string) => void;
@@ -236,6 +237,13 @@ export const useAudioStore = create<AudioStore>((set, get) => {
     generatingCount: 0,
     total: 0,
     concurrencyLimit: DEFAULT_TTS_CONCURRENCY,
+
+    pause: () => {
+      const audio = getAudio();
+      if (audio && !audio.paused) {
+        audio.pause();
+      }
+    },
 
     initSegments: (paragraphs) => {
       // 清理旧的 Object URLs

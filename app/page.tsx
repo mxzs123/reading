@@ -154,10 +154,8 @@ export default function Home() {
   }, []);
 
   const handleStopArticleAudio = useCallback(() => {
-    const { isPlaying, togglePlayPause } = useAudioStore.getState();
-    if (isPlaying) {
-      togglePlayPause();
-    }
+    const { pause } = useAudioStore.getState();
+    pause();
   }, []);
 
   useEffect(() => {
