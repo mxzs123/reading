@@ -11,6 +11,12 @@ export function PWARegistry() {
     const register = () => {
       navigator.serviceWorker
         .register("/sw.js")
+        .then((registration) => {
+          // 立即尝试获取最新的 SW，避免旧缓存残留
+          registration.update().catch(() => {
+            /* 静默失败即可 */
+          });
+        })
         .catch((error) => console.error("Service worker registration failed", error));
     };
 

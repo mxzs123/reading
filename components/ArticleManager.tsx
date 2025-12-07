@@ -47,6 +47,11 @@ export default function ArticleManager({
     }
   }, []);
 
+  // 首次加载组件时也拉取一遍，避免跨设备新增遗漏
+  useEffect(() => {
+    loadArticles();
+  }, [loadArticles]);
+
   useEffect(() => {
     if (isOpen) {
       loadArticles();
@@ -207,7 +212,17 @@ export default function ArticleManager({
         </div>
 
         <div className={styles.listSection}>
+        <div className={styles.listHeader}>
           <h3 className={styles.listTitle}>已保存文章</h3>
+          <button
+            className={styles.refreshButton}
+            onClick={loadArticles}
+            disabled={isLoading}
+            title="刷新文章列表"
+          >
+            {isLoading ? "刷新中…" : "刷新"}
+          </button>
+        </div>
           {isLoading ? (
             <div className={styles.empty}>加载中...</div>
           ) : articles.length > 0 ? (

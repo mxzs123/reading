@@ -15,7 +15,10 @@ export interface Article {
  * 获取所有文章（按更新时间倒序）
  */
 export async function getAllArticles(): Promise<Article[]> {
-  const response = await fetch("/api/articles");
+  const response = await fetch("/api/articles", {
+    cache: "no-store",
+    headers: { "cache-control": "no-cache" },
+  });
   if (!response.ok) {
     throw new Error("获取文章列表失败");
   }
@@ -26,7 +29,10 @@ export async function getAllArticles(): Promise<Article[]> {
  * 获取单篇文章
  */
 export async function getArticle(id: string): Promise<Article | null> {
-  const response = await fetch(`/api/articles/${id}`);
+  const response = await fetch(`/api/articles/${id}`, {
+    cache: "no-store",
+    headers: { "cache-control": "no-cache" },
+  });
   if (response.status === 404) {
     return null;
   }

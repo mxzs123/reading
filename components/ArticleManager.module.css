@@ -131,13 +131,40 @@
   min-height: 0;
 }
 
+.listHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
 .listTitle {
   font-size: 0.85rem;
   font-weight: 600;
   color: var(--color-muted, #666);
-  margin: 0 0 0.75rem;
+  margin: 0;
   text-transform: uppercase;
   letter-spacing: 0.05em;
+}
+
+.refreshButton {
+  padding: 0.35rem 0.8rem;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  background: rgba(0, 0, 0, 0.06);
+  transition: background 0.15s ease;
+  white-space: nowrap;
+}
+
+.refreshButton:hover:not(:disabled) {
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.refreshButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .list {
