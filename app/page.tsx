@@ -392,6 +392,7 @@ export default function Home() {
                 text={sourceText}
                 onWordClick={handleWordClick}
                 onWordPrefetch={prefetchDictionary}
+                onStopArticleAudio={handleStopArticleAudio}
               />
             </div>
           </section>

@@ -10,9 +10,15 @@ interface ReadingAreaProps {
   text: string;
   onWordClick: (word: string, rect: DOMRect) => void;
   onWordPrefetch?: (word: string) => void;
+  onStopArticleAudio?: () => void;
 }
 
-export function ReadingArea({ text, onWordClick, onWordPrefetch }: ReadingAreaProps) {
+export function ReadingArea({
+  text,
+  onWordClick,
+  onWordPrefetch,
+  onStopArticleAudio,
+}: ReadingAreaProps) {
   const segments = useAudioStore((s) => s.segments);
   const initSegments = useAudioStore((s) => s.initSegments);
 
@@ -42,6 +48,7 @@ export function ReadingArea({ text, onWordClick, onWordPrefetch }: ReadingAreaPr
           text={seg.text}
           onWordClick={onWordClick}
           onWordPrefetch={onWordPrefetch}
+          onStopArticleAudio={onStopArticleAudio}
         />
       ))}
     </div>

@@ -12,9 +12,16 @@ interface ParagraphProps {
   text: string;
   onWordClick: (word: string, rect: DOMRect) => void;
   onWordPrefetch?: (word: string) => void;
+  onStopArticleAudio?: () => void;
 }
 
-export function Paragraph({ id, text, onWordClick, onWordPrefetch }: ParagraphProps) {
+export function Paragraph({
+  id,
+  text,
+  onWordClick,
+  onWordPrefetch,
+  onStopArticleAudio,
+}: ParagraphProps) {
   const { settings } = useSettings();
 
   // 从 store 订阅状态
@@ -52,12 +59,12 @@ export function Paragraph({ id, text, onWordClick, onWordPrefetch }: ParagraphPr
   // 单词点击处理
   const handleWordClick = useCallback(
     (word: string, target: HTMLElement) => {
-      playWordSound(word);
+      playWordSound(word, onStopArticleAudio);
       target.classList.add("active-highlight");
       setTimeout(() => target.classList.remove("active-highlight"), 280);
       onWordClick(word, target.getBoundingClientRect());
     },
-    [onWordClick]
+    [onStopArticleAudio, onWordClick]
   );
 
   return (
