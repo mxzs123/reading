@@ -95,17 +95,22 @@ select {
 }
 
 .bionic-word {
-  display: inline;
+  display: inline-flex;
+  align-items: baseline;
   color: inherit;
-  transition: background 0.15s ease;
+  transition: background 0.15s ease, transform 0.12s ease;
   outline: none;
-  border-radius: 3px;
-  padding: 0 1px;
-  margin: 0 -1px;
+  border-radius: 4px;
+  padding: 0 2px;
+  margin: 0;
+  line-height: inherit;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  font-variant-ligatures: none;
 }
 
 .bionic-word b {
-  font-weight: 700;
+  font-weight: 600;
 }
 
 .bionic-word:focus-visible,

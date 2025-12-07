@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useCallback } from "react";
+import { Fragment, useMemo, useCallback } from "react";
 import { useAudioStore } from "@/stores/audioStore";
 import { useSettings } from "@/contexts/SettingsContext";
 import { tokenize, renderBionicWord } from "@/lib/paragraphs";
@@ -74,41 +74,36 @@ export function Paragraph({
       className={`${styles.paragraph} ${isActive ? styles.active : ""}`}
       onClick={handleParagraphClick}
     >
-      {tokens.map((token, i) =>
-        token.type === "word" ? (
-          <span
-            key={i}
-            className="bionic-word"
-            role="button"
-            tabIndex={0}
-            data-word={token.value.toLowerCase()}
-            onClick={(e) => {
-              e.stopPropagation();
-              handleWordClick(token.value, e.currentTarget);
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
+      {tokens.map((token, i) => {
+        if (token.type === "word") {
+          const { lead, tail } = renderBionicWord(token.value, settings.boldRatio);
+          return (
+            <span
+              key={i}
+              className="bionic-word"
+              role="button"
+              tabIndex={0}
+              data-word={token.value.toLowerCase()}
+              onClick={(e) => {
+                e.stopPropagation();
                 handleWordClick(token.value, e.currentTarget);
-              }
-            }}
-            onMouseEnter={() => onWordPrefetch?.(token.value)}
-            onFocus={() => onWordPrefetch?.(token.value)}
-          >
-            {(() => {
-              const { lead, tail } = renderBionicWord(token.value, settings.boldRatio);
-              return (
-                <>
-                  <b>{lead}</b>
-                  {tail}
-                </>
-              );
-            })()}
-          </span>
-        ) : (
-          <span key={i}>{token.value}</span>
-        )
-      )}
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  handleWordClick(token.value, e.currentTarget);
+                }
+              }}
+              onMouseEnter={() => onWordPrefetch?.(token.value)}
+              onFocus={() => onWordPrefetch?.(token.value)}
+            >
+              <b>{lead}</b>
+              {tail}
+            </span>
+          );
+        }
+        return <Fragment key={i}>{token.value}</Fragment>;
+      })}
     </p>
   );
 }
