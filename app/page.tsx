@@ -33,6 +33,7 @@ export default function Home() {
 
   // 待加载的音频 URLs（文章加载后等 segments 初始化完成再恢复）
   const pendingAudioUrlsRef = useRef<string[] | null>(null);
+  const wasArticlePlayingRef = useRef(false);
   const [dictionaryAnchor, setDictionaryAnchor] = useState<
     | {
         top: number;
@@ -154,9 +155,25 @@ export default function Home() {
   }, []);
 
   const handleStopArticleAudio = useCallback(() => {
-    const { pause } = useAudioStore.getState();
+    const { isPlaying, pause } = useAudioStore.getState();
+    wasArticlePlayingRef.current = isPlaying;
     pause();
   }, []);
+
+  const handleResumeArticleAudio = useCallback(() => {
+    if (!wasArticlePlayingRef.current) return;
+    const { isPlaying, togglePlayPause } = useAudioStore.getState();
+    if (!isPlaying) {
+      togglePlayPause();
+    }
+    wasArticlePlayingRef.current = false;
+  }, []);
+
+  const handleWordAudioEnd = useCallback(() => {
+    if (!wasArticlePlayingRef.current) return;
+    handleCloseDictionary();
+    handleResumeArticleAudio();
+  }, [handleCloseDictionary, handleResumeArticleAudio]);
 
   useEffect(() => {
     const controllers = dictionaryPrefetchControllersRef.current;
@@ -391,6 +408,7 @@ export default function Home() {
                 onWordClick={handleWordClick}
                 onWordPrefetch={prefetchDictionary}
                 onStopArticleAudio={handleStopArticleAudio}
+                onWordAudioEnd={handleWordAudioEnd}
               />
             </div>
           </section>
@@ -413,6 +431,7 @@ export default function Home() {
         isMobile={isMobile}
         onClose={handleCloseDictionary}
         onStopArticleAudio={handleStopArticleAudio}
+        onWordAudioEnd={handleWordAudioEnd}
       />
 
       <ArticleManager

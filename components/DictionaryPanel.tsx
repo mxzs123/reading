@@ -43,6 +43,7 @@ interface DictionaryPanelProps {
   isMobile: boolean;
   onClose: () => void;
   onStopArticleAudio?: () => void;
+  onWordAudioEnd?: () => void;
 }
 
 export function DictionaryPanel({
@@ -55,6 +56,7 @@ export function DictionaryPanel({
   isMobile,
   onClose,
   onStopArticleAudio,
+  onWordAudioEnd,
 }: DictionaryPanelProps) {
   const [dragY, setDragY] = useState(0);
   const draggingRef = useRef(false);
@@ -186,7 +188,7 @@ export function DictionaryPanel({
             aria-label="重播发音"
             title="重播发音"
             disabled={!word}
-            onClick={() => word && playWordSound(word, onStopArticleAudio, onClose)}
+            onClick={() => word && playWordSound(word, onStopArticleAudio, undefined, onWordAudioEnd)}
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
               <path d="M3 10v4h4l5 5V5L7 10H3z" fill="currentColor"/>

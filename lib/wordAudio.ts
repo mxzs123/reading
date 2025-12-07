@@ -3,13 +3,13 @@ let sharedAudio: HTMLAudioElement | null = null;
 export function playWordSound(
   word: string,
   onStopArticleAudio?: () => void,
-  onCloseDictionary?: () => void
+  onCloseDictionary?: () => void,
+  onWordAudioEnd?: () => void
 ) {
   if (typeof window === "undefined") return;
   if (!word.trim()) return;
 
   if (onStopArticleAudio) onStopArticleAudio();
-  if (onCloseDictionary) onCloseDictionary();
 
   const audioUrl = `https://dict.youdao.com/dictvoice?audio=${encodeURIComponent(
     word
@@ -18,6 +18,11 @@ export function playWordSound(
   if (!sharedAudio) {
     sharedAudio = new Audio();
   }
+
+  sharedAudio.onended = () => {
+    if (onCloseDictionary) onCloseDictionary();
+    if (onWordAudioEnd) onWordAudioEnd();
+  };
 
   sharedAudio.src = audioUrl;
   sharedAudio.currentTime = 0;

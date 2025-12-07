@@ -13,6 +13,7 @@ interface ParagraphProps {
   onWordClick: (word: string, rect: DOMRect) => void;
   onWordPrefetch?: (word: string) => void;
   onStopArticleAudio?: () => void;
+  onWordAudioEnd?: () => void;
 }
 
 export function Paragraph({
@@ -21,6 +22,7 @@ export function Paragraph({
   onWordClick,
   onWordPrefetch,
   onStopArticleAudio,
+  onWordAudioEnd,
 }: ParagraphProps) {
   const { settings } = useSettings();
 
@@ -59,12 +61,12 @@ export function Paragraph({
   // 单词点击处理
   const handleWordClick = useCallback(
     (word: string, target: HTMLElement) => {
-      playWordSound(word, onStopArticleAudio);
+      playWordSound(word, onStopArticleAudio, undefined, onWordAudioEnd);
       target.classList.add("active-highlight");
       setTimeout(() => target.classList.remove("active-highlight"), 280);
       onWordClick(word, target.getBoundingClientRect());
     },
-    [onStopArticleAudio, onWordClick]
+    [onStopArticleAudio, onWordAudioEnd, onWordClick]
   );
 
   return (
