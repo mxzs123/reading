@@ -1,12 +1,12 @@
 :root {
   color-scheme: light;
-  --font-size: 20px;
-  --line-height: 1.75;
-  --letter-spacing: 0em;
-  --paragraph-spacing: 1.8em;
-  --font-family: Charter, "Bitstream Charter", Georgia, serif;
+  --font-size: 18.5px;
+  --line-height: 1.58;
+  --letter-spacing: 0.012em;
+  --paragraph-spacing: 1.05em;
+  --font-family: Georgia, "Times New Roman", serif;
   --page-width: 680px;
-  --reading-padding: 40px;
+  --reading-padding: 36px;
   --text-align: left;
   --color-background: #f6efe3;
   --color-text: #2d2d2d;

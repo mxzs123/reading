@@ -97,7 +97,7 @@ export function Paragraph({
               onMouseEnter={() => onWordPrefetch?.(token.value)}
               onFocus={() => onWordPrefetch?.(token.value)}
             >
-              <b>{lead}</b>
+              {lead ? <b>{lead}</b> : null}
               {tail}
             </span>
           );

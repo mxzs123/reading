@@ -73,9 +73,23 @@ export function tokenize(content: string): Token[] {
   return tokens;
 }
 
-export function renderBionicWord(word: string, ratio: "low" | "medium" | "high") {
-  const map: Record<"low" | "medium" | "high", number> = { low: 0.3, medium: 0.45, high: 0.6 };
-  const boldCount = Math.min(Math.max(Math.ceil(word.length * map[ratio]), 1), word.length);
+export function renderBionicWord(
+  word: string,
+  ratio: "off" | "low" | "medium" | "high"
+) {
+  if (ratio === "off") {
+    return { lead: "", tail: word };
+  }
+
+  const map: Record<"low" | "medium" | "high", number> = {
+    low: 0.3,
+    medium: 0.45,
+    high: 0.6,
+  };
+  const boldCount = Math.min(
+    Math.max(Math.ceil(word.length * map[ratio]), 1),
+    word.length
+  );
   const lead = word.slice(0, boldCount);
   const tail = word.slice(boldCount);
   return { lead, tail };

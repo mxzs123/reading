@@ -1,8 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useSettings } from "@/contexts/SettingsContext";
 import { type AzureTTSVoice } from "@/lib/settings";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
 import styles from "./SettingsPanel.module.css";
 
 interface SettingsPanelProps {
@@ -11,9 +12,10 @@ interface SettingsPanelProps {
 }
 
 const boldOptions = [
-  { value: "low" as const, label: "低" },
-  { value: "medium" as const, label: "中" },
-  { value: "high" as const, label: "高" },
+  { value: "off" as const, label: "关闭" },
+  { value: "low" as const, label: "低 " },
+  { value: "medium" as const, label: "中 " },
+  { value: "high" as const, label: "高 " },
 ];
 
 const themeOptions = [
@@ -37,30 +39,65 @@ const azureVoiceOptions: { value: AzureTTSVoice; label: string }[] = [
 
 const fontFamilies = [
   {
-    value: "Charter, 'Bitstream Charter', Georgia, serif",
-    label: "Charter (衬线)",
+    value: "Georgia, 'Times New Roman', serif",
+    label: "Georgia（衬线，推荐）",
   },
   {
-    value:
-      "'Source Han Serif SC', 'Songti SC', 'Noto Serif SC', serif",
-    label: "思源宋体",
+    value: "'Times New Roman', Georgia, serif",
+    label: "Times New Roman（衬线）",
   },
   {
-    value:
-      "'Source Han Sans SC', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif",
-    label: "思源黑体",
+    value: "'Palatino Linotype', 'Book Antiqua', Palatino, serif",
+    label: "Palatino（衬线）",
   },
   {
-    value: "'LXGW WenKai', 'STKaiti', 'Kaiti SC', serif",
-    label: "霞鹜文楷",
+    value: "Arial, 'Helvetica Neue', Helvetica, sans-serif",
+    label: "Arial / Helvetica（无衬线）",
+  },
+  {
+    value: "Verdana, Geneva, sans-serif",
+    label: "Verdana（无衬线）",
+  },
+  {
+    value: "Tahoma, Geneva, sans-serif",
+    label: "Tahoma（无衬线）",
+  },
+  {
+    value: "'Trebuchet MS', Helvetica, sans-serif",
+    label: "Trebuchet MS（无衬线）",
+  },
+  {
+    value: "'Courier New', Courier, monospace",
+    label: "Courier New（等宽）",
   },
 ];
 
 export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
-  const { settings, updateSettings, resetSettings } = useSettings();
+  const { settings, updateSettings, resetSettings, hydrated } = useSettings();
   const [showApiKey, setShowApiKey] = useState(false);
+  const isMobile = useMediaQuery("(max-width: 768px)");
+  const [approxCharsPerLine, setApproxCharsPerLine] = useState<number | null>(null);
 
   const fontFamilyOptions = useMemo(() => fontFamilies, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!hydrated) return;
+    const availableWidth = isMobile
+      ? Math.min(window.innerWidth * 0.92, settings.pageWidth)
+      : settings.pageWidth;
+    const charWidth =
+      settings.fontSize * Math.max(0.48, 0.55 + settings.letterSpacing);
+    if (
+      !Number.isFinite(availableWidth) ||
+      !Number.isFinite(charWidth) ||
+      charWidth <= 0
+    ) {
+      setApproxCharsPerLine(null);
+      return;
+    }
+    setApproxCharsPerLine(Math.max(10, Math.round(availableWidth / charWidth)));
+  }, [hydrated, isMobile, settings.fontSize, settings.letterSpacing, settings.pageWidth]);
 
   return (
     <>
@@ -150,35 +187,35 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                 label="字号"
                 value={settings.fontSize}
                 unit="px"
-                min={14}
-                max={32}
-                step={1}
+                min={16}
+                max={24}
+                step={0.5}
                 onChange={(value) => updateSettings({ fontSize: value })}
               />
               <RangeField
                 label="行高"
                 value={settings.lineHeight}
-                min={1.2}
-                max={2.4}
-                step={0.1}
+                min={1.45}
+                max={1.85}
+                step={0.05}
                 onChange={(value) => updateSettings({ lineHeight: value })}
               />
               <RangeField
                 label="字间距"
                 value={settings.letterSpacing}
                 unit="em"
-                min={-0.05}
-                max={0.2}
-                step={0.01}
+                min={-0.02}
+                max={0.06}
+                step={0.005}
                 onChange={(value) => updateSettings({ letterSpacing: value })}
               />
               <RangeField
                 label="段落间距"
                 value={settings.paragraphSpacing}
                 unit="em"
-                min={0.5}
-                max={3}
-                step={0.1}
+                min={0.8}
+                max={1.3}
+                step={0.05}
                 onChange={(value) => updateSettings({ paragraphSpacing: value })}
               />
             </div>
@@ -211,21 +248,26 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                 label="内容宽度"
                 value={settings.pageWidth}
                 unit="px"
-                min={400}
-                max={1200}
-                step={20}
+                min={560}
+                max={840}
+                step={10}
                 onChange={(value) => updateSettings({ pageWidth: value })}
               />
               <RangeField
                 label="页边距"
                 value={settings.readingPadding}
                 unit="px"
-                min={0}
-                max={160}
-                step={10}
+                min={16}
+                max={80}
+                step={4}
                 onChange={(value) => updateSettings({ readingPadding: value })}
               />
             </div>
+            <p className={styles.apiKeyHint}>
+              {approxCharsPerLine
+                ? `当前估算约 ${approxCharsPerLine} 字/行；移动端自动收紧至约 92vw。`
+                : "移动端自动收紧至约 92vw。"}
+            </p>
           </section>
 
           <section className={styles.section}>
@@ -339,14 +381,18 @@ function RangeField({
   onChange,
   unit,
 }: RangeFieldProps) {
+  const clampedValue = useMemo(
+    () => Math.min(max, Math.max(min, value)),
+    [max, min, value]
+  );
   const displayValue = useMemo(() => {
-    const numValue = Number(value);
+    const numValue = Number(clampedValue);
     if (Math.abs(step) >= 1) {
       return Math.round(numValue);
     }
     // Check for small float precision issues
     return parseFloat(numValue.toFixed(2));
-  }, [step, value]);
+  }, [clampedValue, step]);
 
   return (
     <div className={styles.rangeContainer}>
@@ -362,7 +408,7 @@ function RangeField({
         min={min}
         max={max}
         step={step}
-        value={value}
+        value={clampedValue}
         className={styles.rangeInput}
         onChange={(e) => onChange(parseFloat(e.target.value))}
       />
