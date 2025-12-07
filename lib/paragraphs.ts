@@ -1,5 +1,3 @@
-export const MAX_CHUNK_LENGTH = 400;
-
 export type Token = { type: "word"; value: string } | { type: "text"; value: string };
 
 const WORD_REGEX = /[A-Za-z]+(?:['-][A-Za-z]+)*/g;
@@ -8,38 +6,10 @@ export function buildParagraphs(text: string): string[] {
   const normalized = text.replace(/\r\n?/g, "\n");
   if (!normalized.trim()) return [];
 
-  const rawParagraphs = normalized
+  return normalized
     .split(/\n\s*\n+/)
     .map((p) => p.trim())
     .filter(Boolean);
-
-  const result: string[] = [];
-  rawParagraphs.forEach((para) => {
-    if (para.length <= MAX_CHUNK_LENGTH) {
-      result.push(para);
-      return;
-    }
-
-    const words = para.split(/\s+/);
-    let acc: string[] = [];
-    words.forEach((word) => {
-      const candidate = acc.length ? `${acc.join(" ")} ${word}` : word;
-      if (candidate.length > MAX_CHUNK_LENGTH) {
-        if (acc.length) {
-          result.push(acc.join(" "));
-          acc = [word];
-        } else {
-          result.push(word);
-          acc = [];
-        }
-      } else {
-        acc.push(word);
-      }
-    });
-    if (acc.length) result.push(acc.join(" "));
-  });
-
-  return result;
 }
 
 export function buildParagraphKey(paragraphs: string[]): string {
