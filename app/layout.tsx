@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Providers } from "@/components/Providers";
 import { PWARegistry } from "@/components/PWARegistry";
@@ -18,7 +18,6 @@ export const metadata: Metadata = {
   title: "仿生阅读器 Next 版",
   description: "基于 Next.js 的仿生阅读器，支持多端访问",
   manifest: "/manifest.webmanifest",
-  themeColor: "#0f766e",
   icons: {
     icon: "/icon-192.png",
     apple: "/icon-192.png",
@@ -33,6 +32,10 @@ export const metadata: Metadata = {
     "apple-mobile-web-app-status-bar-style": "black-translucent",
     "mobile-web-app-capable": "yes",
   },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#0f766e",
 };
 
 export default function RootLayout({
