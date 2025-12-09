@@ -36,10 +36,16 @@ export async function POST(request: NextRequest, context: RouteContext) {
       return Response.json({ error: "文章不存在" }, { status: 404 });
     }
 
+    const blobToken = process.env.BLOB_READ_WRITE_TOKEN;
+    if (!blobToken) {
+      return Response.json({ error: "存储凭证未配置" }, { status: 500 });
+    }
+
     // 上传到 Blob
     const blob = await put(`audio/${id}/${segmentId}.wav`, file, {
       access: "public",
       contentType: "audio/wav",
+      token: blobToken,
     });
 
     // 更新文章的 audioUrls
