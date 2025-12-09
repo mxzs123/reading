@@ -30,6 +30,59 @@ export default function Home() {
   const total = useAudioStore((s) => s.total);
   const loadAudioUrls = useAudioStore((s) => s.loadAudioUrls);
   const setConcurrencyLimit = useAudioStore((s) => s.setConcurrencyLimit);
+  const ttsParams = useMemo(() => {
+    if (settings.ttsProvider === "elevenlabs") {
+      return {
+        provider: "elevenlabs" as const,
+        apiKey: settings.elevenApiKey,
+        voiceId: settings.elevenVoiceId,
+        modelId: settings.elevenModelId,
+        languageCode: settings.elevenLanguageCode,
+        outputFormat: settings.elevenOutputFormat,
+        stability: settings.elevenStability,
+        similarityBoost: settings.elevenSimilarityBoost,
+        style: settings.elevenStyle,
+        useSpeakerBoost: settings.elevenUseSpeakerBoost,
+        speed: settings.elevenSpeed,
+        seed: settings.elevenSeed,
+        applyTextNormalization: settings.elevenApplyTextNormalization,
+        enableLogging: settings.elevenEnableLogging,
+        optimizeStreamingLatency: settings.elevenOptimizeStreamingLatency,
+      };
+    }
+
+    return {
+      provider: "azure" as const,
+      apiKey: settings.azureApiKey,
+      region: settings.azureRegion,
+      voice: settings.azureVoice,
+      rate: settings.ttsRate,
+      volume: settings.ttsVolume,
+      pauseMs: settings.ttsPauseMs,
+    };
+  }, [
+    settings.azureApiKey,
+    settings.azureRegion,
+    settings.azureVoice,
+    settings.elevenApiKey,
+    settings.elevenApplyTextNormalization,
+    settings.elevenEnableLogging,
+    settings.elevenLanguageCode,
+    settings.elevenModelId,
+    settings.elevenOptimizeStreamingLatency,
+    settings.elevenOutputFormat,
+    settings.elevenSeed,
+    settings.elevenSimilarityBoost,
+    settings.elevenSpeed,
+    settings.elevenStability,
+    settings.elevenStyle,
+    settings.elevenUseSpeakerBoost,
+    settings.elevenVoiceId,
+    settings.ttsPauseMs,
+    settings.ttsProvider,
+    settings.ttsRate,
+    settings.ttsVolume,
+  ]);
 
   // 待加载的音频 URLs（文章加载后等 segments 初始化完成再恢复）
   const pendingAudioUrlsRef = useRef<string[] | null>(null);
@@ -388,16 +441,7 @@ export default function Home() {
                   <button
                     type="button"
                     className={styles.clearButton}
-                    onClick={() =>
-                      generateAll(
-                        settings.azureApiKey,
-                        settings.azureRegion,
-                        settings.azureVoice,
-                        settings.ttsRate,
-                        settings.ttsVolume,
-                        settings.ttsPauseMs
-                      )
-                    }
+                    onClick={() => generateAll(ttsParams)}
                     disabled={generatingCount > 0}
                   >
                     {generatingCount > 0 ? "生成中..." : "生成音频"}

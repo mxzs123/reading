@@ -27,7 +27,7 @@ interface SettingsContextValue {
 const SettingsContext = createContext<SettingsContextValue | null>(null);
 
 // 敏感字段只存本地，不同步云端
-const LOCAL_ONLY_FIELDS = ["azureApiKey"] as const;
+const LOCAL_ONLY_FIELDS = ["azureApiKey", "elevenApiKey"] as const;
 
 export function SettingsProvider({
   children,
@@ -73,7 +73,7 @@ export function SettingsProvider({
     try {
       // 移除敏感字段
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const { azureApiKey: _azureApiKey, ...cloudSettings } = value;
+      const { azureApiKey: _azureApiKey, elevenApiKey: _elevenApiKey, ...cloudSettings } = value;
 
       await fetch("/api/settings", {
         method: "PUT",

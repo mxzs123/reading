@@ -7,6 +7,40 @@ export type AzureTTSVoice =
   | "en-US-GuyNeural"
   | "en-GB-SoniaNeural";
 
+export type TTSProvider = "azure" | "elevenlabs";
+export type ApplyTextNormalization = "auto" | "on" | "off";
+
+export type ElevenOutputFormat =
+  | "mp3_22050_32"
+  | "mp3_24000_48"
+  | "mp3_44100_32"
+  | "mp3_44100_64"
+  | "mp3_44100_96"
+  | "mp3_44100_128"
+  | "mp3_44100_192"
+  | "pcm_8000"
+  | "pcm_16000"
+  | "pcm_22050"
+  | "pcm_24000"
+  | "pcm_32000"
+  | "pcm_44100"
+  | "pcm_48000"
+  | "ulaw_8000"
+  | "alaw_8000"
+  | "opus_48000_32"
+  | "opus_48000_64"
+  | "opus_48000_96"
+  | "opus_48000_128"
+  | "opus_48000_192";
+
+export interface ElevenVoiceSettings {
+  stability: number;
+  similarityBoost: number;
+  style: number;
+  useSpeakerBoost: boolean;
+  speed: number;
+}
+
 export type PageWidthMode = "px" | "vw" | "ch";
 export type BoldRatio = "off" | "low" | "medium" | "high" | "custom";
 
@@ -28,10 +62,27 @@ export interface ReaderSettings {
   readingPadding: number;
   textIndent: number;
   textAlign: TextAlign;
+  // TTS 提供商
+  ttsProvider: TTSProvider;
   // Azure TTS 设置
   azureApiKey: string;
   azureRegion: AzureRegion;
   azureVoice: AzureTTSVoice;
+  // ElevenLabs TTS 设置
+  elevenApiKey: string;
+  elevenVoiceId: string;
+  elevenModelId: string;
+  elevenLanguageCode: string;
+  elevenOutputFormat: ElevenOutputFormat;
+  elevenStability: number;
+  elevenSimilarityBoost: number;
+  elevenStyle: number;
+  elevenUseSpeakerBoost: boolean;
+  elevenSpeed: number;
+  elevenSeed: number | null;
+  elevenApplyTextNormalization: ApplyTextNormalization;
+  elevenEnableLogging: boolean;
+  elevenOptimizeStreamingLatency: number | null;
   // 播放设置
   autoPlayNext: boolean;
   ttsConcurrency: number;
@@ -58,10 +109,27 @@ export const DEFAULT_SETTINGS: ReaderSettings = {
   readingPadding: 36,
   textIndent: 0,
   textAlign: "left",
+  // TTS 默认提供商
+  ttsProvider: "azure",
   // Azure TTS 默认设置
   azureApiKey: "",
   azureRegion: "eastus2",
   azureVoice: "en-US-Ava:DragonHDLatestNeural",
+  // ElevenLabs TTS 默认设置
+  elevenApiKey: "",
+  elevenVoiceId: "JBFqnCBsd6RMkjVDRZzb",
+  elevenModelId: "eleven_flash_v2_5",
+  elevenLanguageCode: "en",
+  elevenOutputFormat: "mp3_44100_128",
+  elevenStability: 0.5,
+  elevenSimilarityBoost: 0.75,
+  elevenStyle: 0,
+  elevenUseSpeakerBoost: true,
+  elevenSpeed: 1,
+  elevenSeed: null,
+  elevenApplyTextNormalization: "auto",
+  elevenEnableLogging: true,
+  elevenOptimizeStreamingLatency: null,
   // 播放设置
   autoPlayNext: true,
   ttsConcurrency: 4,

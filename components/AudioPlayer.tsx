@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSettings } from "@/contexts/SettingsContext";
 import { formatTime } from "@/lib/paragraphs";
 import styles from "./AudioPlayer.module.css";
@@ -18,6 +18,58 @@ export default function AudioPlayer({
 }: AudioPlayerProps) {
   const { settings } = useSettings();
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const ttsParams = useMemo(() => {
+    if (settings.ttsProvider === "elevenlabs") {
+      return {
+        provider: "elevenlabs" as const,
+        apiKey: settings.elevenApiKey,
+        voiceId: settings.elevenVoiceId,
+        modelId: settings.elevenModelId,
+        languageCode: settings.elevenLanguageCode,
+        outputFormat: settings.elevenOutputFormat,
+        stability: settings.elevenStability,
+        similarityBoost: settings.elevenSimilarityBoost,
+        style: settings.elevenStyle,
+        useSpeakerBoost: settings.elevenUseSpeakerBoost,
+        speed: settings.elevenSpeed,
+        seed: settings.elevenSeed,
+        applyTextNormalization: settings.elevenApplyTextNormalization,
+        enableLogging: settings.elevenEnableLogging,
+        optimizeStreamingLatency: settings.elevenOptimizeStreamingLatency,
+      };
+    }
+    return {
+      provider: "azure" as const,
+      apiKey: settings.azureApiKey,
+      region: settings.azureRegion,
+      voice: settings.azureVoice,
+      rate: settings.ttsRate,
+      volume: settings.ttsVolume,
+      pauseMs: settings.ttsPauseMs,
+    };
+  }, [
+    settings.azureApiKey,
+    settings.azureRegion,
+    settings.azureVoice,
+    settings.elevenApiKey,
+    settings.elevenApplyTextNormalization,
+    settings.elevenEnableLogging,
+    settings.elevenLanguageCode,
+    settings.elevenModelId,
+    settings.elevenOptimizeStreamingLatency,
+    settings.elevenOutputFormat,
+    settings.elevenSeed,
+    settings.elevenSimilarityBoost,
+    settings.elevenSpeed,
+    settings.elevenStability,
+    settings.elevenStyle,
+    settings.elevenUseSpeakerBoost,
+    settings.elevenVoiceId,
+    settings.ttsPauseMs,
+    settings.ttsProvider,
+    settings.ttsRate,
+    settings.ttsVolume,
+  ]);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -95,32 +147,66 @@ export default function AudioPlayer({
   );
 
   const generateAudio = useCallback(async () => {
-    if (!settings.azureApiKey) {
+    if (!text.trim()) {
+      setError("没有可朗读的文本");
+      return;
+    }
+
+    if (ttsParams.provider === "azure" && !ttsParams.apiKey) {
       setError("请先在设置中填入 Azure API Key");
       return;
     }
 
-    if (!text.trim()) {
-      setError("没有可朗读的文本");
-      return;
+    if (ttsParams.provider === "elevenlabs") {
+      if (!ttsParams.apiKey) {
+        setError("请先在设置中填入 ElevenLabs API Key");
+        return;
+      }
+      if (!ttsParams.voiceId) {
+        setError("请先填写 ElevenLabs Voice ID");
+        return;
+      }
     }
 
     setIsGenerating(true);
     setError(null);
 
     try {
-      const response = await fetch("/api/tts", {
+      const endpoint =
+        ttsParams.provider === "azure" ? "/api/tts" : "/api/tts/elevenlabs";
+      const body =
+        ttsParams.provider === "azure"
+          ? {
+              text: text.trim(),
+              apiKey: ttsParams.apiKey,
+              region: ttsParams.region,
+              voice: ttsParams.voice,
+              rate: ttsParams.rate,
+              volume: ttsParams.volume,
+              pauseMs: ttsParams.pauseMs,
+            }
+          : {
+              text: text.trim(),
+              apiKey: ttsParams.apiKey,
+              voiceId: ttsParams.voiceId,
+              modelId: ttsParams.modelId,
+              languageCode: ttsParams.languageCode,
+              outputFormat: ttsParams.outputFormat,
+              stability: ttsParams.stability,
+              similarityBoost: ttsParams.similarityBoost,
+              style: ttsParams.style,
+              useSpeakerBoost: ttsParams.useSpeakerBoost,
+              speed: ttsParams.speed,
+              seed: ttsParams.seed,
+              applyTextNormalization: ttsParams.applyTextNormalization,
+              enableLogging: ttsParams.enableLogging,
+              optimizeStreamingLatency: ttsParams.optimizeStreamingLatency,
+            };
+
+      const response = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          text: text.trim(),
-          apiKey: settings.azureApiKey,
-          region: settings.azureRegion,
-          voice: settings.azureVoice,
-          rate: settings.ttsRate,
-          volume: settings.ttsVolume,
-          pauseMs: settings.ttsPauseMs,
-        }),
+        body: JSON.stringify(body),
       });
 
       const data = await response.json();
@@ -144,13 +230,19 @@ export default function AudioPlayer({
     } finally {
       setIsGenerating(false);
     }
-  }, [text, settings.azureApiKey, settings.azureRegion, settings.azureVoice, onAudioGenerated]);
+  }, [text, onAudioGenerated, ttsParams]);
 
   // 没有 API Key
-  if (!settings.azureApiKey) {
+  const missingApiKey =
+    (ttsParams.provider === "azure" && !ttsParams.apiKey) ||
+    (ttsParams.provider === "elevenlabs" && !ttsParams.apiKey);
+
+  if (missingApiKey) {
+    const providerLabel =
+      ttsParams.provider === "azure" ? "Azure API Key" : "ElevenLabs API Key";
     return (
       <div className={styles.noApiKey}>
-        请在设置面板中填入 Azure API Key 以使用朗读功能
+        请在设置面板中填入 {providerLabel} 以使用朗读功能
       </div>
     );
   }

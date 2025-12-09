@@ -34,6 +34,59 @@ export function Paragraph({
   const generateSegment = useAudioStore((s) => s.generateSegment);
   const segment = useAudioStore((s) => s.segments.find((seg) => seg.id === id));
 
+  const ttsParams = useMemo(() => {
+    if (settings.ttsProvider === "elevenlabs") {
+      return {
+        provider: "elevenlabs" as const,
+        apiKey: settings.elevenApiKey,
+        voiceId: settings.elevenVoiceId,
+        modelId: settings.elevenModelId,
+        languageCode: settings.elevenLanguageCode,
+        outputFormat: settings.elevenOutputFormat,
+        stability: settings.elevenStability,
+        similarityBoost: settings.elevenSimilarityBoost,
+        style: settings.elevenStyle,
+        useSpeakerBoost: settings.elevenUseSpeakerBoost,
+        speed: settings.elevenSpeed,
+        seed: settings.elevenSeed,
+        applyTextNormalization: settings.elevenApplyTextNormalization,
+        enableLogging: settings.elevenEnableLogging,
+        optimizeStreamingLatency: settings.elevenOptimizeStreamingLatency,
+      };
+    }
+    return {
+      provider: "azure" as const,
+      apiKey: settings.azureApiKey,
+      region: settings.azureRegion,
+      voice: settings.azureVoice,
+      rate: settings.ttsRate,
+      volume: settings.ttsVolume,
+      pauseMs: settings.ttsPauseMs,
+    };
+  }, [
+    settings.azureApiKey,
+    settings.azureRegion,
+    settings.azureVoice,
+    settings.elevenApiKey,
+    settings.elevenApplyTextNormalization,
+    settings.elevenEnableLogging,
+    settings.elevenLanguageCode,
+    settings.elevenModelId,
+    settings.elevenOptimizeStreamingLatency,
+    settings.elevenOutputFormat,
+    settings.elevenSeed,
+    settings.elevenSimilarityBoost,
+    settings.elevenSpeed,
+    settings.elevenStability,
+    settings.elevenStyle,
+    settings.elevenUseSpeakerBoost,
+    settings.elevenVoiceId,
+    settings.ttsPauseMs,
+    settings.ttsProvider,
+    settings.ttsRate,
+    settings.ttsVolume,
+  ]);
+
   const isActive = activeSegmentId === id && isPlaying;
   const tokens = useMemo(() => tokenize(text), [text]);
 
@@ -50,12 +103,12 @@ export function Paragraph({
         play(id);
       } else if (segment?.status !== "generating") {
         // 未生成则先生成再播放
-        await generateSegment(id, settings.azureApiKey, settings.azureRegion, settings.azureVoice);
+        await generateSegment(id, ttsParams);
         // 生成完成后播放
         play(id);
       }
     },
-    [id, segment, playSegment, startSequenceFrom, generateSegment, settings.autoPlayNext, settings.azureApiKey, settings.azureRegion, settings.azureVoice]
+    [id, segment, playSegment, startSequenceFrom, generateSegment, settings.autoPlayNext, ttsParams]
   );
 
   // 单词点击处理

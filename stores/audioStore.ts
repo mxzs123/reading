@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { base64ToAudioBlob } from "@/lib/paragraphs";
 import { uploadAudio } from "@/lib/storage";
+import { type ApplyTextNormalization } from "@/lib/settings";
 
 const DEFAULT_TTS_CONCURRENCY = 4;
 const MAX_CONCURRENCY = 128;
@@ -17,14 +18,39 @@ export interface SegmentState {
   cloudUrl?: string; // 云端 URL
 }
 
-interface GenerationTask {
-  id: string;
+type AzureGenerationParams = {
+  provider: "azure";
   apiKey: string;
   region: string;
   voice: string;
   rate: number;
   volume: number;
   pauseMs: number;
+};
+
+type ElevenLabsGenerationParams = {
+  provider: "elevenlabs";
+  apiKey: string;
+  voiceId: string;
+  modelId: string;
+  languageCode?: string;
+  outputFormat?: string;
+  stability?: number;
+  similarityBoost?: number;
+  style?: number;
+  useSpeakerBoost?: boolean;
+  speed?: number;
+  seed?: number | null;
+  applyTextNormalization?: ApplyTextNormalization;
+  enableLogging?: boolean;
+  optimizeStreamingLatency?: number | null;
+};
+
+type GenerationParams = AzureGenerationParams | ElevenLabsGenerationParams;
+
+interface GenerationTask {
+  id: string;
+  params: GenerationParams;
   settle: () => void;
 }
 
@@ -52,20 +78,10 @@ interface AudioStore {
   initSegments: (paragraphs: string[]) => void;
   generateSegment: (
     id: string,
-    apiKey: string,
-    region: string,
-    voice: string,
-    rate: number,
-    volume: number,
-    pauseMs: number
+    params: GenerationParams
   ) => Promise<void>;
   generateAll: (
-    apiKey: string,
-    region: string,
-    voice: string,
-    rate: number,
-    volume: number,
-    pauseMs: number
+    params: GenerationParams
   ) => void;
   playSegment: (id: string) => void;
   togglePlayPause: () => void;
@@ -146,7 +162,7 @@ export const useAudioStore = create<AudioStore>((set, get) => {
   let concurrencyLimitInternal = DEFAULT_TTS_CONCURRENCY;
 
   const runGenerationTask = async (task: GenerationTask) => {
-    const { id, apiKey, region, voice, rate, volume, pauseMs } = task;
+    const { id, params } = task;
     const segment = get().segments.find((s) => s.id === id);
     if (!segment) {
       return;
@@ -160,18 +176,45 @@ export const useAudioStore = create<AudioStore>((set, get) => {
     }));
 
     try {
-      const response = await fetch("/api/tts", {
+      const trimmedText = segment.text.trim();
+      let endpoint = "/api/tts";
+      let body: Record<string, unknown>;
+
+      if (params.provider === "azure") {
+        body = {
+          text: trimmedText,
+          apiKey: params.apiKey,
+          region: params.region,
+          voice: params.voice,
+          rate: params.rate,
+          volume: params.volume,
+          pauseMs: params.pauseMs,
+        };
+      } else {
+        endpoint = "/api/tts/elevenlabs";
+        body = {
+          text: trimmedText,
+          apiKey: params.apiKey,
+          voiceId: params.voiceId,
+          modelId: params.modelId,
+          languageCode: params.languageCode,
+          outputFormat: params.outputFormat,
+          stability: params.stability,
+          similarityBoost: params.similarityBoost,
+          style: params.style,
+          useSpeakerBoost: params.useSpeakerBoost,
+          speed: params.speed,
+          seed: params.seed ?? null,
+          applyTextNormalization: params.applyTextNormalization,
+          enableLogging: params.enableLogging,
+          optimizeStreamingLatency: params.optimizeStreamingLatency,
+        };
+      }
+
+      const response = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          text: segment.text.trim(),
-          apiKey,
-          region,
-          voice,
-          rate,
-          volume,
-          pauseMs,
-        }),
+        body: JSON.stringify(body),
       });
 
       const contentType = response.headers.get("content-type") || "";
@@ -311,19 +354,41 @@ export const useAudioStore = create<AudioStore>((set, get) => {
       });
     },
 
-    generateSegment: async (id, apiKey, region, voice, rate, volume, pauseMs) => {
+    generateSegment: async (id, params) => {
       const segment = get().segments.find((s) => s.id === id);
       if (!segment || segment.status === "ready" || segment.status === "generating") {
         return;
       }
 
-      if (!apiKey) {
+      if (params.provider === "azure" && !params.apiKey) {
         set((state) => ({
           segments: state.segments.map((s) =>
             s.id === id ? { ...s, status: "error" as SegmentStatus, error: "请先在设置中填入 Azure API Key" } : s
           ),
         }));
         return;
+      } else if (params.provider === "elevenlabs") {
+        if (!params.apiKey) {
+          set((state) => ({
+            segments: state.segments.map((s) =>
+              s.id === id
+                ? { ...s, status: "error" as SegmentStatus, error: "请先在设置中填入 ElevenLabs API Key" }
+                : s
+            ),
+          }));
+          return;
+        }
+
+        if (!params.voiceId) {
+          set((state) => ({
+            segments: state.segments.map((s) =>
+              s.id === id
+                ? { ...s, status: "error" as SegmentStatus, error: "请先填写 ElevenLabs Voice ID" }
+                : s
+            ),
+          }));
+          return;
+        }
       }
 
       if (pendingGenerationIds.has(id)) {
@@ -334,24 +399,19 @@ export const useAudioStore = create<AudioStore>((set, get) => {
       return new Promise<void>((resolve) => {
         enqueueGenerationTask({
           id,
-          apiKey,
-          region,
-          voice,
-          rate,
-          volume,
-          pauseMs,
+          params,
           settle: resolve,
         });
       });
     },
 
-    generateAll: (apiKey, region, voice, rate, volume, pauseMs) => {
+    generateAll: (params) => {
       const { segments } = get();
       // 将所有段落加入队列，由调度器按批次生成
       segments
         .filter((seg) => seg.status !== "ready" && seg.status !== "generating")
         .forEach((seg) => {
-          get().generateSegment(seg.id, apiKey, region, voice, rate, volume, pauseMs);
+          get().generateSegment(seg.id, params);
         });
     },
 
