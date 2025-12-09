@@ -8,6 +8,9 @@ interface TTSRequest {
   apiKey: string;
   region?: string;
   voice?: string;
+  rate?: number;
+  volume?: number;
+  pauseMs?: number;
 }
 
 export async function POST(request: NextRequest) {
@@ -24,6 +27,9 @@ export async function POST(request: NextRequest) {
     apiKey,
     region = "eastus",
     voice = "en-US-Ava:DragonHDLatestNeural",
+    rate = 1,
+    volume = 1,
+    pauseMs = 400,
   } = body;
 
   if (!text || !apiKey) {
@@ -44,9 +50,21 @@ export async function POST(request: NextRequest) {
   const langMatch = voice.match(/^([a-z]{2}-[A-Z]{2})/);
   const lang = langMatch ? langMatch[1] : "en-US";
 
+  const ratePercent = Math.max(-50, Math.min(50, Math.round((rate - 1) * 100)));
+  const volumeDb = Math.max(-20, Math.min(6, Math.round((volume - 1) * 12)));
+  const normalizedPause = Math.max(0, Math.min(2000, pauseMs));
+
+  const rateAttr = `${ratePercent >= 0 ? "+" : ""}${ratePercent}%`;
+  const volumeAttr = volumeDb === 0 ? "default" : `${volumeDb >= 0 ? "+" : ""}${volumeDb}dB`;
+
   // 构建 SSML
   const ssml = `<speak version='1.0' xml:lang='${lang}'>
-  <voice name='${voice}'>${escapeXml(text)}</voice>
+  <voice name='${voice}'>
+    <prosody rate='${rateAttr}' volume='${volumeAttr}'>
+      ${escapeXml(text)}
+    </prosody>
+    <break time='${normalizedPause}ms'/>
+  </voice>
 </speak>`;
 
   const endpoint = `https://${region}.tts.speech.microsoft.com/cognitiveservices/v1`;

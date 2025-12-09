@@ -15,8 +15,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "仿生阅读器 Next 版",
-  description: "基于 Next.js 的仿生阅读器，支持多端访问",
+  title: "仿生阅读器 毛毛浩浩 版",
   manifest: "/manifest.webmanifest",
   icons: {
     icon: "/icon-192.png",

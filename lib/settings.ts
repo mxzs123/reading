@@ -7,7 +7,8 @@ export type AzureTTSVoice =
   | "en-US-GuyNeural"
   | "en-GB-SoniaNeural";
 
-export type BoldRatio = "off" | "low" | "medium" | "high";
+export type PageWidthMode = "px" | "vw" | "ch";
+export type BoldRatio = "off" | "low" | "medium" | "high" | "custom";
 
 export interface ReaderSettings {
   fontSize: number;
@@ -15,10 +16,17 @@ export interface ReaderSettings {
   letterSpacing: number;
   paragraphSpacing: number;
   boldRatio: BoldRatio;
+  customBoldRatio: number;
+  bionicWeight: number;
+  bodyFontWeight: number;
   fontFamily: string;
   theme: Theme;
+  pageWidthMode: PageWidthMode;
   pageWidth: number;
+  pageWidthVw: number;
+  pageWidthCh: number;
   readingPadding: number;
+  textIndent: number;
   textAlign: TextAlign;
   // Azure TTS 设置
   azureApiKey: string;
@@ -27,6 +35,9 @@ export interface ReaderSettings {
   // 播放设置
   autoPlayNext: boolean;
   ttsConcurrency: number;
+  ttsRate: number;
+  ttsVolume: number;
+  ttsPauseMs: number;
 }
 
 export const DEFAULT_SETTINGS: ReaderSettings = {
@@ -35,10 +46,17 @@ export const DEFAULT_SETTINGS: ReaderSettings = {
   letterSpacing: 0.012,
   paragraphSpacing: 1.05,
   boldRatio: "medium",
+  customBoldRatio: 0.45,
+  bionicWeight: 600,
+  bodyFontWeight: 400,
   fontFamily: "Georgia, 'Times New Roman', serif",
   theme: "sepia",
+  pageWidthMode: "px",
   pageWidth: 680,
+  pageWidthVw: 92,
+  pageWidthCh: 72,
   readingPadding: 36,
+  textIndent: 0,
   textAlign: "left",
   // Azure TTS 默认设置
   azureApiKey: "",
@@ -47,6 +65,9 @@ export const DEFAULT_SETTINGS: ReaderSettings = {
   // 播放设置
   autoPlayNext: true,
   ttsConcurrency: 4,
+  ttsRate: 1,
+  ttsVolume: 1,
+  ttsPauseMs: 400,
 };
 
 export const SETTINGS_STORAGE_KEY = "bionicReaderSettings";
@@ -71,24 +92,40 @@ export function applySettings(settings: ReaderSettings): void {
     typeof window !== "undefined" &&
     window.matchMedia("(max-width: 768px)").matches;
 
-  const fontSizePx = clampNumber(settings.fontSize, 16, isMobile ? 22 : 24);
-  const lineHeight = clampNumber(settings.lineHeight, 1.4, 1.85);
-  const letterSpacingEm = clampNumber(settings.letterSpacing, -0.02, 0.06);
-  const paragraphSpacingEm = clampNumber(settings.paragraphSpacing, 0.8, 1.3);
-  const pageWidthPx = clampNumber(settings.pageWidth, 560, 840);
+  const fontSizePx = clampNumber(settings.fontSize, 14, isMobile ? 26 : 30);
+  const lineHeight = clampNumber(settings.lineHeight, 1.2, 2.4);
+  const letterSpacingEm = clampNumber(settings.letterSpacing, -0.05, 0.12);
+  const paragraphSpacingEm = clampNumber(settings.paragraphSpacing, 0.4, 2.0);
+  const pageWidthPx = clampNumber(settings.pageWidth, 400, 1200);
+  const pageWidthVw = clampNumber(settings.pageWidthVw, 60, 96);
+  const pageWidthCh = clampNumber(settings.pageWidthCh, 40, 120);
   const readingPaddingPx = clampNumber(
     settings.readingPadding,
-    isMobile ? 12 : 16,
-    isMobile ? 32 : 80
+    isMobile ? 8 : 12,
+    isMobile ? 60 : 120
   );
+  const textIndentEm = clampNumber(settings.textIndent ?? 0, 0, 2);
+  const bodyFontWeight = clampNumber(settings.bodyFontWeight ?? 400, 300, 800);
+  const bionicWeight = clampNumber(settings.bionicWeight ?? 600, 400, 850);
+  const pageWidthMode: PageWidthMode =
+    settings.pageWidthMode ?? "px";
 
   const responsiveFontSize = isMobile
-    ? `clamp(16px, calc(${fontSizePx}px + 0.6vw), 22px)`
-    : `clamp(17px, calc(${fontSizePx}px + 0.35vw), 24px)`;
+    ? `clamp(15px, calc(${fontSizePx}px + 0.7vw), 26px)`
+    : `clamp(17px, calc(${fontSizePx}px + 0.4vw), 30px)`;
 
-  const responsivePageWidth = isMobile
-    ? "92vw"
-    : `clamp(560px, 72vw, ${pageWidthPx}px)`;
+  let responsivePageWidth: string;
+  if (pageWidthMode === "vw") {
+    const vwValue = isMobile ? Math.min(pageWidthVw, 94) : pageWidthVw;
+    responsivePageWidth = `${vwValue}vw`;
+  } else if (pageWidthMode === "ch") {
+    const chValue = isMobile ? Math.min(pageWidthCh, 92) : pageWidthCh;
+    responsivePageWidth = `${chValue}ch`;
+  } else {
+    responsivePageWidth = isMobile
+      ? "92vw"
+      : `clamp(400px, 82vw, ${pageWidthPx}px)`;
+  }
 
   const root = document.documentElement;
 
@@ -106,6 +143,9 @@ export function applySettings(settings: ReaderSettings): void {
     `${Math.max(readingPaddingPx, 0)}px`
   );
   root.style.setProperty("--text-align", settings.textAlign);
+  root.style.setProperty("--text-indent", `${textIndentEm}em`);
+  root.style.setProperty("--body-font-weight", `${bodyFontWeight}`);
+  root.style.setProperty("--bionic-weight", `${bionicWeight}`);
 
   if (typeof document !== "undefined") {
     const { body } = document;

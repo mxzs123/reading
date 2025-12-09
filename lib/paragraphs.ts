@@ -45,7 +45,7 @@ export function tokenize(content: string): Token[] {
 
 export function renderBionicWord(
   word: string,
-  ratio: "off" | "low" | "medium" | "high"
+  ratio: "off" | "low" | "medium" | "high" | number
 ) {
   if (ratio === "off") {
     return { lead: "", tail: word };
@@ -56,8 +56,18 @@ export function renderBionicWord(
     medium: 0.45,
     high: 0.6,
   };
+
+  const numericRatio =
+    typeof ratio === "number" ? ratio : map[ratio];
+
+  const clampedRatio = Math.min(Math.max(numericRatio, 0), 1);
+
+  if (clampedRatio === 0) {
+    return { lead: "", tail: word };
+  }
+
   const boldCount = Math.min(
-    Math.max(Math.ceil(word.length * map[ratio]), 1),
+    Math.max(Math.ceil(word.length * clampedRatio), 1),
     word.length
   );
   const lead = word.slice(0, boldCount);

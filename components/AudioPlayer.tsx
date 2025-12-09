@@ -117,6 +117,9 @@ export default function AudioPlayer({
           apiKey: settings.azureApiKey,
           region: settings.azureRegion,
           voice: settings.azureVoice,
+          rate: settings.ttsRate,
+          volume: settings.ttsVolume,
+          pauseMs: settings.ttsPauseMs,
         }),
       });
 

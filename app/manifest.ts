@@ -2,9 +2,9 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "仿生阅读器 Next 版",
+    name: "仿生阅读器 毛毛浩浩 版",
     short_name: "仿生阅读",
-    description: "基于 Next.js 的仿生阅读器，支持多端访问",
+    description: "仿生阅读器 毛毛浩浩 版",
     start_url: "/",
     scope: "/",
     display: "fullscreen",

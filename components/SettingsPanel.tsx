@@ -16,6 +16,7 @@ const boldOptions = [
   { value: "low" as const, label: "低 " },
   { value: "medium" as const, label: "中 " },
   { value: "high" as const, label: "高 " },
+  { value: "custom" as const, label: "自定义" },
 ];
 
 const themeOptions = [
@@ -27,7 +28,15 @@ const themeOptions = [
 
 const alignOptions = [
   { value: "left" as const, label: "左对齐" },
+  { value: "center" as const, label: "居中" },
+  { value: "right" as const, label: "右对齐" },
   { value: "justify" as const, label: "两端对齐" },
+];
+
+const widthModeOptions = [
+  { value: "px" as const, label: "固定像素" },
+  { value: "vw" as const, label: "视口百分比" },
+  { value: "ch" as const, label: "按字符数" },
 ];
 
 const azureVoiceOptions: { value: AzureTTSVoice; label: string }[] = [
@@ -80,15 +89,30 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
   const [approxCharsPerLine, setApproxCharsPerLine] = useState<number | null>(null);
 
   const fontFamilyOptions = useMemo(() => fontFamilies, []);
+  const widthMode = settings.pageWidthMode ?? "px";
 
   useEffect(() => {
     if (typeof window === "undefined") return;
     if (!hydrated) return;
-    const availableWidth = isMobile
-      ? Math.min(window.innerWidth * 0.92, settings.pageWidth)
-      : settings.pageWidth;
+
+    const mode = settings.pageWidthMode ?? "px";
+
+    if (mode === "ch") {
+      setApproxCharsPerLine(Math.round(settings.pageWidthCh));
+      return;
+    }
+
+    const viewportWidth = window.innerWidth || 0;
+    const availableWidth =
+      mode === "vw"
+        ? viewportWidth * (Math.min(Math.max(settings.pageWidthVw, 60), 96) / 100)
+        : isMobile
+          ? Math.min(viewportWidth * 0.96, settings.pageWidth)
+          : settings.pageWidth;
+
     const charWidth =
-      settings.fontSize * Math.max(0.48, 0.55 + settings.letterSpacing);
+      settings.fontSize * Math.max(0.46, 0.54 + settings.letterSpacing);
+
     if (
       !Number.isFinite(availableWidth) ||
       !Number.isFinite(charWidth) ||
@@ -97,8 +121,17 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
       setApproxCharsPerLine(null);
       return;
     }
-    setApproxCharsPerLine(Math.max(10, Math.round(availableWidth / charWidth)));
-  }, [hydrated, isMobile, settings.fontSize, settings.letterSpacing, settings.pageWidth]);
+    setApproxCharsPerLine(Math.max(8, Math.round(availableWidth / charWidth)));
+  }, [
+    hydrated,
+    isMobile,
+    settings.fontSize,
+    settings.letterSpacing,
+    settings.pageWidth,
+    settings.pageWidthMode,
+    settings.pageWidthVw,
+    settings.pageWidthCh,
+  ]);
 
   return (
     <>
@@ -163,6 +196,24 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                   </button>
                 ))}
               </div>
+              {settings.boldRatio === "custom" ? (
+                <RangeField
+                  label="自定义比例"
+                  value={settings.customBoldRatio}
+                  min={0}
+                  max={1}
+                  step={0.01}
+                  onChange={(value) => updateSettings({ customBoldRatio: value })}
+                />
+              ) : null}
+              <RangeField
+                label="仿生加粗权重"
+                value={settings.bionicWeight}
+                min={500}
+                max={800}
+                step={25}
+                onChange={(value) => updateSettings({ bionicWeight: value })}
+              />
             </div>
           </section>
 
@@ -188,36 +239,53 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                 label="字号"
                 value={settings.fontSize}
                 unit="px"
-                min={16}
-                max={24}
-                step={0.5}
+                min={14}
+                max={30}
+                step={0.25}
                 onChange={(value) => updateSettings({ fontSize: value })}
               />
               <RangeField
                 label="行高"
                 value={settings.lineHeight}
-                min={1.45}
-                max={1.85}
-                step={0.05}
+                min={1.2}
+                max={2.4}
+                step={0.02}
                 onChange={(value) => updateSettings({ lineHeight: value })}
               />
               <RangeField
                 label="字间距"
                 value={settings.letterSpacing}
                 unit="em"
-                min={-0.02}
-                max={0.06}
-                step={0.005}
+                min={-0.05}
+                max={0.12}
+                step={0.002}
                 onChange={(value) => updateSettings({ letterSpacing: value })}
               />
               <RangeField
                 label="段落间距"
                 value={settings.paragraphSpacing}
                 unit="em"
-                min={0.8}
-                max={1.3}
+                min={0.4}
+                max={2}
                 step={0.05}
                 onChange={(value) => updateSettings({ paragraphSpacing: value })}
+              />
+              <RangeField
+                label="正文字重"
+                value={settings.bodyFontWeight}
+                min={350}
+                max={800}
+                step={25}
+                onChange={(value) => updateSettings({ bodyFontWeight: value })}
+              />
+              <RangeField
+                label="首行缩进"
+                value={settings.textIndent}
+                unit="em"
+                min={0}
+                max={2}
+                step={0.1}
+                onChange={(value) => updateSettings({ textIndent: value })}
               />
             </div>
 
@@ -244,30 +312,70 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
 
           <section className={styles.section}>
             <div className={styles.sectionHeader}>页面布局</div>
+            <div className={styles.fieldRow}>
+              <span className={styles.fieldLabel}>宽度模式</span>
+              <div className={styles.segmentedControl}>
+                {widthModeOptions.map((option) => (
+                  <button
+                    key={option.value}
+                    className={`${styles.segmentButton} ${
+                      widthMode === option.value ? styles.segmentActive : ""
+                    }`}
+                    onClick={() => updateSettings({ pageWidthMode: option.value })}
+                    type="button"
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <div className={styles.grid2}>
-              <RangeField
-                label="内容宽度"
-                value={settings.pageWidth}
-                unit="px"
-                min={560}
-                max={840}
-                step={10}
-                onChange={(value) => updateSettings({ pageWidth: value })}
-              />
+              {widthMode === "vw" ? (
+                <RangeField
+                  label="内容宽度"
+                  value={settings.pageWidthVw}
+                  unit="vw"
+                  min={60}
+                  max={96}
+                  step={1}
+                  onChange={(value) => updateSettings({ pageWidthVw: value })}
+                />
+              ) : widthMode === "ch" ? (
+                <RangeField
+                  label="内容宽度"
+                  value={settings.pageWidthCh}
+                  unit="ch"
+                  min={40}
+                  max={120}
+                  step={1}
+                  onChange={(value) => updateSettings({ pageWidthCh: value })}
+                />
+              ) : (
+                <RangeField
+                  label="内容宽度"
+                  value={settings.pageWidth}
+                  unit="px"
+                  min={400}
+                  max={1200}
+                  step={10}
+                  onChange={(value) => updateSettings({ pageWidth: value })}
+                />
+              )}
               <RangeField
                 label="页边距"
                 value={settings.readingPadding}
                 unit="px"
-                min={16}
-                max={80}
-                step={4}
+                min={8}
+                max={120}
+                step={2}
                 onChange={(value) => updateSettings({ readingPadding: value })}
               />
             </div>
             <p className={styles.apiKeyHint}>
               {approxCharsPerLine
-                ? `当前估算约 ${approxCharsPerLine} 字/行；移动端自动收紧至约 92vw。`
-                : "移动端自动收紧至约 92vw。"}
+                ? `估算约 ${approxCharsPerLine} 字/行；移动端自动收紧以避免超宽。`
+                : "移动端自动收紧以避免超宽。"}
             </p>
           </section>
 
@@ -322,6 +430,24 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
               </select>
             </div>
 
+            <RangeField
+              label="语速"
+              value={settings.ttsRate}
+              min={0.6}
+              max={1.6}
+              step={0.05}
+              onChange={(value) => updateSettings({ ttsRate: value })}
+            />
+
+            <RangeField
+              label="音量"
+              value={settings.ttsVolume}
+              min={0}
+              max={1}
+              step={0.05}
+              onChange={(value) => updateSettings({ ttsVolume: value })}
+            />
+
             <label className={styles.switchLabel}>
               <span className={styles.fieldLabel}>自动播放下一段</span>
               <input
@@ -342,11 +468,36 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                 value={settings.ttsConcurrency}
                 onChange={(e) => {
                   const parsed = parseInt(e.target.value, 10);
-                  updateSettings({ ttsConcurrency: Number.isNaN(parsed) ? 1 : Math.max(1, parsed) });
+                  updateSettings({
+                    ttsConcurrency: Number.isNaN(parsed)
+                      ? 1
+                      : Math.max(1, Math.min(8, parsed)),
+                  });
                 }}
               />
               <p className={styles.apiKeyHint}>
                 每批请求会并行发送至多该数量的段落音频，完成后再继续下一批；并发越高越易触发配额限制。
+              </p>
+            </div>
+
+            <div className={styles.fieldColumn}>
+              <label className={styles.fieldLabel}>句间停顿 (毫秒)</label>
+              <input
+                type="number"
+                min={0}
+                className={styles.apiKeyInput}
+                value={settings.ttsPauseMs}
+                onChange={(e) => {
+                  const parsed = parseInt(e.target.value, 10);
+                  updateSettings({
+                    ttsPauseMs: Number.isNaN(parsed)
+                      ? 400
+                      : Math.max(0, Math.min(2000, parsed)),
+                  });
+                }}
+              />
+              <p className={styles.apiKeyHint}>
+                控制段落或句子之间的停顿时长，可在长文本朗读时留出缓冲。
               </p>
             </div>
 

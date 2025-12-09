@@ -254,7 +254,7 @@ export default function Home() {
     <div className={styles.page}>
       <header className={styles.header}>
         <div>
-          <h1 className={styles.headline}>仿生阅读器 · Next.js</h1>
+          <h1 className={styles.headline}>仿生阅读器 毛毛浩浩版 · Version 1.0.0</h1>
           <p className="muted-text">
             支持多端访问的仿生阅读器，集成发音与词典查询，随时随地快速专注阅读。
           </p>
@@ -388,7 +388,16 @@ export default function Home() {
                   <button
                     type="button"
                     className={styles.clearButton}
-                    onClick={() => generateAll(settings.azureApiKey, settings.azureRegion, settings.azureVoice)}
+                    onClick={() =>
+                      generateAll(
+                        settings.azureApiKey,
+                        settings.azureRegion,
+                        settings.azureVoice,
+                        settings.ttsRate,
+                        settings.ttsVolume,
+                        settings.ttsPauseMs
+                      )
+                    }
                     disabled={generatingCount > 0}
                   >
                     {generatingCount > 0 ? "生成中..." : "生成音频"}

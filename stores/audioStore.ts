@@ -22,6 +22,9 @@ interface GenerationTask {
   apiKey: string;
   region: string;
   voice: string;
+  rate: number;
+  volume: number;
+  pauseMs: number;
   settle: () => void;
 }
 
@@ -47,8 +50,23 @@ interface AudioStore {
   // Actions
   pause: () => void;
   initSegments: (paragraphs: string[]) => void;
-  generateSegment: (id: string, apiKey: string, region: string, voice: string) => Promise<void>;
-  generateAll: (apiKey: string, region: string, voice: string) => void;
+  generateSegment: (
+    id: string,
+    apiKey: string,
+    region: string,
+    voice: string,
+    rate: number,
+    volume: number,
+    pauseMs: number
+  ) => Promise<void>;
+  generateAll: (
+    apiKey: string,
+    region: string,
+    voice: string,
+    rate: number,
+    volume: number,
+    pauseMs: number
+  ) => void;
   playSegment: (id: string) => void;
   togglePlayPause: () => void;
   stop: () => void;
@@ -128,7 +146,7 @@ export const useAudioStore = create<AudioStore>((set, get) => {
   let concurrencyLimitInternal = DEFAULT_TTS_CONCURRENCY;
 
   const runGenerationTask = async (task: GenerationTask) => {
-    const { id, apiKey, region, voice } = task;
+    const { id, apiKey, region, voice, rate, volume, pauseMs } = task;
     const segment = get().segments.find((s) => s.id === id);
     if (!segment) {
       return;
@@ -145,7 +163,15 @@ export const useAudioStore = create<AudioStore>((set, get) => {
       const response = await fetch("/api/tts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: segment.text.trim(), apiKey, region, voice }),
+        body: JSON.stringify({
+          text: segment.text.trim(),
+          apiKey,
+          region,
+          voice,
+          rate,
+          volume,
+          pauseMs,
+        }),
       });
 
       const contentType = response.headers.get("content-type") || "";
@@ -285,7 +311,7 @@ export const useAudioStore = create<AudioStore>((set, get) => {
       });
     },
 
-    generateSegment: async (id, apiKey, region, voice) => {
+    generateSegment: async (id, apiKey, region, voice, rate, volume, pauseMs) => {
       const segment = get().segments.find((s) => s.id === id);
       if (!segment || segment.status === "ready" || segment.status === "generating") {
         return;
@@ -311,18 +337,21 @@ export const useAudioStore = create<AudioStore>((set, get) => {
           apiKey,
           region,
           voice,
+          rate,
+          volume,
+          pauseMs,
           settle: resolve,
         });
       });
     },
 
-    generateAll: (apiKey, region, voice) => {
+    generateAll: (apiKey, region, voice, rate, volume, pauseMs) => {
       const { segments } = get();
       // 将所有段落加入队列，由调度器按批次生成
       segments
         .filter((seg) => seg.status !== "ready" && seg.status !== "generating")
         .forEach((seg) => {
-          get().generateSegment(seg.id, apiKey, region, voice);
+          get().generateSegment(seg.id, apiKey, region, voice, rate, volume, pauseMs);
         });
     },
 

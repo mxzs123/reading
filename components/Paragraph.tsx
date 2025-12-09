@@ -76,7 +76,11 @@ export function Paragraph({
     >
       {tokens.map((token, i) => {
         if (token.type === "word") {
-          const { lead, tail } = renderBionicWord(token.value, settings.boldRatio);
+          const ratio =
+            settings.boldRatio === "custom"
+              ? settings.customBoldRatio
+              : settings.boldRatio;
+          const { lead, tail } = renderBionicWord(token.value, ratio);
           return (
             <span
               key={i}
