@@ -57,10 +57,10 @@ const ttsProviderOptions: { value: TTSProvider; label: string }[] = [
 ];
 
 const elevenModelOptions = [
+  { value: "eleven_v3", label: "Eleven v3（高质量，适合情感/长文本）" },
+  { value: "eleven_turbo_v2_5", label: "Turbo v2.5（高质量均衡）" },
   { value: "eleven_flash_v2_5", label: "Flash v2.5（低延迟）" },
-  { value: "eleven_turbo_v2_5", label: "Turbo v2.5（均衡）" },
-  { value: "eleven_multilingual_v2", label: "Multilingual v2（多语种）" },
-  { value: "eleven_monolingual_v1", label: "Monolingual v1" },
+  { value: "eleven_multilingual_v2", label: "Multilingual v2（多语种高质量）" },
 ];
 
 const elevenOutputFormatOptions: { value: ElevenOutputFormat; label: string }[] = [
@@ -564,8 +564,12 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                     className={styles.apiKeyInput}
                     value={settings.elevenVoiceId}
                     onChange={(e) => updateSettings({ elevenVoiceId: e.target.value })}
-                    placeholder="如 JBFqnCBsd6RMkjVDRZzb"
+                    placeholder="如 Bella: EXAVITQu4vr4xnSDxMaL"
                   />
+                  <p className={styles.apiKeyHint}>
+                    推荐女声：Bella (EXAVITQu4vr4xnSDxMaL)、Rachel (21m00Tcm4TlvDq8ikWAM)。
+                    可在 ElevenLabs 控制台 Voice Library 按 Female / 高质量筛选更多。
+                  </p>
                 </div>
                 <div className={styles.fieldColumn}>
                   <label className={styles.fieldLabel}>模型</label>

@@ -117,8 +117,8 @@ export const DEFAULT_SETTINGS: ReaderSettings = {
   azureVoice: "en-US-Ava:DragonHDLatestNeural",
   // ElevenLabs TTS 默认设置
   elevenApiKey: "",
-  elevenVoiceId: "JBFqnCBsd6RMkjVDRZzb",
-  elevenModelId: "eleven_flash_v2_5",
+  elevenVoiceId: "EXAVITQu4vr4xnSDxMaL",
+  elevenModelId: "eleven_v3",
   elevenLanguageCode: "en",
   elevenOutputFormat: "mp3_44100_128",
   elevenStability: 0.5,

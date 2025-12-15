@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
-import { put } from "@vercel/blob";
 import { kv } from "@vercel/kv";
+import { uploadToR2 } from "@/lib/r2";
 
 interface ArticleMetadata {
   id: string;
@@ -36,33 +36,25 @@ export async function POST(request: NextRequest, context: RouteContext) {
       return Response.json({ error: "文章不存在" }, { status: 404 });
     }
 
-    const blobToken = process.env.BLOB_READ_WRITE_TOKEN;
-    if (!blobToken) {
-      return Response.json({ error: "存储凭证未配置" }, { status: 500 });
-    }
-
-    // 上传到 Blob
-    const blob = await put(`audio/${id}/${segmentId}.wav`, file, {
-      access: "public",
-      contentType: "audio/wav",
-      token: blobToken,
-    });
+    // 上传到 R2
+    const key = `audio/${id}/${segmentId}.wav`;
+    const url = await uploadToR2(key, file, "audio/wav");
 
     // 更新文章的 audioUrls
     const audioUrls = article.audioUrls || [];
     // 如果该段落已有音频，替换；否则添加
-    const existingIndex = audioUrls.findIndex((url) =>
-      url.includes(`/${segmentId}.wav`)
+    const existingIndex = audioUrls.findIndex((u) =>
+      u.includes(`/${segmentId}.wav`)
     );
     if (existingIndex >= 0) {
-      audioUrls[existingIndex] = blob.url;
+      audioUrls[existingIndex] = url;
     } else {
-      audioUrls.push(blob.url);
+      audioUrls.push(url);
     }
 
     await kv.hset(`article:${id}`, { audioUrls });
 
-    return Response.json({ url: blob.url });
+    return Response.json({ url });
   } catch (error) {
     console.error("上传音频失败:", error);
     return Response.json({ error: "上传音频失败" }, { status: 500 });

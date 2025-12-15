@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { kv } from "@vercel/kv";
-import { del, list } from "@vercel/blob";
+import { deleteR2Folder } from "@/lib/r2";
 
 interface ArticleMetadata {
   id: string;
@@ -65,12 +65,9 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
 
     // 删除关联的音频文件
     try {
-      const blobs = await list({ prefix: `audio/${id}/` });
-      if (blobs.blobs.length > 0) {
-        await del(blobs.blobs.map((b) => b.url));
-      }
+      await deleteR2Folder(`audio/${id}/`);
     } catch {
-      // Blob 删除失败不影响主流程
+      // R2 删除失败不影响主流程
       console.warn("删除音频文件失败");
     }
 
