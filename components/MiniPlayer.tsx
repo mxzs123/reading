@@ -5,7 +5,7 @@ import { useAudioStore } from "@/stores/audioStore";
 import { formatTime } from "@/lib/paragraphs";
 import styles from "./MiniPlayer.module.css";
 
-const SEEK_STEP_SECONDS = 2;
+const SEEK_STEP_SECONDS = 3;
 
 export function MiniPlayer() {
   const activeSegmentId = useAudioStore((s) => s.activeSegmentId);
@@ -108,6 +108,7 @@ export function MiniPlayer() {
         <div className={styles.progressArea}>
           <input
             type="range"
+            data-mini-player-seek="true"
             min={0}
             max={safeDuration}
             step={0.1}

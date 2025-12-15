@@ -257,8 +257,9 @@ export default function Home() {
 
       const target = event.target as HTMLElement | null;
       const tagName = target?.tagName;
+      const isMiniPlayerSeek = Boolean(target?.closest?.("[data-mini-player-seek]"));
       if (target?.isContentEditable || (tagName && ["INPUT", "TEXTAREA", "SELECT"].includes(tagName))) {
-        return;
+        if (!isMiniPlayerSeek) return;
       }
 
       const dictionaryVisible = Boolean(selectedWord.trim());
