@@ -207,6 +207,13 @@ export default function Home() {
     setDictionaryOpen(false);
     setSelectedWord("");
     setDictionaryAnchor(null);
+
+    if (typeof document !== "undefined") {
+      const active = document.activeElement as HTMLElement | null;
+      if (active?.closest?.(".bionic-word")) {
+        active.blur();
+      }
+    }
   }, []);
 
   const handleStopArticleAudio = useCallback(() => {
@@ -268,10 +275,7 @@ export default function Home() {
         event.stopPropagation();
         (event as unknown as { stopImmediatePropagation?: () => void }).stopImmediatePropagation?.();
 
-        abortRef.current?.abort();
-        setDictionaryOpen(false);
-        setSelectedWord("");
-        setDictionaryAnchor(null);
+        handleCloseDictionary();
 
         const { activeSegmentId, isPlaying, segments, playSegment, togglePlayPause } = useAudioStore.getState();
         if (activeSegmentId) {
@@ -312,7 +316,7 @@ export default function Home() {
 
     window.addEventListener("keydown", handleKeyDown, { capture: true });
     return () => window.removeEventListener("keydown", handleKeyDown, { capture: true });
-  }, [selectedWord]);
+  }, [handleCloseDictionary, selectedWord]);
 
   const readingPulseKey = useMemo(() => {
     const trimmed = sourceText.trim();
