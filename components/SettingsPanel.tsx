@@ -14,6 +14,7 @@ import styles from "./SettingsPanel.module.css";
 interface SettingsPanelProps {
   isOpen: boolean;
   onClose: () => void;
+  onArticlesCleared?: () => void;
 }
 
 const boldOptions = [
@@ -123,11 +124,33 @@ const fontFamilies = [
   },
 ];
 
-export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
+export function SettingsPanel({ isOpen, onClose, onArticlesCleared }: SettingsPanelProps) {
   const { settings, updateSettings, resetSettings, hydrated } = useSettings();
   const [showApiKey, setShowApiKey] = useState(false);
   const [showElevenApiKey, setShowElevenApiKey] = useState(false);
+  const [isClearing, setIsClearing] = useState(false);
   const isMobile = useMediaQuery("(max-width: 768px)");
+
+  const handleClearAllArticles = async () => {
+    if (!confirm("确定要删除所有文章吗？此操作不可恢复！")) {
+      return;
+    }
+    setIsClearing(true);
+    try {
+      const response = await fetch("/api/articles", { method: "DELETE" });
+      if (response.ok) {
+        const data = await response.json();
+        alert(`已删除 ${data.deleted} 篇文章`);
+        onArticlesCleared?.();
+      } else {
+        alert("删除失败，请重试");
+      }
+    } catch {
+      alert("删除失败，请重试");
+    } finally {
+      setIsClearing(false);
+    }
+  };
 
   const fontFamilyOptions = useMemo(() => fontFamilies, []);
   const widthMode = settings.pageWidthMode ?? "px";
@@ -777,6 +800,13 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
         <div className={styles.footer}>
           <button className={styles.resetButton} onClick={resetSettings}>
             恢复默认设置
+          </button>
+          <button
+            className={styles.dangerButton}
+            onClick={handleClearAllArticles}
+            disabled={isClearing}
+          >
+            {isClearing ? "删除中..." : "清除所有文章"}
           </button>
         </div>
       </aside>

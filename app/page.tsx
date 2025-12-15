@@ -471,6 +471,10 @@ export default function Home() {
         <SettingsPanel
           isOpen={settingsOpen}
           onClose={() => setUserSettingsOpen(false)}
+          onArticlesCleared={() => {
+            setSourceText("");
+            setCurrentArticleId(null);
+          }}
         />
       </div>
 
