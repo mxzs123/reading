@@ -1,6 +1,5 @@
-const CACHE_NAME = "reading-pwa-v2";
+const CACHE_NAME = "reading-pwa-v3";
 const PRECACHE_URLS = [
-  "/",
   "/manifest.webmanifest",
   "/icon-192.png",
   "/icon-512.png",
@@ -37,9 +36,14 @@ self.addEventListener("fetch", (event) => {
   if (url.origin !== self.location.origin) return;
 
   const isApiRequest = url.pathname.startsWith("/api/");
+  const isPageRequest =
+    event.request.mode === "navigate" ||
+    event.request.destination === "document";
+  const isNextAsset =
+    url.pathname.startsWith("/_next/") && !url.pathname.includes("/static/");
 
-  if (isApiRequest) {
-    // API 请求使用网络优先并跳过缓存，确保拿到最新数据
+  // API 和页面请求使用网络优先
+  if (isApiRequest || isPageRequest || isNextAsset) {
     event.respondWith(
       fetch(event.request, { cache: "no-store" }).catch(() =>
         caches.match(event.request),
@@ -48,7 +52,7 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // 其它静态资源仍使用 cache-first，以提升离线体验
+  // 仅静态资源（图标、manifest）使用缓存优先
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
       if (cachedResponse) return cachedResponse;
