@@ -16,11 +16,13 @@ npm run test -- --passWithNoTests  # Vitest；当前无测试文件必须带该 
 
 - **app/page.tsx**：顶层页面，管理文章输入、设置、词典面板、音频生成以及词典缓存/预取逻辑。
 - **components/ReadingArea.tsx / Paragraph.tsx**：构建段落与单词 token，处理单词点击（发音+查词）、段落播放、词典预取回调。
-- **stores/audioStore.ts**：Zustand 音频状态（段落列表、生成、播放、MiniPlayer）。
+- **stores/audioStore.ts**：Zustand 音频状态（段落列表、生成、播放、上传、MiniPlayer）；音频上传采用每批 6 个并行。
 - **lib/paragraphs.ts**：`tokenize`/`renderBionicWord` 负责仿生渲染。
+- **lib/r2.ts**：Cloudflare R2 存储封装（`uploadToR2`/`deleteFromR2`/`deleteR2Folder`），使用 AWS S3 SDK。
 - **app/api/dictionary/route.ts**：Edge Runtime 调 Youdao JSON API，`normalizeYoudaoResponse` 解析音标/释义/网络翻译。
 - **app/api/tts/route.ts**：Azure Speech TTS（SSML→MP3），受 `settings.azure*` 控制。
 - **app/api/tts/elevenlabs/route.ts**：ElevenLabs REST TTS，可配置模型、音色、输出格式等参数。
+- **app/api/articles/[id]/audio/route.ts**：音频上传 API，存储到 Cloudflare R2。
 
 > 更多 UI/交互细节见 `README.md` / `CLAUDE.md`，这里仅保留 Droid 执行必需信息。
 
@@ -48,7 +50,9 @@ npm run test -- --passWithNoTests  # Vitest；当前无测试文件必须带该 
 
 - **Youdao Dictionary**：`/api/dictionary` 调公开 JSON API，需附浏览器 UA/Referer；仍按“单用户”假设限制请求频率，避免循环轰炸。
 - **Azure Speech**：依赖用户提供的 `azureApiKey/azureRegion/azureVoice`；不得写死密钥。
-- **Vercel Edge & Blob**：词典路由固定 `runtime = "edge"` 且 `preferredRegion = [hnd1, icn1, hkg1, sin1]`；改动前评估冷启动与跨境延迟。
+- **ElevenLabs**：依赖用户提供的 `elevenApiKey/elevenVoiceId`；不得写死密钥。
+- **Cloudflare R2**：音频存储使用 R2（S3 兼容 API）；环境变量：`R2_ACCOUNT_ID`、`R2_ACCESS_KEY_ID`、`R2_SECRET_ACCESS_KEY`、`R2_BUCKET_NAME`、`R2_PUBLIC_URL`。
+- **Vercel KV**：文章元数据存储在 Upstash Redis；环境变量：`KV_REST_API_URL`、`KV_REST_API_TOKEN`。
 - **安全**：日志、注释、提交里不得输出任何 key；错误仅记录状态码/简要描述。
 
 ## Git Workflow
