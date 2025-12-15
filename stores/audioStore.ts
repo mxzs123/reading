@@ -480,18 +480,25 @@ export const useAudioStore = create<AudioStore>((set, get) => {
       const { segments } = get();
       const readySegments = segments.filter((s) => s.status === "ready" && s.audioBlob && !s.cloudUrl);
 
-      for (const segment of readySegments) {
-        if (!segment.audioBlob) continue;
-        try {
-          const cloudUrl = await uploadAudio(articleId, segment.id, segment.audioBlob);
-          set((state) => ({
-            segments: state.segments.map((s) =>
-              s.id === segment.id ? { ...s, cloudUrl } : s
-            ),
-          }));
-        } catch (error) {
-          console.error(`上传音频 ${segment.id} 失败:`, error);
-        }
+      // 并行上传，每批 6 个
+      const UPLOAD_CONCURRENCY = 6;
+      for (let i = 0; i < readySegments.length; i += UPLOAD_CONCURRENCY) {
+        const batch = readySegments.slice(i, i + UPLOAD_CONCURRENCY);
+        await Promise.all(
+          batch.map(async (segment) => {
+            if (!segment.audioBlob) return;
+            try {
+              const cloudUrl = await uploadAudio(articleId, segment.id, segment.audioBlob);
+              set((state) => ({
+                segments: state.segments.map((s) =>
+                  s.id === segment.id ? { ...s, cloudUrl } : s
+                ),
+              }));
+            } catch (error) {
+              console.error(`上传音频 ${segment.id} 失败:`, error);
+            }
+          })
+        );
       }
     },
 
