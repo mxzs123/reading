@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useAudioStore } from "@/stores/audioStore";
 import { formatTime } from "@/lib/paragraphs";
 import styles from "./MiniPlayer.module.css";
@@ -16,6 +16,18 @@ export function MiniPlayer() {
   const seek = useAudioStore((s) => s.seek);
 
   const playbackRef = useRef({ current: 0, duration: 0 });
+  const pulseTimeoutRef = useRef<number | null>(null);
+  const [hotkeyPulse, setHotkeyPulse] = useState(false);
+
+  const triggerHotkeyPulse = useCallback(() => {
+    setHotkeyPulse(false);
+    requestAnimationFrame(() => setHotkeyPulse(true));
+
+    if (pulseTimeoutRef.current) {
+      window.clearTimeout(pulseTimeoutRef.current);
+    }
+    pulseTimeoutRef.current = window.setTimeout(() => setHotkeyPulse(false), 340);
+  }, []);
 
   const safeCurrent = Number.isFinite(currentTime) ? currentTime : 0;
   const safeDuration = Number.isFinite(duration) ? duration : 0;
@@ -23,6 +35,23 @@ export function MiniPlayer() {
   useEffect(() => {
     playbackRef.current = { current: safeCurrent, duration: safeDuration };
   }, [safeCurrent, safeDuration]);
+
+  useEffect(() => {
+    return () => {
+      if (pulseTimeoutRef.current) {
+        window.clearTimeout(pulseTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    const handleHotkey = () => {
+      triggerHotkeyPulse();
+    };
+
+    window.addEventListener("mini-player-hotkey", handleHotkey as EventListener);
+    return () => window.removeEventListener("mini-player-hotkey", handleHotkey as EventListener);
+  }, [triggerHotkeyPulse]);
 
   useEffect(() => {
     if (!activeSegmentId) return;
@@ -59,7 +88,7 @@ export function MiniPlayer() {
       <div className={styles.controls}>
         <button
           type="button"
-          className={styles.primaryButton}
+          className={`${styles.primaryButton} ${hotkeyPulse ? styles.hotkeyPulse : ""}`}
           onClick={togglePlayPause}
           aria-label={isPlaying ? "暂停当前段落" : "播放当前段落"}
           aria-pressed={isPlaying}

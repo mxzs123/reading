@@ -205,6 +205,8 @@ export default function Home() {
   const handleCloseDictionary = useCallback(() => {
     abortRef.current?.abort();
     setDictionaryOpen(false);
+    setSelectedWord("");
+    setDictionaryAnchor(null);
   }, []);
 
   const handleStopArticleAudio = useCallback(() => {
@@ -245,6 +247,72 @@ export default function Home() {
     setConcurrencyLimit(settings.ttsConcurrency);
   }, [settings.ttsConcurrency, setConcurrencyLimit]);
 
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.repeat) return;
+      if (event.metaKey || event.ctrlKey || event.altKey) return;
+
+      const isSpace = event.code === "Space" || event.key === " " || event.key === "Spacebar";
+      if (!isSpace) return;
+
+      const target = event.target as HTMLElement | null;
+      const tagName = target?.tagName;
+      if (target?.isContentEditable || (tagName && ["INPUT", "TEXTAREA", "SELECT"].includes(tagName))) {
+        return;
+      }
+
+      const dictionaryVisible = Boolean(selectedWord.trim());
+      if (dictionaryVisible) {
+        event.preventDefault();
+        event.stopPropagation();
+        (event as unknown as { stopImmediatePropagation?: () => void }).stopImmediatePropagation?.();
+
+        abortRef.current?.abort();
+        setDictionaryOpen(false);
+        setSelectedWord("");
+        setDictionaryAnchor(null);
+
+        const { activeSegmentId, isPlaying, segments, playSegment, togglePlayPause } = useAudioStore.getState();
+        if (activeSegmentId) {
+          if (!isPlaying) {
+            togglePlayPause();
+          }
+        } else {
+          const firstReady = segments.find((seg) => seg.status === "ready" && seg.audioUrl);
+          if (firstReady) {
+            playSegment(firstReady.id);
+          }
+        }
+
+        window.dispatchEvent(new CustomEvent("mini-player-hotkey"));
+        return;
+      }
+
+      // 词典未显示时，避免打断按钮/链接/单词的键盘交互
+      if ((tagName && ["BUTTON", "A"].includes(tagName)) || target?.closest?.(".bionic-word") || target?.closest?.('[role="button"]')) {
+        return;
+      }
+
+      const { activeSegmentId, segments, playSegment, togglePlayPause } = useAudioStore.getState();
+      if (activeSegmentId) {
+        event.preventDefault();
+        togglePlayPause();
+        window.dispatchEvent(new CustomEvent("mini-player-hotkey"));
+        return;
+      }
+
+      const firstReady = segments.find((seg) => seg.status === "ready" && seg.audioUrl);
+      if (!firstReady) return;
+
+      event.preventDefault();
+      playSegment(firstReady.id);
+      window.dispatchEvent(new CustomEvent("mini-player-hotkey"));
+    };
+
+    window.addEventListener("keydown", handleKeyDown, { capture: true });
+    return () => window.removeEventListener("keydown", handleKeyDown, { capture: true });
+  }, [selectedWord]);
+
   const readingPulseKey = useMemo(() => {
     const trimmed = sourceText.trim();
     if (!trimmed) return "output-static";
@@ -279,6 +347,8 @@ export default function Home() {
     setCurrentArticleId(article.id);
     setInputCollapsed(true);
     setDictionaryOpen(false);
+    setSelectedWord("");
+    setDictionaryAnchor(null);
     // 保存待加载的音频 URLs
     if (article.audioUrls && article.audioUrls.length > 0) {
       pendingAudioUrlsRef.current = article.audioUrls;
@@ -374,8 +444,10 @@ export default function Home() {
                       onClick={() => {
                         setSourceText("");
                         setDictionaryOpen(false);
+                        setSelectedWord("");
                         setDictionaryAnchor(null);
                         setDictionaryData(undefined);
+                        setDictionaryLoading(false);
                         setDictionaryError(undefined);
                         textareaRef.current?.focus();
                       }}
