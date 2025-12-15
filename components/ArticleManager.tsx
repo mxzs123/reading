@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Article,
   createArticle,
@@ -31,8 +31,13 @@ export default function ArticleManager({
   const [articles, setArticles] = useState<Article[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isUploadingAudio, setIsUploadingAudio] = useState(false);
   const [showSaveInput, setShowSaveInput] = useState(false);
   const [saveTitle, setSaveTitle] = useState("");
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [uploadMessage, setUploadMessage] = useState<string | null>(null);
+  const [lastSavedArticleId, setLastSavedArticleId] = useState<string | null>(null);
+  const [showUploadPanel, setShowUploadPanel] = useState(false);
 
   // 加载文章列表
   const loadArticles = useCallback(async () => {
@@ -58,13 +63,65 @@ export default function ArticleManager({
     }
   }, [isOpen, loadArticles]);
 
+  const segments = useAudioStore((s) => s.segments);
   const uploadAllAudio = useAudioStore((s) => s.uploadAllAudio);
+  const uploadSegmentAudio = useAudioStore((s) => s.uploadSegmentAudio);
+
+  const uploadCandidates = useMemo(
+    () => segments.filter((s) => s.status === "ready" && s.audioBlob),
+    [segments]
+  );
+
+  const uploadStats = useMemo(() => {
+    const total = uploadCandidates.length;
+    let pending = 0;
+    let uploading = 0;
+    let success = 0;
+    let failed = 0;
+
+    uploadCandidates.forEach((seg) => {
+      const effectiveStatus = seg.cloudUrl ? "success" : seg.uploadStatus;
+      if (effectiveStatus === "success") success += 1;
+      else if (effectiveStatus === "uploading") uploading += 1;
+      else if (effectiveStatus === "failed") failed += 1;
+      else pending += 1;
+    });
+
+    return {
+      total,
+      pending,
+      uploading,
+      success,
+      failed,
+      done: success + failed,
+    };
+  }, [uploadCandidates]);
+
+  const uploadArticleId = currentArticleId || lastSavedArticleId;
+
+  const getUploadStatusLabel = (status: string) => {
+    switch (status) {
+      case "pending":
+        return "等待中";
+      case "uploading":
+        return "上传中";
+      case "success":
+        return "成功";
+      case "failed":
+        return "失败";
+      default:
+        return "等待中";
+    }
+  };
 
   // 保存当前文章
   const handleSave = useCallback(async () => {
     if (!currentText.trim()) return;
 
+    setSaveError(null);
+    setUploadMessage(null);
     setIsSaving(true);
+    setIsUploadingAudio(false);
     try {
       let savedArticle: Article;
 
@@ -84,19 +141,71 @@ export default function ArticleManager({
         savedArticle = await saveArticle(newArticle);
       }
 
+      setLastSavedArticleId(savedArticle.id);
+      onArticleSaved(savedArticle);
+
       // 上传音频到云端
-      await uploadAllAudio(savedArticle.id);
+      setShowUploadPanel(true);
+      setIsUploadingAudio(true);
+      const result = await uploadAllAudio(savedArticle.id);
+      if (result.total > 0) {
+        if (result.failed > 0) {
+          setUploadMessage(`有 ${result.failed} 段音频上传失败，可在下方重试。`);
+        } else {
+          setUploadMessage("音频已全部上传。");
+        }
+      }
+      setIsUploadingAudio(false);
 
       await loadArticles();
-      onArticleSaved(savedArticle);
       setShowSaveInput(false);
       setSaveTitle("");
     } catch (err) {
       console.error("保存文章失败", err);
+      setSaveError("保存失败，请稍后再试");
     } finally {
       setIsSaving(false);
+      setIsUploadingAudio(false);
     }
   }, [currentText, currentArticleId, saveTitle, loadArticles, onArticleSaved, uploadAllAudio]);
+
+  const handleRetryFailedUploads = useCallback(async () => {
+    if (!uploadArticleId) return;
+    if (uploadStats.failed === 0) return;
+
+    setUploadMessage(null);
+    setIsUploadingAudio(true);
+    try {
+      const result = await uploadAllAudio(uploadArticleId);
+      if (result.failed > 0) {
+        setUploadMessage(`仍有 ${result.failed} 段音频上传失败，可继续重试。`);
+      } else {
+        setUploadMessage("失败段落已全部重试成功。");
+      }
+    } catch (err) {
+      console.error("重试上传失败段落失败", err);
+      setUploadMessage("重试失败，请稍后再试");
+    } finally {
+      setIsUploadingAudio(false);
+    }
+  }, [uploadAllAudio, uploadArticleId, uploadStats.failed]);
+
+  const handleRetrySegment = useCallback(
+    async (segmentId: string) => {
+      if (!uploadArticleId) return;
+      setUploadMessage(null);
+      setIsUploadingAudio(true);
+      try {
+        await uploadSegmentAudio(uploadArticleId, segmentId);
+      } catch (err) {
+        console.error("重试上传段落失败", err);
+        setUploadMessage("重试失败，请稍后再试");
+      } finally {
+        setIsUploadingAudio(false);
+      }
+    },
+    [uploadArticleId, uploadSegmentAudio]
+  );
 
   // 加载文章
   const handleLoad = useCallback(
@@ -137,6 +246,8 @@ export default function ArticleManager({
     const cleaned = text.replace(/\s+/g, " ").trim();
     return cleaned.length > 50 ? cleaned.slice(0, 50) + "..." : cleaned;
   };
+
+  const canRetry = Boolean(uploadArticleId) && uploadStats.failed > 0 && !isSaving && !isUploadingAudio;
 
   return (
     <>
@@ -209,6 +320,85 @@ export default function ArticleManager({
               </button>
             </div>
           )}
+
+          {saveError ? <div className={styles.errorBanner}>{saveError}</div> : null}
+          {uploadMessage ? <div className={styles.noticeBanner}>{uploadMessage}</div> : null}
+
+          {showUploadPanel && uploadCandidates.length > 0 ? (
+            <div className={styles.uploadPanel}>
+              <div className={styles.uploadHeaderRow}>
+                <h3 className={styles.uploadTitle}>音频上传</h3>
+                <span className={styles.uploadSummary}>
+                  {uploadStats.done}/{uploadStats.total}
+                  {uploadStats.failed > 0 ? ` · 失败 ${uploadStats.failed}` : ""}
+                </span>
+              </div>
+
+              <progress
+                className={styles.uploadProgress}
+                value={Math.min(uploadStats.total, uploadStats.done)}
+                max={Math.max(1, uploadStats.total)}
+              />
+
+              <div className={styles.uploadActions}>
+                <button
+                  type="button"
+                  className={styles.retryAllButton}
+                  onClick={handleRetryFailedUploads}
+                  disabled={!canRetry}
+                >
+                  重试失败段落
+                </button>
+              </div>
+
+              <div className={styles.uploadList}>
+                {uploadCandidates.map((seg) => {
+                  const effectiveStatus = seg.cloudUrl ? "success" : seg.uploadStatus || "pending";
+                  const statusLabel = getUploadStatusLabel(effectiveStatus);
+                  const attemptText = seg.uploadAttempts ? ` (${seg.uploadAttempts}/3)` : "";
+
+                  return (
+                    <div key={seg.id} className={styles.uploadItem}>
+                      <div className={styles.uploadItemRow}>
+                        <span className={styles.segmentId}>{seg.id}</span>
+                        <div className={styles.uploadRight}>
+                          <span
+                            className={`${styles.statusBadge} ${
+                              effectiveStatus === "success"
+                                ? styles.statusSuccess
+                                : effectiveStatus === "failed"
+                                  ? styles.statusFailed
+                                  : effectiveStatus === "uploading"
+                                    ? styles.statusUploading
+                                    : styles.statusPending
+                            }`}
+                          >
+                            {statusLabel}
+                            {effectiveStatus === "uploading" ? attemptText : ""}
+                          </span>
+
+                          {effectiveStatus === "failed" && uploadArticleId ? (
+                            <button
+                              type="button"
+                              className={styles.retryButton}
+                              disabled={isSaving || isUploadingAudio}
+                              onClick={() => handleRetrySegment(seg.id)}
+                            >
+                              重试
+                            </button>
+                          ) : null}
+                        </div>
+                      </div>
+
+                      {effectiveStatus === "failed" && seg.uploadError ? (
+                        <div className={styles.uploadError}>{seg.uploadError}</div>
+                      ) : null}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ) : null}
         </div>
 
         <div className={styles.listSection}>

@@ -11,6 +11,15 @@ export interface Article {
   updatedAt: number;
 }
 
+export class UploadAudioError extends Error {
+  status?: number;
+  constructor(message: string, status?: number) {
+    super(message);
+    this.name = "UploadAudioError";
+    this.status = status;
+  }
+}
+
 /**
  * 获取所有文章（按更新时间倒序）
  */
@@ -91,23 +100,61 @@ export async function deleteArticle(id: string): Promise<void> {
 export async function uploadAudio(
   articleId: string,
   segmentId: string,
-  audioBlob: Blob
+  audioBlob: Blob,
+  options?: { signal?: AbortSignal; timeoutMs?: number }
 ): Promise<string> {
+  const controller = new AbortController();
+  const cleanup: Array<() => void> = [];
+
+  if (options?.timeoutMs && Number.isFinite(options.timeoutMs) && options.timeoutMs > 0) {
+    const timeoutId = globalThis.setTimeout(() => controller.abort(), options.timeoutMs);
+    cleanup.push(() => globalThis.clearTimeout(timeoutId));
+  }
+
+  if (options?.signal) {
+    if (options.signal.aborted) {
+      controller.abort();
+    } else {
+      const onAbort = () => controller.abort();
+      options.signal.addEventListener("abort", onAbort);
+      cleanup.push(() => options.signal?.removeEventListener("abort", onAbort));
+    }
+  }
+
   const formData = new FormData();
   formData.append("audio", audioBlob);
   formData.append("segmentId", segmentId);
 
-  const response = await fetch(`/api/articles/${articleId}/audio`, {
-    method: "POST",
-    body: formData,
-  });
+  try {
+    const response = await fetch(`/api/articles/${articleId}/audio`, {
+      method: "POST",
+      body: formData,
+      signal: controller.signal,
+    });
 
-  if (!response.ok) {
-    throw new Error("上传音频失败");
+    if (!response.ok) {
+      const contentType = response.headers.get("content-type") || "";
+      let serverMessage: string | undefined;
+
+      if (contentType.includes("application/json")) {
+        const payload = (await response.json().catch(() => null)) as { error?: string } | null;
+        serverMessage = payload?.error;
+      } else {
+        serverMessage = await response.text().catch(() => undefined);
+      }
+
+      throw new UploadAudioError(serverMessage || "上传音频失败", response.status);
+    }
+
+    const data = (await response.json().catch(() => null)) as { url?: string } | null;
+    const url = data?.url;
+    if (!url) {
+      throw new UploadAudioError("上传成功但未返回 URL");
+    }
+    return url;
+  } finally {
+    cleanup.forEach((fn) => fn());
   }
-
-  const data = await response.json();
-  return data.url;
 }
 
 /**

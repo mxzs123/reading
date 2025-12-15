@@ -19,6 +19,9 @@
   --color-primary-hover: #8a6344;
   --color-muted: rgba(0, 0, 0, 0.6);
   --color-highlight: rgba(255, 204, 0, 0.25);
+  --paragraph-active-bg: rgba(112, 87, 66, 0.1);
+  --paragraph-active-accent: rgba(112, 87, 66, 0.55);
+  --paragraph-active-ring: rgba(112, 87, 66, 0.22);
   --background-layer: radial-gradient(
     circle at top,
     rgba(255, 255, 255, 0.18),
@@ -42,6 +45,9 @@ body.theme-white {
   --color-border: rgba(0, 0, 0, 0.08);
   --color-primary: #2b6cb0;
   --color-primary-hover: #225a99;
+  --paragraph-active-bg: rgba(43, 108, 176, 0.1);
+  --paragraph-active-accent: rgba(43, 108, 176, 0.55);
+  --paragraph-active-ring: rgba(43, 108, 176, 0.22);
 }
 
 body.theme-dark {
@@ -54,6 +60,9 @@ body.theme-dark {
   --color-primary-hover: #63b3ed;
   --color-muted: rgba(255, 255, 255, 0.65);
   --color-highlight: rgba(56, 189, 248, 0.2);
+  --paragraph-active-bg: rgba(144, 205, 244, 0.12);
+  --paragraph-active-accent: rgba(144, 205, 244, 0.48);
+  --paragraph-active-ring: rgba(144, 205, 244, 0.26);
   --background-layer: radial-gradient(
     circle at top,
     rgba(255, 255, 255, 0.08),
@@ -81,6 +90,9 @@ body.theme-oled {
   --color-primary-hover: #38bdf8;
   --color-muted: rgba(255, 255, 255, 0.72);
   --color-highlight: rgba(125, 211, 252, 0.22);
+  --paragraph-active-bg: rgba(125, 211, 252, 0.12);
+  --paragraph-active-accent: rgba(125, 211, 252, 0.46);
+  --paragraph-active-ring: rgba(125, 211, 252, 0.28);
   --panel-backdrop: rgba(0, 0, 0, 0.7);
   --panel-muted-bg: rgba(255, 255, 255, 0.06);
   --panel-strong-bg: rgba(255, 255, 255, 0.12);

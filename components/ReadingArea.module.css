@@ -25,7 +25,7 @@
   padding: 0.65rem 1.4rem;
   margin: 0;
   border-radius: 6px;
-  transition: background-color 0.15s ease;
+  transition: background-color 0.15s ease, box-shadow 0.15s ease;
   text-align: var(--text-align);
   text-indent: var(--text-indent);
   white-space: pre-wrap;
@@ -54,11 +54,12 @@
 }
 
 .paragraph:hover {
-  background-color: rgba(0, 0, 0, 0.015);
+  background-color: var(--panel-muted-bg);
 }
 
 .paragraph.active {
-  background-color: rgba(0, 0, 0, 0.025);
+  background-color: var(--paragraph-active-bg);
+  box-shadow: 0 0 0 1px var(--paragraph-active-ring);
 }
 
 /* 空状态 */
@@ -76,11 +77,3 @@
   text-align: center;
 }
 
-/* 深色主题 */
-:global(body.theme-dark) .paragraph:hover {
-  background-color: rgba(255, 255, 255, 0.02);
-}
-
-:global(body.theme-dark) .paragraph.active {
-  background-color: rgba(255, 255, 255, 0.04);
-}

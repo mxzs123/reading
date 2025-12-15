@@ -1,12 +1,18 @@
 import { create } from "zustand";
 import { base64ToAudioBlob } from "@/lib/paragraphs";
-import { uploadAudio } from "@/lib/storage";
+import { UploadAudioError, uploadAudio } from "@/lib/storage";
 import { type ApplyTextNormalization } from "@/lib/settings";
 
 const DEFAULT_TTS_CONCURRENCY = 4;
+const DEFAULT_UPLOAD_CONCURRENCY = 6;
+const MIN_UPLOAD_CONCURRENCY = 2;
+const UPLOAD_TIMEOUT_MS = 45_000;
+const MAX_UPLOAD_RETRIES = 3;
 const MAX_CONCURRENCY = 128;
 
 export type SegmentStatus = "idle" | "generating" | "ready" | "error";
+
+export type UploadStatus = "pending" | "uploading" | "success" | "failed";
 
 export interface SegmentState {
   id: string;
@@ -16,6 +22,15 @@ export interface SegmentState {
   audioUrl?: string;
   audioBlob?: Blob; // 保存原始 blob 用于上传
   cloudUrl?: string; // 云端 URL
+  uploadStatus?: UploadStatus;
+  uploadError?: string;
+  uploadAttempts?: number;
+}
+
+export interface UploadAllResult {
+  total: number;
+  success: number;
+  failed: number;
 }
 
 type AzureGenerationParams = {
@@ -88,7 +103,8 @@ interface AudioStore {
   stop: () => void;
   seek: (time: number) => void;
   startSequenceFrom: (id: string) => void;
-  uploadAllAudio: (articleId: string) => Promise<void>;
+  uploadAllAudio: (articleId: string) => Promise<UploadAllResult>;
+  uploadSegmentAudio: (articleId: string, segmentId: string) => Promise<void>;
   loadAudioUrls: (audioUrls: string[]) => void;
   setConcurrencyLimit: (limit: number) => void;
 }
@@ -106,6 +122,23 @@ function getAudio(): HTMLAudioElement {
 
 // 追踪排队或正在生成的段落，避免重复生成
 const pendingGenerationIds = new Set<string>();
+
+const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+
+function getUploadErrorInfo(error: unknown): { message: string; status?: number; retryable: boolean } {
+  if (error instanceof UploadAudioError) {
+    const status = error.status;
+    const retryable = status ? [408, 425, 429, 500, 502, 503, 504].includes(status) : true;
+    return { message: error.message || "上传音频失败", status, retryable };
+  }
+
+  if (error instanceof Error) {
+    const message = error.message || "上传音频失败";
+    return { message, retryable: true };
+  }
+
+  return { message: "上传音频失败", retryable: true };
+}
 
 export const useAudioStore = create<AudioStore>((set, get) => {
   // 内部辅助函数：播放下一个段落
@@ -160,6 +193,73 @@ export const useAudioStore = create<AudioStore>((set, get) => {
   const generationQueue: GenerationTask[] = [];
   let activeBatchCount = 0;
   let concurrencyLimitInternal = DEFAULT_TTS_CONCURRENCY;
+
+  let uploadInProgress = false;
+
+  const setSegmentUploadState = (segmentId: string, patch: Partial<SegmentState>) => {
+    set((state) => ({
+      segments: state.segments.map((s) => (s.id === segmentId ? { ...s, ...patch } : s)),
+    }));
+  };
+
+  const uploadSegmentWithRetry = async (articleId: string, segmentId: string) => {
+    const segment = get().segments.find((s) => s.id === segmentId);
+    if (!segment?.audioBlob || segment.cloudUrl) {
+      return { ok: true as const };
+    }
+
+    let lastStatus: number | undefined;
+    let lastMessage = "上传音频失败";
+
+    for (let attempt = 1; attempt <= MAX_UPLOAD_RETRIES; attempt += 1) {
+      setSegmentUploadState(segmentId, {
+        uploadStatus: "uploading",
+        uploadAttempts: attempt,
+        uploadError: undefined,
+      });
+
+      try {
+        const cloudUrl = await uploadAudio(articleId, segmentId, segment.audioBlob, {
+          timeoutMs: UPLOAD_TIMEOUT_MS,
+        });
+
+        setSegmentUploadState(segmentId, {
+          cloudUrl,
+          uploadStatus: "success",
+          uploadError: undefined,
+        });
+
+        return { ok: true as const };
+      } catch (error) {
+        const info = getUploadErrorInfo(error);
+        lastStatus = info.status;
+        lastMessage = info.message;
+
+        const canRetry = info.retryable && attempt < MAX_UPLOAD_RETRIES;
+        if (!canRetry) {
+          setSegmentUploadState(segmentId, {
+            uploadStatus: "failed",
+            uploadError: lastMessage,
+          });
+          return { ok: false as const, status: lastStatus };
+        }
+
+        const base = info.status === 429 ? 1500 : 700;
+        const backoff = Math.min(8000, base * 2 ** (attempt - 1));
+        const jitter = Math.floor(Math.random() * 300);
+        setSegmentUploadState(segmentId, {
+          uploadError: `${lastMessage}（第 ${attempt}/${MAX_UPLOAD_RETRIES} 次失败，准备重试）`,
+        });
+        await sleep(backoff + jitter);
+      }
+    }
+
+    setSegmentUploadState(segmentId, {
+      uploadStatus: "failed",
+      uploadError: lastMessage,
+    });
+    return { ok: false as const, status: lastStatus };
+  };
 
   const runGenerationTask = async (task: GenerationTask) => {
     const { id, params } = task;
@@ -477,29 +577,67 @@ export const useAudioStore = create<AudioStore>((set, get) => {
     },
 
     uploadAllAudio: async (articleId) => {
-      const { segments } = get();
-      const readySegments = segments.filter((s) => s.status === "ready" && s.audioBlob && !s.cloudUrl);
-
-      // 并行上传，每批 6 个
-      const UPLOAD_CONCURRENCY = 6;
-      for (let i = 0; i < readySegments.length; i += UPLOAD_CONCURRENCY) {
-        const batch = readySegments.slice(i, i + UPLOAD_CONCURRENCY);
-        await Promise.all(
-          batch.map(async (segment) => {
-            if (!segment.audioBlob) return;
-            try {
-              const cloudUrl = await uploadAudio(articleId, segment.id, segment.audioBlob);
-              set((state) => ({
-                segments: state.segments.map((s) =>
-                  s.id === segment.id ? { ...s, cloudUrl } : s
-                ),
-              }));
-            } catch (error) {
-              console.error(`上传音频 ${segment.id} 失败:`, error);
-            }
-          })
-        );
+      if (uploadInProgress) {
+        return { total: 0, success: 0, failed: 0 };
       }
+
+      uploadInProgress = true;
+      try {
+        const { segments } = get();
+        const readySegments = segments.filter((s) => s.status === "ready" && s.audioBlob && !s.cloudUrl);
+        if (readySegments.length === 0) {
+          return { total: 0, success: 0, failed: 0 };
+        }
+
+        // 初始化上传状态
+        set((state) => ({
+          segments: state.segments.map((s) =>
+            s.status === "ready" && s.audioBlob && !s.cloudUrl
+              ? { ...s, uploadStatus: "pending", uploadError: undefined, uploadAttempts: 0 }
+              : s
+          ),
+        }));
+
+        let concurrency = DEFAULT_UPLOAD_CONCURRENCY;
+        let success = 0;
+        let failed = 0;
+
+        for (let i = 0; i < readySegments.length; ) {
+          const batch = readySegments.slice(i, i + concurrency);
+          const results = await Promise.all(batch.map((seg) => uploadSegmentWithRetry(articleId, seg.id)));
+          const shouldBackoff = results.some(
+            (r) => !r.ok && r.status !== undefined && [429, 500, 502, 503, 504].includes(r.status)
+          );
+          if (shouldBackoff && concurrency > MIN_UPLOAD_CONCURRENCY) {
+            concurrency = Math.max(MIN_UPLOAD_CONCURRENCY, Math.floor(concurrency / 2));
+          }
+
+          results.forEach((r) => {
+            if (r.ok) success += 1;
+            else failed += 1;
+          });
+
+          i += batch.length;
+        }
+
+        return { total: readySegments.length, success, failed };
+      } finally {
+        uploadInProgress = false;
+      }
+    },
+
+    uploadSegmentAudio: async (articleId, segmentId) => {
+      const segment = get().segments.find((s) => s.id === segmentId);
+      if (!segment?.audioBlob || segment.cloudUrl) return;
+      if (segment.uploadStatus === "uploading") return;
+
+      setSegmentUploadState(segmentId, {
+        uploadStatus: "pending",
+        uploadError: undefined,
+        uploadAttempts: 0,
+      });
+
+      await uploadSegmentWithRetry(articleId, segmentId);
     },
 
     loadAudioUrls: (audioUrls) => {
@@ -515,6 +653,8 @@ export const useAudioStore = create<AudioStore>((set, get) => {
               status: "ready" as SegmentStatus,
               audioUrl: matchingUrl,
               cloudUrl: matchingUrl,
+              uploadStatus: "success" as UploadStatus,
+              uploadError: undefined,
             };
           }
           return seg;

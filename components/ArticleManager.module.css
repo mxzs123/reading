@@ -58,6 +58,195 @@
   border-bottom: 1px solid rgba(0, 0, 0, 0.08);
 }
 
+.errorBanner {
+  margin-top: 0.75rem;
+  padding: 0.6rem 0.75rem;
+  border-radius: 10px;
+  background: rgba(220, 38, 38, 0.1);
+  color: #b91c1c;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.noticeBanner {
+  margin-top: 0.75rem;
+  padding: 0.6rem 0.75rem;
+  border-radius: 10px;
+  background: rgba(37, 99, 235, 0.08);
+  color: rgba(37, 99, 235, 0.95);
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.uploadPanel {
+  margin-top: 0.9rem;
+  padding: 0.8rem;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.03);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.uploadHeaderRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.uploadTitle {
+  margin: 0;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--color-text, #333);
+}
+
+.uploadSummary {
+  font-size: 0.8rem;
+  color: var(--color-muted, #666);
+  white-space: nowrap;
+}
+
+.uploadProgress {
+  width: 100%;
+  height: 10px;
+  margin-top: 0.6rem;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.uploadProgress::-webkit-progress-bar {
+  background: rgba(0, 0, 0, 0.08);
+}
+
+.uploadProgress::-webkit-progress-value {
+  background: var(--color-primary, #2563eb);
+}
+
+.uploadActions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 0.6rem;
+}
+
+.retryAllButton {
+  padding: 0.35rem 0.65rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  background: rgba(0, 0, 0, 0.06);
+  transition: background 0.15s ease;
+}
+
+.retryAllButton:hover:not(:disabled) {
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.retryAllButton:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.uploadList {
+  margin-top: 0.65rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-height: 220px;
+  overflow-y: auto;
+  padding-right: 0.35rem;
+}
+
+.uploadList::-webkit-scrollbar {
+  width: 5px;
+}
+
+.uploadList::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: 999px;
+}
+
+.uploadItem {
+  padding: 0.55rem 0.6rem;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.03);
+}
+
+.uploadItemRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.segmentId {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-text, #333);
+}
+
+.uploadRight {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.statusBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.statusPending {
+  background: rgba(0, 0, 0, 0.06);
+  color: rgba(0, 0, 0, 0.7);
+}
+
+.statusUploading {
+  background: rgba(37, 99, 235, 0.12);
+  color: rgba(37, 99, 235, 0.95);
+}
+
+.statusSuccess {
+  background: rgba(16, 185, 129, 0.12);
+  color: #059669;
+}
+
+.statusFailed {
+  background: rgba(220, 38, 38, 0.12);
+  color: #b91c1c;
+}
+
+.retryButton {
+  padding: 0.25rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: rgba(0, 0, 0, 0.06);
+  transition: background 0.15s ease;
+}
+
+.retryButton:hover:not(:disabled) {
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.retryButton:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.uploadError {
+  margin-top: 0.4rem;
+  font-size: 0.75rem;
+  color: rgba(220, 38, 38, 0.95);
+  line-height: 1.3;
+  word-break: break-word;
+}
+
 .saveButton {
   display: flex;
   align-items: center;
