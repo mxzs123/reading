@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { base64ToAudioBlob } from "@/lib/paragraphs";
 import { UploadAudioError, uploadAudio } from "@/lib/storage";
-import { type ApplyTextNormalization } from "@/lib/settings";
+import { type ApplyTextNormalization, type GeminiTTSModel } from "@/lib/settings";
 
 const DEFAULT_TTS_CONCURRENCY = 4;
 const DEFAULT_UPLOAD_CONCURRENCY = 6;
@@ -61,7 +61,18 @@ type ElevenLabsGenerationParams = {
   optimizeStreamingLatency?: number | null;
 };
 
-type GenerationParams = AzureGenerationParams | ElevenLabsGenerationParams;
+type GeminiGenerationParams = {
+  provider: "gemini";
+  apiKey: string;
+  model: GeminiTTSModel;
+  voiceName: string;
+  languageCode?: string;
+};
+
+type GenerationParams =
+  | AzureGenerationParams
+  | ElevenLabsGenerationParams
+  | GeminiGenerationParams;
 
 interface GenerationTask {
   id: string;
@@ -277,6 +288,9 @@ export const useAudioStore = create<AudioStore>((set, get) => {
 
     try {
       const trimmedText = segment.text.trim();
+      if (!trimmedText) {
+        throw new Error("段落内容为空，无法生成音频");
+      }
       let endpoint = "/api/tts";
       let body: Record<string, unknown>;
 
@@ -290,7 +304,7 @@ export const useAudioStore = create<AudioStore>((set, get) => {
           volume: params.volume,
           pauseMs: params.pauseMs,
         };
-      } else {
+      } else if (params.provider === "elevenlabs") {
         endpoint = "/api/tts/elevenlabs";
         body = {
           text: trimmedText,
@@ -309,6 +323,15 @@ export const useAudioStore = create<AudioStore>((set, get) => {
           enableLogging: params.enableLogging,
           optimizeStreamingLatency: params.optimizeStreamingLatency,
         };
+      } else {
+        endpoint = "/api/tts/gemini";
+        body = {
+          text: trimmedText,
+          apiKey: params.apiKey,
+          model: params.model,
+          voiceName: params.voiceName || "Kore",
+          languageCode: params.languageCode,
+        };
       }
 
       const response = await fetch(endpoint, {
@@ -323,7 +346,13 @@ export const useAudioStore = create<AudioStore>((set, get) => {
         : { error: await response.text() };
 
       if (!response.ok) {
-        throw new Error((data as { error?: string }).error || "生成失败");
+        const errorMessage = (data as { error?: string }).error || "生成失败";
+        console.warn("TTS 请求失败", {
+          endpoint,
+          status: response.status,
+          error: errorMessage,
+        });
+        throw new Error(errorMessage);
       }
 
       const audioBase64 = (data as { audio?: string }).audio;
@@ -484,6 +513,17 @@ export const useAudioStore = create<AudioStore>((set, get) => {
             segments: state.segments.map((s) =>
               s.id === id
                 ? { ...s, status: "error" as SegmentStatus, error: "请先填写 ElevenLabs Voice ID" }
+                : s
+            ),
+          }));
+          return;
+        }
+      } else if (params.provider === "gemini") {
+        if (!params.apiKey) {
+          set((state) => ({
+            segments: state.segments.map((s) =>
+              s.id === id
+                ? { ...s, status: "error" as SegmentStatus, error: "请先在设置中填入 Gemini API Key" }
                 : s
             ),
           }));

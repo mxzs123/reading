@@ -54,6 +54,17 @@ export function Paragraph({
         optimizeStreamingLatency: settings.elevenOptimizeStreamingLatency,
       };
     }
+
+    if (settings.ttsProvider === "gemini") {
+      return {
+        provider: "gemini" as const,
+        apiKey: settings.geminiApiKey,
+        model: settings.geminiModel,
+        voiceName: settings.geminiVoiceName,
+        languageCode: settings.geminiLanguageCode,
+      };
+    }
+
     return {
       provider: "azure" as const,
       apiKey: settings.azureApiKey,
@@ -81,6 +92,10 @@ export function Paragraph({
     settings.elevenStyle,
     settings.elevenUseSpeakerBoost,
     settings.elevenVoiceId,
+    settings.geminiApiKey,
+    settings.geminiLanguageCode,
+    settings.geminiModel,
+    settings.geminiVoiceName,
     settings.ttsPauseMs,
     settings.ttsProvider,
     settings.ttsRate,

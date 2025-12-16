@@ -7,7 +7,11 @@ export type AzureTTSVoice =
   | "en-US-GuyNeural"
   | "en-GB-SoniaNeural";
 
-export type TTSProvider = "azure" | "elevenlabs";
+export type GeminiTTSModel =
+  | "gemini-2.5-flash-preview-tts"
+  | "gemini-2.5-pro-preview-tts";
+
+export type TTSProvider = "azure" | "elevenlabs" | "gemini";
 export type ApplyTextNormalization = "auto" | "on" | "off";
 
 export type ElevenOutputFormat =
@@ -83,6 +87,11 @@ export interface ReaderSettings {
   elevenApplyTextNormalization: ApplyTextNormalization;
   elevenEnableLogging: boolean;
   elevenOptimizeStreamingLatency: number | null;
+  // Gemini TTS 设置
+  geminiApiKey: string;
+  geminiModel: GeminiTTSModel;
+  geminiVoiceName: string;
+  geminiLanguageCode: string;
   // 播放设置
   autoPlayNext: boolean;
   ttsConcurrency: number;
@@ -130,6 +139,11 @@ export const DEFAULT_SETTINGS: ReaderSettings = {
   elevenApplyTextNormalization: "auto",
   elevenEnableLogging: true,
   elevenOptimizeStreamingLatency: null,
+  // Gemini TTS 默认设置
+  geminiApiKey: "",
+  geminiModel: "gemini-2.5-flash-preview-tts",
+  geminiVoiceName: "Kore",
+  geminiLanguageCode: "en-US",
   // 播放设置
   autoPlayNext: true,
   ttsConcurrency: 4,

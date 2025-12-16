@@ -38,6 +38,17 @@ export default function AudioPlayer({
         optimizeStreamingLatency: settings.elevenOptimizeStreamingLatency,
       };
     }
+
+    if (settings.ttsProvider === "gemini") {
+      return {
+        provider: "gemini" as const,
+        apiKey: settings.geminiApiKey,
+        model: settings.geminiModel,
+        voiceName: settings.geminiVoiceName,
+        languageCode: settings.geminiLanguageCode,
+      };
+    }
+
     return {
       provider: "azure" as const,
       apiKey: settings.azureApiKey,
@@ -65,6 +76,10 @@ export default function AudioPlayer({
     settings.elevenStyle,
     settings.elevenUseSpeakerBoost,
     settings.elevenVoiceId,
+    settings.geminiApiKey,
+    settings.geminiLanguageCode,
+    settings.geminiModel,
+    settings.geminiVoiceName,
     settings.ttsPauseMs,
     settings.ttsProvider,
     settings.ttsRate,
@@ -157,6 +172,11 @@ export default function AudioPlayer({
       return;
     }
 
+    if (ttsParams.provider === "gemini" && !ttsParams.apiKey) {
+      setError("请先在设置中填入 Gemini API Key");
+      return;
+    }
+
     if (ttsParams.provider === "elevenlabs") {
       if (!ttsParams.apiKey) {
         setError("请先在设置中填入 ElevenLabs API Key");
@@ -172,36 +192,49 @@ export default function AudioPlayer({
     setError(null);
 
     try {
-      const endpoint =
-        ttsParams.provider === "azure" ? "/api/tts" : "/api/tts/elevenlabs";
-      const body =
-        ttsParams.provider === "azure"
-          ? {
-              text: text.trim(),
-              apiKey: ttsParams.apiKey,
-              region: ttsParams.region,
-              voice: ttsParams.voice,
-              rate: ttsParams.rate,
-              volume: ttsParams.volume,
-              pauseMs: ttsParams.pauseMs,
-            }
-          : {
-              text: text.trim(),
-              apiKey: ttsParams.apiKey,
-              voiceId: ttsParams.voiceId,
-              modelId: ttsParams.modelId,
-              languageCode: ttsParams.languageCode,
-              outputFormat: ttsParams.outputFormat,
-              stability: ttsParams.stability,
-              similarityBoost: ttsParams.similarityBoost,
-              style: ttsParams.style,
-              useSpeakerBoost: ttsParams.useSpeakerBoost,
-              speed: ttsParams.speed,
-              seed: ttsParams.seed,
-              applyTextNormalization: ttsParams.applyTextNormalization,
-              enableLogging: ttsParams.enableLogging,
-              optimizeStreamingLatency: ttsParams.optimizeStreamingLatency,
-            };
+      let endpoint: string;
+      let body: Record<string, unknown>;
+
+      if (ttsParams.provider === "azure") {
+        endpoint = "/api/tts";
+        body = {
+          text: text.trim(),
+          apiKey: ttsParams.apiKey,
+          region: ttsParams.region,
+          voice: ttsParams.voice,
+          rate: ttsParams.rate,
+          volume: ttsParams.volume,
+          pauseMs: ttsParams.pauseMs,
+        };
+      } else if (ttsParams.provider === "elevenlabs") {
+        endpoint = "/api/tts/elevenlabs";
+        body = {
+          text: text.trim(),
+          apiKey: ttsParams.apiKey,
+          voiceId: ttsParams.voiceId,
+          modelId: ttsParams.modelId,
+          languageCode: ttsParams.languageCode,
+          outputFormat: ttsParams.outputFormat,
+          stability: ttsParams.stability,
+          similarityBoost: ttsParams.similarityBoost,
+          style: ttsParams.style,
+          useSpeakerBoost: ttsParams.useSpeakerBoost,
+          speed: ttsParams.speed,
+          seed: ttsParams.seed,
+          applyTextNormalization: ttsParams.applyTextNormalization,
+          enableLogging: ttsParams.enableLogging,
+          optimizeStreamingLatency: ttsParams.optimizeStreamingLatency,
+        };
+      } else {
+        endpoint = "/api/tts/gemini";
+        body = {
+          text: text.trim(),
+          apiKey: ttsParams.apiKey,
+          model: ttsParams.model,
+          voiceName: ttsParams.voiceName,
+          languageCode: ttsParams.languageCode,
+        };
+      }
 
       const response = await fetch(endpoint, {
         method: "POST",
@@ -235,11 +268,16 @@ export default function AudioPlayer({
   // 没有 API Key
   const missingApiKey =
     (ttsParams.provider === "azure" && !ttsParams.apiKey) ||
-    (ttsParams.provider === "elevenlabs" && !ttsParams.apiKey);
+    (ttsParams.provider === "elevenlabs" && !ttsParams.apiKey) ||
+    (ttsParams.provider === "gemini" && !ttsParams.apiKey);
 
   if (missingApiKey) {
     const providerLabel =
-      ttsParams.provider === "azure" ? "Azure API Key" : "ElevenLabs API Key";
+      ttsParams.provider === "azure"
+        ? "Azure API Key"
+        : ttsParams.provider === "elevenlabs"
+          ? "ElevenLabs API Key"
+          : "Gemini API Key";
     return (
       <div className={styles.noApiKey}>
         请在设置面板中填入 {providerLabel} 以使用朗读功能

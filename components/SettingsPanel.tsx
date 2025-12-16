@@ -6,6 +6,7 @@ import {
   type ApplyTextNormalization,
   type AzureTTSVoice,
   type ElevenOutputFormat,
+  type GeminiTTSModel,
   type TTSProvider,
 } from "@/lib/settings";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
@@ -55,6 +56,12 @@ const azureVoiceOptions: { value: AzureTTSVoice; label: string }[] = [
 const ttsProviderOptions: { value: TTSProvider; label: string }[] = [
   { value: "azure", label: "Azure Speech" },
   { value: "elevenlabs", label: "ElevenLabs" },
+  { value: "gemini", label: "Google Gemini" },
+];
+
+const geminiModelOptions: { value: GeminiTTSModel; label: string }[] = [
+  { value: "gemini-2.5-flash-preview-tts", label: "Gemini 2.5 Flash TTS（低延迟）" },
+  { value: "gemini-2.5-pro-preview-tts", label: "Gemini 2.5 Pro TTS（高质量）" },
 ];
 
 const elevenModelOptions = [
@@ -129,6 +136,7 @@ export function SettingsPanel({ isOpen, onClose, onArticlesCleared }: SettingsPa
   const [mounted, setMounted] = useState(false);
   const [showApiKey, setShowApiKey] = useState(false);
   const [showElevenApiKey, setShowElevenApiKey] = useState(false);
+  const [showGeminiApiKey, setShowGeminiApiKey] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
   const isMobile = useMediaQuery("(max-width: 768px)");
 
@@ -557,7 +565,7 @@ export function SettingsPanel({ isOpen, onClose, onArticlesCleared }: SettingsPa
                 </p>
               </div>
             </>
-          ) : (
+          ) : settings.ttsProvider === "elevenlabs" ? (
             <>
               <div className={styles.fieldColumn}>
                 <label className={styles.fieldLabel}>ElevenLabs API Key</label>
@@ -766,6 +774,81 @@ export function SettingsPanel({ isOpen, onClose, onArticlesCleared }: SettingsPa
                     ))}
                   </select>
                 </div>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className={styles.fieldColumn}>
+                <label className={styles.fieldLabel}>Gemini API Key</label>
+                <div className={styles.apiKeyWrapper}>
+                  <input
+                    type={showGeminiApiKey ? "text" : "password"}
+                    className={styles.apiKeyInput}
+                    value={settings.geminiApiKey}
+                    onChange={(e) => updateSettings({ geminiApiKey: e.target.value })}
+                    placeholder="输入您的 API Key"
+                  />
+                  <button
+                    type="button"
+                    className={styles.apiKeyToggle}
+                    onClick={() => setShowGeminiApiKey(!showGeminiApiKey)}
+                  >
+                    {showGeminiApiKey ? "隐藏" : "显示"}
+                  </button>
+                </div>
+                <p className={styles.apiKeyHint}>
+                  在{" "}
+                  <a
+                    href="https://aistudio.google.com/app/apikey"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    Google AI Studio
+                  </a>{" "}
+                  创建 API Key（请勿提交到仓库）。
+                </p>
+              </div>
+
+              <div className={styles.grid2}>
+                <div className={styles.fieldColumn}>
+                  <label className={styles.fieldLabel}>模型</label>
+                  <select
+                    className={styles.select}
+                    value={settings.geminiModel}
+                    onChange={(e) =>
+                      updateSettings({ geminiModel: e.target.value as GeminiTTSModel })
+                    }
+                  >
+                    {geminiModelOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className={styles.fieldColumn}>
+                  <label className={styles.fieldLabel}>音色（voiceName）</label>
+                  <input
+                    type="text"
+                    className={styles.apiKeyInput}
+                    value={settings.geminiVoiceName}
+                    onChange={(e) => updateSettings({ geminiVoiceName: e.target.value })}
+                    placeholder="例如 Kore / Puck"
+                  />
+                  <p className={styles.apiKeyHint}>示例音色：Kore、Puck。</p>
+                </div>
+              </div>
+
+              <div className={styles.fieldColumn}>
+                <label className={styles.fieldLabel}>输出语言（languageCode，可选）</label>
+                <input
+                  type="text"
+                  className={styles.apiKeyInput}
+                  value={settings.geminiLanguageCode}
+                  onChange={(e) => updateSettings({ geminiLanguageCode: e.target.value })}
+                  placeholder="BCP-47，例如 en-US"
+                />
               </div>
             </>
           )}

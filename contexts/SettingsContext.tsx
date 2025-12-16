@@ -17,6 +17,31 @@ import {
   mergeSettings,
 } from "@/lib/settings";
 
+const ALLOWED_GEMINI_TTS_MODELS = [
+  "gemini-2.5-flash-preview-tts",
+  "gemini-2.5-pro-preview-tts",
+] as const;
+
+type AllowedGeminiTtsModel = (typeof ALLOWED_GEMINI_TTS_MODELS)[number];
+
+function isAllowedGeminiTtsModel(value: unknown): value is AllowedGeminiTtsModel {
+  return (
+    typeof value === "string" &&
+    (ALLOWED_GEMINI_TTS_MODELS as readonly string[]).includes(value)
+  );
+}
+
+function sanitizeSettings(value: ReaderSettings): ReaderSettings {
+  const next = { ...value } as Record<string, unknown>;
+
+  const geminiModel = next.geminiModel;
+  if (!isAllowedGeminiTtsModel(geminiModel)) {
+    next.geminiModel = DEFAULT_SETTINGS.geminiModel;
+  }
+
+  return next as ReaderSettings;
+}
+
 interface SettingsContextValue {
   settings: ReaderSettings;
   updateSettings: (patch: Partial<ReaderSettings>) => void;
@@ -27,7 +52,7 @@ interface SettingsContextValue {
 const SettingsContext = createContext<SettingsContextValue | null>(null);
 
 // 敏感字段只存本地，不同步云端
-const LOCAL_ONLY_FIELDS = ["azureApiKey", "elevenApiKey"] as const;
+const LOCAL_ONLY_FIELDS = ["azureApiKey", "elevenApiKey", "geminiApiKey"] as const;
 
 export function SettingsProvider({
   children,
@@ -72,8 +97,10 @@ export function SettingsProvider({
   const syncToCloud = useCallback(async (value: ReaderSettings) => {
     try {
       // 移除敏感字段
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const { azureApiKey: _azureApiKey, elevenApiKey: _elevenApiKey, ...cloudSettings } = value;
+      const cloudSettings = { ...(value as unknown as Record<string, unknown>) };
+      delete cloudSettings.azureApiKey;
+      delete cloudSettings.elevenApiKey;
+      delete cloudSettings.geminiApiKey;
 
       await fetch("/api/settings", {
         method: "PUT",
@@ -93,7 +120,7 @@ export function SettingsProvider({
       const localSettings = local
         ? { ...DEFAULT_SETTINGS, ...local }
         : DEFAULT_SETTINGS;
-      setSettings(localSettings);
+      setSettings(sanitizeSettings(localSettings));
 
       // 2. 尝试从云端同步
       try {
@@ -111,9 +138,10 @@ export function SettingsProvider({
               merged[field] = local[field];
             }
           }
-          setSettings(merged);
+          const sanitized = sanitizeSettings(merged);
+          setSettings(sanitized);
           // 更新本地缓存
-          saveToLocalStorage(merged);
+          saveToLocalStorage(sanitized);
         }
       } catch (error) {
         console.warn("云端设置加载失败，使用本地缓存", error);
