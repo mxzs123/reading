@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useSettings } from "@/contexts/SettingsContext";
 import {
   type ApplyTextNormalization,
@@ -133,16 +133,11 @@ const fontFamilies = [
 
 export function SettingsPanel({ isOpen, onClose, onArticlesCleared }: SettingsPanelProps) {
   const { settings, updateSettings, resetSettings, hydrated } = useSettings();
-  const [mounted, setMounted] = useState(false);
   const [showApiKey, setShowApiKey] = useState(false);
   const [showElevenApiKey, setShowElevenApiKey] = useState(false);
   const [showGeminiApiKey, setShowGeminiApiKey] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
   const isMobile = useMediaQuery("(max-width: 768px)");
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   const handleClearAllArticles = async () => {
     if (!confirm("确定要删除所有文章吗？此操作不可恢复！")) {
@@ -206,8 +201,6 @@ export function SettingsPanel({ isOpen, onClose, onArticlesCleared }: SettingsPa
     settings.pageWidthVw,
     settings.pageWidthCh,
   ]);
-
-  if (!mounted) return null;
 
   return (
     <>

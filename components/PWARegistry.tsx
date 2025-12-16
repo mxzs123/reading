@@ -8,6 +8,25 @@ export function PWARegistry() {
       return;
     }
 
+    // 开发环境禁用/清理 SW，避免缓存旧的客户端 JS 导致 hydration mismatch。
+    if (process.env.NODE_ENV !== "production") {
+      navigator.serviceWorker
+        .getRegistrations()
+        .then((registrations) =>
+          Promise.all(registrations.map((registration) => registration.unregister()))
+        )
+        .then(() => {
+          if (!("caches" in window)) return;
+          return window.caches
+            .keys()
+            .then((keys) => Promise.all(keys.map((key) => window.caches.delete(key))));
+        })
+        .catch(() => {
+          /* 静默失败即可 */
+        });
+      return;
+    }
+
     const register = () => {
       navigator.serviceWorker
         .register("/sw.js")
