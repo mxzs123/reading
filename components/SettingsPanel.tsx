@@ -843,6 +843,96 @@ export function SettingsPanel({ isOpen, onClose, onArticlesCleared }: SettingsPa
                   placeholder="BCP-47，例如 en-US"
                 />
               </div>
+
+              <div className={styles.fieldColumn}>
+                <label className={styles.fieldLabel}>风格提示词（Style Prompt，可选）</label>
+                <textarea
+                  className={styles.apiKeyInput}
+                  value={settings.geminiStylePrompt}
+                  onChange={(e) => updateSettings({ geminiStylePrompt: e.target.value })}
+                  placeholder={`例如：Say in a spooky whisper:\n或：Say cheerfully: {{text}}`}
+                  rows={4}
+                />
+                <p className={styles.apiKeyHint}>
+                  Gemini 官方通过自然语言提示词控制语气/情绪/口音/语速；未填写则直接朗读原文。
+                  支持使用 {"{{text}}"} 作为占位符。
+                </p>
+              </div>
+
+              <label className={styles.switchLabel}>
+                <span className={styles.fieldLabel}>多角色朗读（最多 2 人）</span>
+                <input
+                  type="checkbox"
+                  hidden
+                  checked={settings.geminiUseMultiSpeaker}
+                  onChange={(e) =>
+                    updateSettings({ geminiUseMultiSpeaker: e.target.checked })
+                  }
+                />
+                <span className={styles.switchSlider}></span>
+              </label>
+
+              {settings.geminiUseMultiSpeaker ? (
+                <>
+                  <div className={styles.grid2}>
+                    <div className={styles.fieldColumn}>
+                      <label className={styles.fieldLabel}>角色 1 名称</label>
+                      <input
+                        type="text"
+                        className={styles.apiKeyInput}
+                        value={settings.geminiSpeaker1Name}
+                        onChange={(e) =>
+                          updateSettings({ geminiSpeaker1Name: e.target.value })
+                        }
+                        placeholder="例如 Speaker1 / Joe"
+                      />
+                    </div>
+                    <div className={styles.fieldColumn}>
+                      <label className={styles.fieldLabel}>角色 1 音色（voiceName）</label>
+                      <input
+                        type="text"
+                        className={styles.apiKeyInput}
+                        value={settings.geminiSpeaker1VoiceName}
+                        onChange={(e) =>
+                          updateSettings({ geminiSpeaker1VoiceName: e.target.value })
+                        }
+                        placeholder="例如 Kore"
+                      />
+                    </div>
+                  </div>
+
+                  <div className={styles.grid2}>
+                    <div className={styles.fieldColumn}>
+                      <label className={styles.fieldLabel}>角色 2 名称</label>
+                      <input
+                        type="text"
+                        className={styles.apiKeyInput}
+                        value={settings.geminiSpeaker2Name}
+                        onChange={(e) =>
+                          updateSettings({ geminiSpeaker2Name: e.target.value })
+                        }
+                        placeholder="例如 Speaker2 / Jane"
+                      />
+                    </div>
+                    <div className={styles.fieldColumn}>
+                      <label className={styles.fieldLabel}>角色 2 音色（voiceName）</label>
+                      <input
+                        type="text"
+                        className={styles.apiKeyInput}
+                        value={settings.geminiSpeaker2VoiceName}
+                        onChange={(e) =>
+                          updateSettings({ geminiSpeaker2VoiceName: e.target.value })
+                        }
+                        placeholder="例如 Puck"
+                      />
+                    </div>
+                  </div>
+
+                  <p className={styles.apiKeyHint}>
+                    文本需包含与上方名称一致的对话行，例如：{settings.geminiSpeaker1Name || "Speaker1"}: ...。
+                  </p>
+                </>
+              ) : null}
             </>
           )}
 

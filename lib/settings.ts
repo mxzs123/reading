@@ -92,6 +92,12 @@ export interface ReaderSettings {
   geminiModel: GeminiTTSModel;
   geminiVoiceName: string;
   geminiLanguageCode: string;
+  geminiStylePrompt: string;
+  geminiUseMultiSpeaker: boolean;
+  geminiSpeaker1Name: string;
+  geminiSpeaker1VoiceName: string;
+  geminiSpeaker2Name: string;
+  geminiSpeaker2VoiceName: string;
   // 播放设置
   autoPlayNext: boolean;
   ttsConcurrency: number;
@@ -144,6 +150,12 @@ export const DEFAULT_SETTINGS: ReaderSettings = {
   geminiModel: "gemini-2.5-flash-preview-tts",
   geminiVoiceName: "Kore",
   geminiLanguageCode: "en-US",
+  geminiStylePrompt: "",
+  geminiUseMultiSpeaker: false,
+  geminiSpeaker1Name: "Speaker1",
+  geminiSpeaker1VoiceName: "Kore",
+  geminiSpeaker2Name: "Speaker2",
+  geminiSpeaker2VoiceName: "Puck",
   // 播放设置
   autoPlayNext: true,
   ttsConcurrency: 4,

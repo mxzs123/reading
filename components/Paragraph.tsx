@@ -62,6 +62,12 @@ export function Paragraph({
         model: settings.geminiModel,
         voiceName: settings.geminiVoiceName,
         languageCode: settings.geminiLanguageCode,
+        stylePrompt: settings.geminiStylePrompt,
+        multiSpeaker: settings.geminiUseMultiSpeaker,
+        speaker1Name: settings.geminiSpeaker1Name,
+        speaker1VoiceName: settings.geminiSpeaker1VoiceName,
+        speaker2Name: settings.geminiSpeaker2Name,
+        speaker2VoiceName: settings.geminiSpeaker2VoiceName,
       };
     }
 
@@ -95,6 +101,12 @@ export function Paragraph({
     settings.geminiApiKey,
     settings.geminiLanguageCode,
     settings.geminiModel,
+    settings.geminiSpeaker1Name,
+    settings.geminiSpeaker1VoiceName,
+    settings.geminiSpeaker2Name,
+    settings.geminiSpeaker2VoiceName,
+    settings.geminiStylePrompt,
+    settings.geminiUseMultiSpeaker,
     settings.geminiVoiceName,
     settings.ttsPauseMs,
     settings.ttsProvider,

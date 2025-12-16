@@ -46,6 +46,12 @@ export default function AudioPlayer({
         model: settings.geminiModel,
         voiceName: settings.geminiVoiceName,
         languageCode: settings.geminiLanguageCode,
+        stylePrompt: settings.geminiStylePrompt,
+        multiSpeaker: settings.geminiUseMultiSpeaker,
+        speaker1Name: settings.geminiSpeaker1Name,
+        speaker1VoiceName: settings.geminiSpeaker1VoiceName,
+        speaker2Name: settings.geminiSpeaker2Name,
+        speaker2VoiceName: settings.geminiSpeaker2VoiceName,
       };
     }
 
@@ -79,6 +85,12 @@ export default function AudioPlayer({
     settings.geminiApiKey,
     settings.geminiLanguageCode,
     settings.geminiModel,
+    settings.geminiSpeaker1Name,
+    settings.geminiSpeaker1VoiceName,
+    settings.geminiSpeaker2Name,
+    settings.geminiSpeaker2VoiceName,
+    settings.geminiStylePrompt,
+    settings.geminiUseMultiSpeaker,
     settings.geminiVoiceName,
     settings.ttsPauseMs,
     settings.ttsProvider,
@@ -233,6 +245,12 @@ export default function AudioPlayer({
           model: ttsParams.model,
           voiceName: ttsParams.voiceName,
           languageCode: ttsParams.languageCode,
+          stylePrompt: ttsParams.stylePrompt,
+          multiSpeaker: ttsParams.multiSpeaker,
+          speaker1Name: ttsParams.speaker1Name,
+          speaker1VoiceName: ttsParams.speaker1VoiceName,
+          speaker2Name: ttsParams.speaker2Name,
+          speaker2VoiceName: ttsParams.speaker2VoiceName,
         };
       }
 

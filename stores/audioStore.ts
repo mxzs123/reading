@@ -67,6 +67,12 @@ type GeminiGenerationParams = {
   model: GeminiTTSModel;
   voiceName: string;
   languageCode?: string;
+  stylePrompt?: string;
+  multiSpeaker?: boolean;
+  speaker1Name?: string;
+  speaker1VoiceName?: string;
+  speaker2Name?: string;
+  speaker2VoiceName?: string;
 };
 
 type GenerationParams =
@@ -331,6 +337,12 @@ export const useAudioStore = create<AudioStore>((set, get) => {
           model: params.model,
           voiceName: params.voiceName || "Kore",
           languageCode: params.languageCode,
+          stylePrompt: params.stylePrompt,
+          multiSpeaker: params.multiSpeaker,
+          speaker1Name: params.speaker1Name,
+          speaker1VoiceName: params.speaker1VoiceName,
+          speaker2Name: params.speaker2Name,
+          speaker2VoiceName: params.speaker2VoiceName,
         };
       }
 

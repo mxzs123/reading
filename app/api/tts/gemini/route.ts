@@ -51,6 +51,12 @@ interface GeminiTTSRequest {
   model?: GeminiTTSModel;
   voiceName?: string;
   languageCode?: string;
+  stylePrompt?: string;
+  multiSpeaker?: boolean;
+  speaker1Name?: string;
+  speaker1VoiceName?: string;
+  speaker2Name?: string;
+  speaker2VoiceName?: string;
 }
 
 export async function POST(request: NextRequest) {
@@ -62,7 +68,18 @@ export async function POST(request: NextRequest) {
     return Response.json({ error: "请求格式错误" }, { status: 400 });
   }
 
-  const { text, apiKey, model: rawModel, voiceName = "Kore" } = body;
+  const {
+    text,
+    apiKey,
+    model: rawModel,
+    voiceName = "Kore",
+    stylePrompt,
+    multiSpeaker,
+    speaker1Name,
+    speaker1VoiceName,
+    speaker2Name,
+    speaker2VoiceName,
+  } = body;
 
   if (typeof text !== "string" || typeof apiKey !== "string") {
     return Response.json({ error: "缺少必要参数: text 或 apiKey" }, { status: 400 });
@@ -75,9 +92,13 @@ export async function POST(request: NextRequest) {
     return Response.json({ error: "缺少必要参数: text 或 apiKey" }, { status: 400 });
   }
 
-  if (normalizedText.length > 5000) {
+  const normalizedStylePrompt =
+    typeof stylePrompt === "string" ? stylePrompt.trim() : "";
+  const promptText = buildTtsPrompt(normalizedText, normalizedStylePrompt);
+
+  if (promptText.length > 5000) {
     return Response.json(
-      { error: "文本过长，请分段生成（最大 5000 字符）" },
+      { error: "提示词与文本过长，请分段生成（最大 5000 字符）" },
       { status: 400 }
     );
   }
@@ -96,27 +117,94 @@ export async function POST(request: NextRequest) {
 
   const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${selectedModel}:generateContent`;
 
-  const normalizedVoiceName =
-    typeof voiceName === "string" ? resolvePrebuiltVoiceName(voiceName) : "Kore";
-  if (!normalizedVoiceName) {
-    return Response.json(
-      { error: "不支持的 voiceName（示例：Kore / Puck）" },
-      { status: 400 }
-    );
+  const useMultiSpeaker = Boolean(multiSpeaker);
+  let normalizedVoiceName: (typeof ALLOWED_TTS_VOICES)[number] | null = null;
+  let speechConfig: Record<string, unknown>;
+  let multiSpeakerInfo:
+    | {
+        speaker1: string;
+        voice1: (typeof ALLOWED_TTS_VOICES)[number];
+        speaker2: string;
+        voice2: (typeof ALLOWED_TTS_VOICES)[number];
+      }
+    | null = null;
+
+  if (useMultiSpeaker) {
+    const s1Raw = typeof speaker1Name === "string" ? speaker1Name.trim() : "";
+    const s2Raw = typeof speaker2Name === "string" ? speaker2Name.trim() : "";
+    const speaker1 = s1Raw || "Speaker1";
+    const speaker2 = s2Raw || "Speaker2";
+
+    if (speaker1 === speaker2) {
+      return Response.json({ error: "多角色朗读的两个角色名称不能相同" }, { status: 400 });
+    }
+
+    const fallbackVoiceName = typeof voiceName === "string" ? voiceName : "Kore";
+    const voice1Input =
+      typeof speaker1VoiceName === "string" && speaker1VoiceName.trim()
+        ? speaker1VoiceName
+        : fallbackVoiceName;
+    const voice2Input =
+      typeof speaker2VoiceName === "string" && speaker2VoiceName.trim()
+        ? speaker2VoiceName
+        : "Puck";
+
+    const voice1 = resolvePrebuiltVoiceName(voice1Input);
+    const voice2 = resolvePrebuiltVoiceName(voice2Input);
+
+    if (!voice1 || !voice2) {
+      return Response.json(
+        { error: "不支持的 voiceName（示例：Kore / Puck）" },
+        { status: 400 }
+      );
+    }
+
+    multiSpeakerInfo = { speaker1, voice1, speaker2, voice2 };
+    speechConfig = {
+      multiSpeakerVoiceConfig: {
+        speakerVoiceConfigs: [
+          {
+            speaker: speaker1,
+            voiceConfig: {
+              prebuiltVoiceConfig: {
+                voiceName: voice1,
+              },
+            },
+          },
+          {
+            speaker: speaker2,
+            voiceConfig: {
+              prebuiltVoiceConfig: {
+                voiceName: voice2,
+              },
+            },
+          },
+        ],
+      },
+    };
+  } else {
+    normalizedVoiceName =
+      typeof voiceName === "string" ? resolvePrebuiltVoiceName(voiceName) : "Kore";
+    if (!normalizedVoiceName) {
+      return Response.json(
+        { error: "不支持的 voiceName（示例：Kore / Puck）" },
+        { status: 400 }
+      );
+    }
+
+    // `languageCode` 在 Gemini Live API 中可用，但在 `generateContent` 的音频输出里
+    // 可能会导致 400（无效字段/不支持）。这里仅通过 voiceName 控制音色，语言交由模型推断。
+    speechConfig = {
+      voiceConfig: {
+        prebuiltVoiceConfig: {
+          voiceName: normalizedVoiceName,
+        },
+      },
+    };
   }
 
-  // `languageCode` 在 Gemini Live API 中可用，但在 `generateContent` 的音频输出里
-  // 可能会导致 400（无效字段/不支持）。这里仅通过 voiceName 控制音色，语言交由模型推断。
-  const speechConfig: Record<string, unknown> = {
-    voiceConfig: {
-      prebuiltVoiceConfig: {
-        voiceName: normalizedVoiceName,
-      },
-    },
-  };
-
   const payload = {
-    contents: [{ role: "user", parts: [{ text: normalizedText }] }],
+    contents: [{ role: "user", parts: [{ text: promptText }] }],
     generationConfig: {
       responseModalities: ["AUDIO"],
       speechConfig,
@@ -144,13 +232,36 @@ export async function POST(request: NextRequest) {
           contents: payload.contents,
           generation_config: {
             response_modalities: ["AUDIO"],
-            speech_config: {
-              voice_config: {
-                prebuilt_voice_config: {
-                  voice_name: normalizedVoiceName,
+            speech_config: useMultiSpeaker
+              ? {
+                  multi_speaker_voice_config: {
+                    speaker_voice_configs: [
+                      {
+                        speaker: multiSpeakerInfo!.speaker1,
+                        voice_config: {
+                          prebuilt_voice_config: {
+                            voice_name: multiSpeakerInfo!.voice1,
+                          },
+                        },
+                      },
+                      {
+                        speaker: multiSpeakerInfo!.speaker2,
+                        voice_config: {
+                          prebuilt_voice_config: {
+                            voice_name: multiSpeakerInfo!.voice2,
+                          },
+                        },
+                      },
+                    ],
+                  },
+                }
+              : {
+                  voice_config: {
+                    prebuilt_voice_config: {
+                      voice_name: normalizedVoiceName,
+                    },
+                  },
                 },
-              },
-            },
           },
         },
       },
@@ -232,7 +343,9 @@ export async function POST(request: NextRequest) {
       attempts: attemptNames,
       model: selectedModel,
       voiceName: normalizedVoiceName,
+      multiSpeaker: useMultiSpeaker,
       textLength: normalizedText.length,
+      promptLength: promptText.length,
     });
 
     return Response.json(
@@ -358,4 +471,22 @@ function writeAscii(view: DataView, offset: number, value: string) {
   for (let i = 0; i < value.length; i += 1) {
     view.setUint8(offset + i, value.charCodeAt(i));
   }
+}
+
+function buildTtsPrompt(text: string, stylePrompt: string): string {
+  const normalizedText = text.trim();
+  if (!stylePrompt) return normalizedText;
+
+  const normalizedPrompt = stylePrompt.trim();
+  if (!normalizedPrompt) return normalizedText;
+
+  if (normalizedPrompt.includes("{{text}}")) {
+    return normalizedPrompt.split("{{text}}").join(normalizedText);
+  }
+
+  if (/[:：]$/.test(normalizedPrompt)) {
+    return `${normalizedPrompt} ${normalizedText}`;
+  }
+
+  return `${normalizedPrompt}\n\n${normalizedText}`;
 }
