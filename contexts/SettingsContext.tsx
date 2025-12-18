@@ -39,7 +39,7 @@ function sanitizeSettings(value: ReaderSettings): ReaderSettings {
     next.geminiModel = DEFAULT_SETTINGS.geminiModel;
   }
 
-  return next as ReaderSettings;
+  return next as unknown as ReaderSettings;
 }
 
 interface SettingsContextValue {
