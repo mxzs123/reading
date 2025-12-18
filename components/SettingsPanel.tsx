@@ -138,6 +138,7 @@ export function SettingsPanel({ isOpen, onClose, onArticlesCleared }: SettingsPa
   const [showGeminiApiKey, setShowGeminiApiKey] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
   const isMobile = useMediaQuery("(max-width: 768px)");
+  const wordSyncHighlightSupported = settings.ttsProvider === "elevenlabs";
 
   const handleClearAllArticles = async () => {
     if (!confirm("确定要删除所有文章吗？此操作不可恢复！")) {
@@ -943,6 +944,30 @@ export function SettingsPanel({ isOpen, onClose, onArticlesCleared }: SettingsPa
               hidden
               checked={settings.autoPlayNext}
               onChange={(e) => updateSettings({ autoPlayNext: e.target.checked })}
+            />
+            <span className={styles.switchSlider}></span>
+          </label>
+
+          <label
+            className={`${styles.switchLabel} ${
+              wordSyncHighlightSupported ? "" : styles.switchLabelDisabled
+            }`}
+            aria-disabled={!wordSyncHighlightSupported}
+            title={
+              wordSyncHighlightSupported
+                ? undefined
+                : "仅在选择 ElevenLabs 作为 TTS 提供商时可用"
+            }
+          >
+            <span className={styles.fieldLabel}>单词同步高亮（仅支持 ElevenLabs）</span>
+            <input
+              type="checkbox"
+              hidden
+              checked={settings.elevenWordSyncHighlight}
+              disabled={!wordSyncHighlightSupported}
+              onChange={(e) =>
+                updateSettings({ elevenWordSyncHighlight: e.target.checked })
+              }
             />
             <span className={styles.switchSlider}></span>
           </label>

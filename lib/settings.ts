@@ -87,6 +87,7 @@ export interface ReaderSettings {
   elevenApplyTextNormalization: ApplyTextNormalization;
   elevenEnableLogging: boolean;
   elevenOptimizeStreamingLatency: number | null;
+  elevenWordSyncHighlight: boolean;
   // Gemini TTS 设置
   geminiApiKey: string;
   geminiModel: GeminiTTSModel;
@@ -145,6 +146,7 @@ export const DEFAULT_SETTINGS: ReaderSettings = {
   elevenApplyTextNormalization: "auto",
   elevenEnableLogging: true,
   elevenOptimizeStreamingLatency: null,
+  elevenWordSyncHighlight: true,
   // Gemini TTS 默认设置
   geminiApiKey: "",
   geminiModel: "gemini-2.5-flash-preview-tts",

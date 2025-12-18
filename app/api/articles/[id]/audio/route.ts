@@ -9,6 +9,7 @@ const upsertAudioUrlsScript = kv.createScript<string>(
     "local articleKey = KEYS[1]",
     "local segmentId = ARGV[1]",
     "local url = ARGV[2]",
+    "local wordTimingsJson = ARGV[3]",
     "local current = redis.call('HGET', articleKey, 'audioUrls')",
     "local list = {}",
     "if current and current ~= false then",
@@ -37,6 +38,35 @@ const upsertAudioUrlsScript = kv.createScript<string>(
     "  table.insert(list, url)",
     "end",
     "redis.call('HSET', articleKey, 'audioUrls', cjson.encode(list))",
+
+    "local syncKey = 'segmentWordTimings'",
+    "local currentSync = redis.call('HGET', articleKey, syncKey)",
+    "local sync = {}",
+    "if currentSync and currentSync ~= false then",
+    "  local ok2, decoded2 = pcall(cjson.decode, currentSync)",
+    "  if ok2 and type(decoded2) == 'table' then",
+    "    sync = decoded2",
+    "  else",
+    "    sync = {}",
+    "  end",
+    "end",
+
+    "if wordTimingsJson == nil or wordTimingsJson == '' then",
+    "  sync[segmentId] = nil",
+    "else",
+    "  local ok3, decoded3 = pcall(cjson.decode, wordTimingsJson)",
+    "  if ok3 and type(decoded3) == 'table' then",
+    "    sync[segmentId] = decoded3",
+    "  else",
+    "    sync[segmentId] = nil",
+    "  end",
+    "end",
+
+    "if next(sync) == nil then",
+    "  redis.call('HDEL', articleKey, syncKey)",
+    "else",
+    "  redis.call('HSET', articleKey, syncKey, cjson.encode(sync))",
+    "end",
     "return 'OK'",
   ].join("\n")
 );
@@ -45,6 +75,7 @@ const upsertAudioUrlsScript = kv.createScript<string>(
 export async function POST(request: NextRequest, context: RouteContext) {
   const { id } = await context.params;
   let segmentId: string | null = null;
+  let wordTimingsJson = "";
 
   let formData: FormData;
   try {
@@ -56,6 +87,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
 
   const file = formData.get("audio") as Blob | null;
   segmentId = formData.get("segmentId") as string | null;
+  const wordTimingsRaw = formData.get("wordTimings");
 
   if (!file) {
     return Response.json({ error: "缺少音频文件" }, { status: 400 });
@@ -63,6 +95,30 @@ export async function POST(request: NextRequest, context: RouteContext) {
 
   if (!segmentId) {
     return Response.json({ error: "缺少段落 ID" }, { status: 400 });
+  }
+
+  if (typeof wordTimingsRaw === "string") {
+    wordTimingsJson = wordTimingsRaw;
+    if (wordTimingsJson.trim()) {
+      try {
+        const parsed = JSON.parse(wordTimingsJson) as unknown;
+        if (!Array.isArray(parsed)) {
+          return Response.json({ error: "wordTimings 格式错误" }, { status: 400 });
+        }
+        for (const item of parsed) {
+          if (!item || typeof item !== "object") {
+            return Response.json({ error: "wordTimings 格式错误" }, { status: 400 });
+          }
+          const start = (item as { start?: unknown }).start;
+          const end = (item as { end?: unknown }).end;
+          if (typeof start !== "number" || typeof end !== "number" || !Number.isFinite(start) || !Number.isFinite(end)) {
+            return Response.json({ error: "wordTimings 格式错误" }, { status: 400 });
+          }
+        }
+      } catch {
+        return Response.json({ error: "wordTimings 格式错误" }, { status: 400 });
+      }
+    }
   }
 
   const articleKey = `article:${id}`;
@@ -82,7 +138,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
   }
 
   try {
-    await upsertAudioUrlsScript.exec([articleKey], [segmentId, url]);
+    await upsertAudioUrlsScript.exec([articleKey], [segmentId, url, wordTimingsJson]);
   } catch (error) {
     console.error("更新文章音频索引失败", { articleId: id, segmentId, error });
     return Response.json({ error: "保存音频地址失败，请稍后重试" }, { status: 500 });

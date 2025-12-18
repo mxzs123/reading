@@ -29,6 +29,7 @@ export default function Home() {
   const generatingCount = useAudioStore((s) => s.generatingCount);
   const total = useAudioStore((s) => s.total);
   const loadAudioUrls = useAudioStore((s) => s.loadAudioUrls);
+  const loadSegmentWordTimings = useAudioStore((s) => s.loadSegmentWordTimings);
   const setConcurrencyLimit = useAudioStore((s) => s.setConcurrencyLimit);
   const ttsParams = useMemo(() => {
     if (settings.ttsProvider === "elevenlabs") {
@@ -112,6 +113,7 @@ export default function Home() {
 
   // 待加载的音频 URLs（文章加载后等 segments 初始化完成再恢复）
   const pendingAudioUrlsRef = useRef<string[] | null>(null);
+  const pendingSegmentWordTimingsRef = useRef<Article["segmentWordTimings"] | null>(null);
   const wasArticlePlayingRef = useRef(false);
   const [dictionaryAnchor, setDictionaryAnchor] = useState<
     | {
@@ -386,6 +388,12 @@ export default function Home() {
     } else {
       pendingAudioUrlsRef.current = null;
     }
+
+    if (article.segmentWordTimings && Object.keys(article.segmentWordTimings).length > 0) {
+      pendingSegmentWordTimingsRef.current = article.segmentWordTimings;
+    } else {
+      pendingSegmentWordTimingsRef.current = null;
+    }
     setTimeout(() => {
       outputSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     }, 0);
@@ -403,6 +411,13 @@ export default function Home() {
       pendingAudioUrlsRef.current = null;
     }
   }, [total, loadAudioUrls]);
+
+  useEffect(() => {
+    if (pendingSegmentWordTimingsRef.current && total > 0) {
+      loadSegmentWordTimings(pendingSegmentWordTimingsRef.current);
+      pendingSegmentWordTimingsRef.current = null;
+    }
+  }, [total, loadSegmentWordTimings]);
 
   return (
     <div className={styles.page}>

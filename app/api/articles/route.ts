@@ -7,6 +7,7 @@ interface ArticleMetadata {
   title: string;
   text: string;
   audioUrls?: string[];
+  segmentWordTimings?: Record<string, { start: number; end: number }[]>;
   createdAt: number;
   updatedAt: number;
 }

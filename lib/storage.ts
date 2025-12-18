@@ -7,9 +7,12 @@ export interface Article {
   title: string;
   text: string;
   audioUrls?: string[];
+  segmentWordTimings?: Record<string, WordTiming[]>;
   createdAt: number;
   updatedAt: number;
 }
+
+export type WordTiming = { start: number; end: number };
 
 export class UploadAudioError extends Error {
   status?: number;
@@ -101,7 +104,11 @@ export async function uploadAudio(
   articleId: string,
   segmentId: string,
   audioBlob: Blob,
-  options?: { signal?: AbortSignal; timeoutMs?: number }
+  options?: {
+    signal?: AbortSignal;
+    timeoutMs?: number;
+    wordTimings?: WordTiming[];
+  }
 ): Promise<string> {
   const controller = new AbortController();
   const cleanup: Array<() => void> = [];
@@ -124,6 +131,12 @@ export async function uploadAudio(
   const formData = new FormData();
   formData.append("audio", audioBlob);
   formData.append("segmentId", segmentId);
+  formData.append(
+    "wordTimings",
+    options?.wordTimings && options.wordTimings.length > 0
+      ? JSON.stringify(options.wordTimings)
+      : ""
+  );
 
   try {
     const response = await fetch(`/api/articles/${articleId}/audio`, {

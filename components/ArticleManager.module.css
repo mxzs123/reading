@@ -427,6 +427,10 @@
   color: var(--color-primary, #2563eb);
 }
 
+.hasSyncHighlight {
+  color: rgba(16, 185, 129, 0.95);
+}
+
 .itemActions {
   display: flex;
   gap: 0.25rem;

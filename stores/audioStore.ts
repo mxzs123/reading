@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { base64ToAudioBlob } from "@/lib/paragraphs";
-import { UploadAudioError, uploadAudio } from "@/lib/storage";
+import { UploadAudioError, uploadAudio, type WordTiming } from "@/lib/storage";
 import { type ApplyTextNormalization, type GeminiTTSModel } from "@/lib/settings";
 
 const DEFAULT_TTS_CONCURRENCY = 4;
@@ -9,6 +9,9 @@ const MIN_UPLOAD_CONCURRENCY = 2;
 const UPLOAD_TIMEOUT_MS = 45_000;
 const MAX_UPLOAD_RETRIES = 3;
 const MAX_CONCURRENCY = 128;
+
+const SYNC_START_EPSILON_SEC = 0.02;
+const SYNC_END_EPSILON_SEC = 0.06;
 
 export type SegmentStatus = "idle" | "generating" | "ready" | "error";
 
@@ -22,6 +25,7 @@ export interface SegmentState {
   audioUrl?: string;
   audioBlob?: Blob; // 保存原始 blob 用于上传
   cloudUrl?: string; // 云端 URL
+  wordTimings?: WordTiming[];
   uploadStatus?: UploadStatus;
   uploadError?: string;
   uploadAttempts?: number;
@@ -96,6 +100,9 @@ interface AudioStore {
   currentTime: number;
   duration: number;
 
+  // 同步高亮（当前段落的单词索引）
+  activeWordIndex: number | null;
+
   // 顺序播放
   sequenceMode: boolean;
 
@@ -123,11 +130,13 @@ interface AudioStore {
   uploadAllAudio: (articleId: string) => Promise<UploadAllResult>;
   uploadSegmentAudio: (articleId: string, segmentId: string) => Promise<void>;
   loadAudioUrls: (audioUrls: string[]) => void;
+  loadSegmentWordTimings: (segmentWordTimings: Record<string, WordTiming[]>) => void;
   setConcurrencyLimit: (limit: number) => void;
 }
 
 // 模块级单例 Audio 元素
 let audioElement: HTMLAudioElement | null = null;
+let syncRafId: number | null = null;
 
 function getAudio(): HTMLAudioElement {
   if (!audioElement && typeof window !== "undefined") {
@@ -137,10 +146,60 @@ function getAudio(): HTMLAudioElement {
   return audioElement!;
 }
 
+function findWordIndexAtTime(wordTimings: WordTiming[], time: number): number | null {
+  if (!wordTimings.length) return null;
+  if (!Number.isFinite(time)) return null;
+  const t = Math.max(0, time);
+
+  let lo = 0;
+  let hi = wordTimings.length - 1;
+  let ans = -1;
+  while (lo <= hi) {
+    const mid = (lo + hi) >>> 1;
+    const start = wordTimings[mid]?.start;
+    if (typeof start === "number" && start <= t + SYNC_START_EPSILON_SEC) {
+      ans = mid;
+      lo = mid + 1;
+    } else {
+      hi = mid - 1;
+    }
+  }
+
+  if (ans < 0) return null;
+
+  const current = wordTimings[ans];
+  if (!current) return null;
+
+  const nextStart = ans + 1 < wordTimings.length ? wordTimings[ans + 1]?.start : Number.POSITIVE_INFINITY;
+  const end = Number.isFinite(current.end) ? current.end : nextStart;
+
+  if (!Number.isFinite(current.start)) return null;
+  if (t < current.start - SYNC_START_EPSILON_SEC) return null;
+  if (t <= end + SYNC_END_EPSILON_SEC) return ans;
+  return null;
+}
+
 // 追踪排队或正在生成的段落，避免重复生成
 const pendingGenerationIds = new Set<string>();
 
 const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+
+function normalizeWordTimings(value: unknown): WordTiming[] | undefined {
+  if (!Array.isArray(value) || value.length === 0) return undefined;
+
+  const normalized: WordTiming[] = [];
+  value.forEach((item) => {
+    if (!item || typeof item !== "object") return;
+    const start = (item as { start?: unknown }).start;
+    const end = (item as { end?: unknown }).end;
+    if (typeof start !== "number" || typeof end !== "number") return;
+    if (!Number.isFinite(start) || !Number.isFinite(end)) return;
+    if (end < start) return;
+    normalized.push({ start, end });
+  });
+
+  return normalized.length ? normalized : undefined;
+}
 
 function getUploadErrorInfo(error: unknown): { message: string; status?: number; retryable: boolean } {
   if (error instanceof UploadAudioError) {
@@ -173,6 +232,37 @@ export const useAudioStore = create<AudioStore>((set, get) => {
     }
   };
 
+  const stopSyncLoop = () => {
+    if (syncRafId !== null) {
+      cancelAnimationFrame(syncRafId);
+      syncRafId = null;
+    }
+  };
+
+  const startSyncLoop = () => {
+    if (syncRafId !== null) return;
+
+    const tick = () => {
+      const audio = getAudio();
+      if (!audio || audio.paused) {
+        syncRafId = null;
+        return;
+      }
+
+      const { activeSegmentId, activeWordIndex, segments } = get();
+      const segment = activeSegmentId ? segments.find((s) => s.id === activeSegmentId) : undefined;
+      const wordTimings = segment?.wordTimings;
+      const nextIndex = wordTimings ? findWordIndexAtTime(wordTimings, audio.currentTime) : null;
+      if (nextIndex !== activeWordIndex) {
+        set({ activeWordIndex: nextIndex });
+      }
+
+      syncRafId = requestAnimationFrame(tick);
+    };
+
+    syncRafId = requestAnimationFrame(tick);
+  };
+
   // 初始化 Audio 事件监听
   if (typeof window !== "undefined") {
     const audio = getAudio();
@@ -187,10 +277,12 @@ export const useAudioStore = create<AudioStore>((set, get) => {
 
     audio.addEventListener("play", () => {
       set({ isPlaying: true });
+      startSyncLoop();
     });
 
     audio.addEventListener("pause", () => {
       set({ isPlaying: false });
+      stopSyncLoop();
     });
 
     audio.addEventListener("ended", () => {
@@ -200,9 +292,13 @@ export const useAudioStore = create<AudioStore>((set, get) => {
       } else {
         set({ isPlaying: false });
       }
+
+      stopSyncLoop();
+      set({ activeWordIndex: null });
     });
 
     audio.addEventListener("error", () => {
+      stopSyncLoop();
       get().stop();
     });
   }
@@ -238,6 +334,7 @@ export const useAudioStore = create<AudioStore>((set, get) => {
       try {
         const cloudUrl = await uploadAudio(articleId, segmentId, segment.audioBlob, {
           timeoutMs: UPLOAD_TIMEOUT_MS,
+          wordTimings: segment.wordTimings,
         });
 
         setSegmentUploadState(segmentId, {
@@ -369,6 +466,7 @@ export const useAudioStore = create<AudioStore>((set, get) => {
 
       const audioBase64 = (data as { audio?: string }).audio;
       const mimeType = (data as { mimeType?: string }).mimeType || "audio/mpeg";
+      const wordTimings = normalizeWordTimings((data as { wordTimings?: unknown }).wordTimings);
       if (!audioBase64) {
         throw new Error("未收到音频数据");
       }
@@ -379,7 +477,14 @@ export const useAudioStore = create<AudioStore>((set, get) => {
       set((state) => {
         const newSegments = state.segments.map((s) =>
           s.id === id
-            ? { ...s, status: "ready" as SegmentStatus, audioUrl: url, audioBlob: blob, error: undefined }
+            ? {
+                ...s,
+                status: "ready" as SegmentStatus,
+                audioUrl: url,
+                audioBlob: blob,
+                wordTimings,
+                error: undefined,
+              }
             : s
         );
         return {
@@ -442,6 +547,7 @@ export const useAudioStore = create<AudioStore>((set, get) => {
     isPlaying: false,
     currentTime: 0,
     duration: 0,
+    activeWordIndex: null,
     sequenceMode: false,
     readyCount: 0,
     generatingCount: 0,
@@ -488,6 +594,7 @@ export const useAudioStore = create<AudioStore>((set, get) => {
         isPlaying: false,
         currentTime: 0,
         duration: 0,
+        activeWordIndex: null,
         sequenceMode: false,
         readyCount: 0,
         generatingCount: 0,
@@ -579,10 +686,12 @@ export const useAudioStore = create<AudioStore>((set, get) => {
         audio.src = segment.audioUrl;
         audio.currentTime = 0;
         set({ currentTime: 0 });
+        set({ activeWordIndex: null });
       } else if (isPlaying) {
         // 如果是同一段落且正在播放，重置到开头重新播放
         audio.currentTime = 0;
         set({ currentTime: 0 });
+        set({ activeWordIndex: null });
       }
 
       audio.play().catch(() => {
@@ -608,11 +717,14 @@ export const useAudioStore = create<AudioStore>((set, get) => {
       audio.pause();
       audio.currentTime = 0;
 
+      stopSyncLoop();
+
       set({
         activeSegmentId: null,
         isPlaying: false,
         currentTime: 0,
         duration: 0,
+        activeWordIndex: null,
         sequenceMode: false,
       });
     },
@@ -620,7 +732,11 @@ export const useAudioStore = create<AudioStore>((set, get) => {
     seek: (time) => {
       const audio = getAudio();
       audio.currentTime = time;
-      set({ currentTime: time });
+
+      const { activeSegmentId, segments } = get();
+      const segment = activeSegmentId ? segments.find((s) => s.id === activeSegmentId) : undefined;
+      const nextIndex = segment?.wordTimings ? findWordIndexAtTime(segment.wordTimings, time) : null;
+      set({ currentTime: time, activeWordIndex: nextIndex });
     },
 
     startSequenceFrom: (id) => {
@@ -716,6 +832,23 @@ export const useAudioStore = create<AudioStore>((set, get) => {
           readyCount: newSegments.filter((s) => s.status === "ready").length,
         };
       });
+    },
+
+    loadSegmentWordTimings: (segmentWordTimings) => {
+      if (!segmentWordTimings) return;
+
+      set((state) => ({
+        segments: state.segments.map((seg) => {
+          const next = normalizeWordTimings(segmentWordTimings[seg.id]);
+          if (next) {
+            return { ...seg, wordTimings: next };
+          }
+          if (seg.wordTimings) {
+            return { ...seg, wordTimings: undefined };
+          }
+          return seg;
+        }),
+      }));
     },
 
     setConcurrencyLimit: (limit) => {

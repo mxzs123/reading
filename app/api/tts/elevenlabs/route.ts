@@ -23,6 +23,22 @@ interface ElevenLabsRequest {
   optimizeStreamingLatency?: number | null;
 }
 
+type WordTiming = { start: number; end: number };
+
+type ElevenLabsAlignment = {
+  characters?: string[] | string;
+  character_start_times_seconds?: number[];
+  character_end_times_seconds?: number[];
+};
+
+type ElevenLabsWithTimestampsResponse = {
+  audio_base64?: string;
+  alignment?: ElevenLabsAlignment | null;
+  normalized_alignment?: ElevenLabsAlignment | null;
+};
+
+const WORD_REGEX = /[A-Za-z]+(?:['-][A-Za-z]+)*/g;
+
 export async function POST(request: NextRequest) {
   let body: ElevenLabsRequest;
 
@@ -90,21 +106,24 @@ export async function POST(request: NextRequest) {
 
   const endpoint = `https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(
     voiceId
-  )}${query.toString() ? `?${query.toString()}` : ""}`;
+  )}/with-timestamps${query.toString() ? `?${query.toString()}` : ""}`;
 
   try {
     const response = await fetch(endpoint, {
       method: "POST",
       headers: {
         "xi-api-key": apiKey,
-        Accept: "audio/mpeg",
+        Accept: "application/json",
         "Content-Type": "application/json",
       },
       body: JSON.stringify(payload),
     });
 
     if (!response.ok) {
-      const errorText = await response.text().catch(() => "");
+      const contentType = response.headers.get("content-type") || "";
+      const errorText = contentType.includes("application/json")
+        ? JSON.stringify(await response.json().catch(() => ({})))
+        : await response.text().catch(() => "");
 
       if (response.status === 401 || response.status === 403) {
         return Response.json({ error: "ElevenLabs API Key 无效或无权限" }, { status: response.status });
@@ -120,13 +139,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const audioBuffer = await response.arrayBuffer();
-    const audioBase64 = arrayBufferToBase64(audioBuffer);
-    const mimeType = response.headers.get("content-type") || "audio/mpeg";
+    const data = (await response.json().catch(() => null)) as ElevenLabsWithTimestampsResponse | null;
+    const audioBase64 = data?.audio_base64;
+    if (!audioBase64) {
+      return Response.json({ error: "未收到音频数据" }, { status: 502 });
+    }
+
+    const alignment = data?.alignment ?? data?.normalized_alignment ?? null;
+    const wordTimings = buildWordTimings(text, alignment);
 
     return Response.json({
       audio: audioBase64,
-      mimeType,
+      mimeType: inferMimeType(outputFormat),
+      wordTimings,
     });
   } catch (error) {
     console.error("ElevenLabs TTS 生成失败", error);
@@ -134,12 +159,60 @@ export async function POST(request: NextRequest) {
   }
 }
 
-function arrayBufferToBase64(buffer: ArrayBuffer): string {
-  const bytes = new Uint8Array(buffer);
-  let binary = "";
-  for (let i = 0; i < bytes.byteLength; i++) {
-    binary += String.fromCharCode(bytes[i]);
+function inferMimeType(outputFormat?: string): string {
+  if (!outputFormat) return "audio/mpeg";
+
+  if (outputFormat.startsWith("mp3_")) return "audio/mpeg";
+  if (outputFormat.startsWith("opus_")) return "audio/ogg";
+  if (outputFormat.startsWith("pcm_")) return "audio/wav";
+  if (outputFormat.startsWith("ulaw_") || outputFormat.startsWith("alaw_")) return "audio/wav";
+
+  return "audio/mpeg";
+}
+
+function buildWordTimings(text: string, alignment: ElevenLabsAlignment | null): WordTiming[] | undefined {
+  if (!alignment) return undefined;
+
+  const starts = alignment.character_start_times_seconds;
+  const ends = alignment.character_end_times_seconds;
+  if (!starts || !ends || starts.length === 0 || ends.length === 0) {
+    return undefined;
   }
-  return btoa(binary);
+
+  const limit = Math.min(text.length, starts.length, ends.length);
+  if (limit <= 0) return undefined;
+
+  const timings: WordTiming[] = [];
+
+  for (const match of text.matchAll(WORD_REGEX)) {
+    const index = match.index;
+    if (index === undefined) continue;
+
+    const startIndex = index;
+    const endIndex = startIndex + match[0].length;
+    if (startIndex >= limit) continue;
+
+    const rangeEnd = Math.min(endIndex, limit);
+
+    let wordStart = Number.POSITIVE_INFINITY;
+    let wordEnd = Number.NEGATIVE_INFINITY;
+
+    for (let i = startIndex; i < rangeEnd; i += 1) {
+      const start = starts[i];
+      const end = ends[i];
+      if (Number.isFinite(start)) {
+        wordStart = Math.min(wordStart, start);
+        wordEnd = Math.max(wordEnd, Number.isFinite(end) ? end : start);
+      }
+    }
+
+    if (!Number.isFinite(wordStart) || !Number.isFinite(wordEnd) || wordEnd < wordStart) {
+      continue;
+    }
+
+    timings.push({ start: wordStart, end: wordEnd });
+  }
+
+  return timings.length ? timings : undefined;
 }
 

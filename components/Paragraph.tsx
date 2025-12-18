@@ -29,6 +29,7 @@ export function Paragraph({
   // 从 store 订阅状态
   const activeSegmentId = useAudioStore((s) => s.activeSegmentId);
   const isPlaying = useAudioStore((s) => s.isPlaying);
+  const activeWordIndex = useAudioStore((s) => s.activeWordIndex);
   const playSegment = useAudioStore((s) => s.playSegment);
   const startSequenceFrom = useAudioStore((s) => s.startSequenceFrom);
   const generateSegment = useAudioStore((s) => s.generateSegment);
@@ -116,6 +117,14 @@ export function Paragraph({
 
   const isActive = activeSegmentId === id && isPlaying;
   const tokens = useMemo(() => tokenize(text), [text]);
+  const wordIndexByTokenIndex = useMemo(() => {
+    const indices: Array<number | null> = new Array(tokens.length);
+    let nextWordIndex = 0;
+    for (let i = 0; i < tokens.length; i += 1) {
+      indices[i] = tokens[i]?.type === "word" ? nextWordIndex++ : null;
+    }
+    return indices;
+  }, [tokens]);
 
   // 点击段落空白处触发播放
   const handleParagraphClick = useCallback(
@@ -161,10 +170,20 @@ export function Paragraph({
               ? settings.customBoldRatio
               : settings.boldRatio;
           const { lead, tail } = renderBionicWord(token.value, ratio);
+
+          const wordIdx = wordIndexByTokenIndex[i];
+          const isSyncHighlighted =
+            settings.ttsProvider === "elevenlabs" &&
+            settings.elevenWordSyncHighlight &&
+            activeSegmentId === id &&
+            wordIdx !== null &&
+            activeWordIndex !== null &&
+            activeWordIndex === wordIdx;
+
           return (
             <span
               key={i}
-              className="bionic-word"
+              className={`bionic-word ${isSyncHighlighted ? "sync-highlight" : ""}`}
               role="button"
               tabIndex={0}
               data-word={token.value.toLowerCase()}

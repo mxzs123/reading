@@ -247,6 +247,12 @@ export default function ArticleManager({
     return cleaned.length > 50 ? cleaned.slice(0, 50) + "..." : cleaned;
   };
 
+  const hasSyncHighlight = (article: Article): boolean => {
+    const data = article.segmentWordTimings;
+    if (!data || typeof data !== "object" || Array.isArray(data)) return false;
+    return Object.keys(data).length > 0;
+  };
+
   const canRetry = Boolean(uploadArticleId) && uploadStats.failed > 0 && !isSaving && !isUploadingAudio;
 
   return (
@@ -433,6 +439,9 @@ export default function ArticleManager({
                       <span>{formatDate(article.updatedAt)}</span>
                       {article.audioUrls && article.audioUrls.length > 0 && (
                         <span className={styles.hasAudio}>有音频</span>
+                      )}
+                      {hasSyncHighlight(article) && (
+                        <span className={styles.hasSyncHighlight}>同步高亮</span>
                       )}
                     </div>
                   </div>
