@@ -234,7 +234,11 @@ export default function Home() {
     abortRef.current?.abort();
     setDictionaryOpen(false);
     setSelectedWord("");
-    setDictionaryAnchor(null);
+
+    // 延迟清除 anchor，等待关闭动画完成（0.28s），防止位置跳变导致闪烁
+    setTimeout(() => {
+      setDictionaryAnchor(null);
+    }, 300);
 
     if (typeof document !== "undefined") {
       const active = document.activeElement as HTMLElement | null;
