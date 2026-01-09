@@ -549,7 +549,7 @@ export default function Home() {
                 <h2>仿生阅读</h2>
                 <span className="muted-text">点击单词发音查词，点击段落播放</span>
               </div>
-              {sourceText.trim() && total > 0 && (
+              {settings.readingMode === "audio" && sourceText.trim() && total > 0 && (
                 <div className={styles.audioActions}>
                   {generatingCount > 0 || readyCount > 0 ? (
                     <span className={styles.progressText}>

@@ -2,12 +2,14 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useAudioStore } from "@/stores/audioStore";
+import { useSettings } from "@/contexts/SettingsContext";
 import { formatTime } from "@/lib/paragraphs";
 import styles from "./MiniPlayer.module.css";
 
 const SEEK_STEP_SECONDS = 3;
 
 export function MiniPlayer() {
+  const { settings } = useSettings();
   const activeSegmentId = useAudioStore((s) => s.activeSegmentId);
   const isPlaying = useAudioStore((s) => s.isPlaying);
   const currentTime = useAudioStore((s) => s.currentTime);
@@ -81,7 +83,7 @@ export function MiniPlayer() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [activeSegmentId, seek]);
 
-  if (!activeSegmentId) return null;
+  if (!activeSegmentId || settings.readingMode === "pure") return null;
 
   return (
     <div className={styles.player} role="complementary" aria-label="迷你播放器">

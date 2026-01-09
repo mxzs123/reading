@@ -131,6 +131,8 @@ export function Paragraph({
     async (e: React.MouseEvent) => {
       // 如果点击的是单词，不处理
       if ((e.target as HTMLElement).closest(".bionic-word")) return;
+      // 纯净阅读模式不触发音频
+      if (settings.readingMode === "pure") return;
 
       const play = settings.autoPlayNext ? startSequenceFrom : playSegment;
 
@@ -144,7 +146,7 @@ export function Paragraph({
         play(id);
       }
     },
-    [id, segment, playSegment, startSequenceFrom, generateSegment, settings.autoPlayNext, ttsParams]
+    [id, segment, playSegment, startSequenceFrom, generateSegment, settings.autoPlayNext, ttsParams, settings.readingMode]
   );
 
   // 单词点击处理

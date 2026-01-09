@@ -18,6 +18,11 @@ interface SettingsPanelProps {
   onArticlesCleared?: () => void;
 }
 
+const readingModeOptions = [
+  { value: "pure" as const, label: "纯净阅读" },
+  { value: "audio" as const, label: "音频播放" },
+];
+
 const boldOptions = [
   { value: "off" as const, label: "关闭" },
   { value: "low" as const, label: "低 " },
@@ -139,6 +144,9 @@ export function SettingsPanel({ isOpen, onClose, onArticlesCleared }: SettingsPa
   const [isClearing, setIsClearing] = useState(false);
   const isMobile = useMediaQuery("(max-width: 768px)");
   const wordSyncHighlightSupported = settings.ttsProvider === "elevenlabs";
+  const [viewportWidth] = useState<number>(() =>
+    typeof window !== "undefined" ? window.innerWidth || 0 : 0
+  );
 
   const handleClearAllArticles = async () => {
     if (!confirm("确定要删除所有文章吗？此操作不可恢复！")) {
@@ -163,9 +171,9 @@ export function SettingsPanel({ isOpen, onClose, onArticlesCleared }: SettingsPa
 
   const fontFamilyOptions = useMemo(() => fontFamilies, []);
   const widthMode = settings.pageWidthMode ?? "px";
+
   const approxCharsPerLine = useMemo(() => {
-    if (typeof window === "undefined") return null;
-    if (!hydrated) return null;
+    if (typeof window === "undefined" || !hydrated) return null;
 
     const mode = settings.pageWidthMode ?? "px";
 
@@ -173,7 +181,6 @@ export function SettingsPanel({ isOpen, onClose, onArticlesCleared }: SettingsPa
       return Math.round(settings.pageWidthCh);
     }
 
-    const viewportWidth = window.innerWidth || 0;
     const availableWidth =
       mode === "vw"
         ? viewportWidth * (Math.min(Math.max(settings.pageWidthVw, 60), 96) / 100)
@@ -194,6 +201,7 @@ export function SettingsPanel({ isOpen, onClose, onArticlesCleared }: SettingsPa
     return Math.max(8, Math.round(availableWidth / charWidth));
   }, [
     hydrated,
+    viewportWidth,
     isMobile,
     settings.fontSize,
     settings.letterSpacing,
@@ -226,6 +234,32 @@ export function SettingsPanel({ isOpen, onClose, onArticlesCleared }: SettingsPa
         </header>
 
         <div className={styles.scrollContent}>
+          <section className={styles.section}>
+            <div className={styles.sectionHeader}>阅读模式</div>
+            
+            <div className={styles.fieldRow}>
+              <div className={styles.segmentedControl}>
+                {readingModeOptions.map((option) => (
+                  <button
+                    key={option.value}
+                    className={`${styles.segmentButton} ${
+                      settings.readingMode === option.value
+                        ? styles.segmentActive
+                        : ""
+                    }`}
+                    onClick={() => updateSettings({ readingMode: option.value })}
+                    type="button"
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+              <p className={styles.apiKeyHint}>
+                纯净阅读：仅支持单词查词；音频播放：点击段落可生成并播放音频。
+              </p>
+            </div>
+          </section>
+
           <section className={styles.section}>
             <div className={styles.sectionHeader}>显示外观</div>
             

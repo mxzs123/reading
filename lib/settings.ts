@@ -1,5 +1,6 @@
 export type Theme = "sepia" | "white" | "dark" | "oled";
 export type TextAlign = "left" | "right" | "center" | "justify";
+export type ReadingMode = "pure" | "audio";
 export type AzureRegion = "eastus2";
 export type AzureTTSVoice =
   | "en-US-Ava:DragonHDLatestNeural"
@@ -105,6 +106,8 @@ export interface ReaderSettings {
   ttsRate: number;
   ttsVolume: number;
   ttsPauseMs: number;
+  // 阅读模式
+  readingMode: ReadingMode;
 }
 
 export const DEFAULT_SETTINGS: ReaderSettings = {
@@ -164,6 +167,8 @@ export const DEFAULT_SETTINGS: ReaderSettings = {
   ttsRate: 1,
   ttsVolume: 1,
   ttsPauseMs: 400,
+  // 阅读模式
+  readingMode: "audio",
 };
 
 export const SETTINGS_STORAGE_KEY = "bionicReaderSettings";
