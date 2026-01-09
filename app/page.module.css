@@ -1,45 +1,39 @@
 .page {
-  --mini-player-space: clamp(120px, 24vw, 188px);
+  --mini-player-space: clamp(100px, 20vw, 160px);
   width: 100%;
+  max-width: 1200px;
   margin: 0 auto;
-  padding: clamp(1.8rem, 3vw, 2.8rem) clamp(0.75rem, 4vw, 2.8rem)
-    max(clamp(2.8rem, 6vw, 4rem), env(safe-area-inset-bottom));
+  padding: clamp(2rem, 4vw, 3.5rem) clamp(1rem, 5vw, 4rem);
   padding-bottom: calc(
-    max(clamp(2.8rem, 6vw, 4rem), env(safe-area-inset-bottom)) + var(--mini-player-space)
+    max(clamp(3rem, 6vw, 5rem), env(safe-area-inset-bottom)) + var(--mini-player-space)
   );
-  scroll-padding-bottom: calc(var(--mini-player-space) + env(safe-area-inset-bottom) + 16px);
+  scroll-padding-bottom: calc(var(--mini-player-space) + env(safe-area-inset-bottom) + 20px);
   display: flex;
   flex-direction: column;
-  gap: clamp(2rem, 4vw, 3rem);
+  gap: clamp(2.5rem, 5vw, 4rem);
   min-height: 100vh;
-}
-
-.page::after {
-  content: "";
-  position: fixed;
-  inset: 0;
-  margin: auto;
-  max-width: 1440px;
-  pointer-events: none;
-  z-index: -1;
 }
 
 .header {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
+  align-items: center;
   gap: 1.5rem;
 }
 
 .headline {
-  font-size: clamp(1.8rem, 3.2vw, 2.6rem);
-  margin: 0 0 0.6rem;
-  font-weight: 700;
+  font-family: var(--font-display), Georgia, serif;
+  font-size: clamp(1.6rem, 2.8vw, 2.2rem);
+  margin: 0;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--ink);
 }
 
 .headerActions {
   display: flex;
-  gap: 1rem;
+  align-items: center;
+  gap: 0.75rem;
 }
 
 .layout {
@@ -62,11 +56,16 @@
   width: 100%;
   max-width: calc(var(--page-width) + var(--reading-padding) * 2);
   margin: 0 auto;
-  padding: clamp(1.2rem, 3vw, 1.6rem);
-  border-radius: 24px;
+  padding: clamp(1.5rem, 3.5vw, 2rem);
+  border-radius: 28px;
   display: flex;
   flex-direction: column;
-  gap: 1.2rem;
+  gap: 1.5rem;
+  border: none;
+  box-shadow: 
+    0 0 0 1px var(--color-border),
+    0 4px 16px var(--shadow),
+    0 12px 32px var(--shadow-deep);
 }
 
 
@@ -75,29 +74,34 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 0.8rem;
+  gap: 1rem;
   flex-wrap: wrap;
 }
 
 .sectionHeader h2 {
   margin: 0;
-  font-size: 1.2rem;
+  font-family: var(--font-display), Georgia, serif;
+  font-size: 1.15rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--ink);
 }
 
 .sectionHeaderLeft {
   display: flex;
   flex-direction: column;
-  gap: 0.2rem;
+  gap: 0.25rem;
 }
 
 .audioActions {
   display: flex;
   align-items: center;
-  gap: 0.6rem;
+  gap: 0.75rem;
 }
 
 .progressText {
-  font-size: 0.85rem;
+  font-family: var(--font-ui), system-ui, sans-serif;
+  font-size: 0.82rem;
   color: var(--color-muted);
   font-variant-numeric: tabular-nums;
 }
@@ -105,33 +109,72 @@
 .textarea {
   width: 100%;
   resize: vertical;
-  min-height: 220px;
-  border-radius: 18px;
+  min-height: 240px;
+  border-radius: 20px;
   border: 1px solid var(--color-border);
-  padding: 1rem 1.1rem;
+  padding: 1.25rem 1.4rem;
   background: var(--input-surface);
   outline: none;
-  transition: border 0.2s ease, box-shadow 0.2s ease;
-  line-height: 1.6;
+  font-family: var(--font-family);
+  font-size: 1rem;
+  line-height: 1.7;
+  color: var(--ink);
+  transition: 
+    border-color 0.2s ease,
+    box-shadow 0.25s ease,
+    background 0.2s ease;
+}
+
+.textarea::placeholder {
+  color: var(--color-muted);
+  opacity: 0.8;
+}
+
+.textarea:hover {
+  border-color: var(--accent-light);
 }
 
 .textarea:focus {
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 2px rgba(112, 87, 66, 0.12);
+  border-color: var(--accent);
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 
+    0 0 0 3px var(--accent-glow),
+    0 4px 12px var(--shadow);
 }
 
 .helperRow {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 0.88rem;
+  font-family: var(--font-ui), system-ui, sans-serif;
+  font-size: 0.85rem;
 }
 
 .clearButton {
-  padding: 0.35rem 0.9rem;
+  font-family: var(--font-ui), system-ui, sans-serif;
+  padding: 0.5rem 1.1rem;
   border-radius: 999px;
-  background: var(--panel-strong-bg);
+  background: var(--whisper);
+  border: 1px solid var(--color-border);
   font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--color-muted);
+  transition: 
+    background 0.2s ease,
+    color 0.2s ease,
+    border-color 0.2s ease,
+    transform 0.15s ease;
+}
+
+.clearButton:hover {
+  background: var(--panel-strong-bg);
+  color: var(--ink);
+  border-color: transparent;
+  transform: translateY(-1px);
+}
+
+.clearButton:active {
+  transform: translateY(0) scale(0.98);
 }
 
 /* 折叠状态下的提示栏 */
@@ -139,33 +182,42 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 0.8rem;
-  padding: 0.6rem 0.9rem;
-  border-radius: 12px;
-  background: var(--panel-muted-bg);
-  font-size: 0.92rem;
+  gap: 1rem;
+  padding: 0.85rem 1.2rem;
+  border-radius: 14px;
+  background: var(--whisper);
+  border: 1px solid var(--color-border);
+  font-family: var(--font-ui), system-ui, sans-serif;
+  font-size: 0.9rem;
+  color: var(--color-muted);
+}
+
+.collapsedNotice strong {
+  color: var(--accent);
+  font-weight: 600;
 }
 
 .collapsedActions {
   display: inline-flex;
-  gap: 0.5rem;
+  gap: 0.6rem;
   align-items: center;
 }
 
 .outputInner {
-  min-height: 260px;
+  min-height: 300px;
   display: flex;
   flex-direction: column;
-  gap: 1.1rem;
-  padding: clamp(0.75rem, 1.8vw, 1.1rem) 0
-    calc(var(--mini-player-space, 0px) * 0.55 + 0.5rem);
-  border-radius: 18px;
+  gap: var(--paragraph-spacing);
+  padding: clamp(1rem, 2vw, 1.5rem) 0
+    calc(var(--mini-player-space, 0px) * 0.5 + 1rem);
+  border-radius: 20px;
   border: 1px solid var(--color-border);
   background: var(--color-surface);
   width: 100%;
   max-width: calc(var(--page-width) + var(--reading-padding) * 2);
   margin: 0 auto;
   overflow-x: hidden;
+  transition: background 0.3s ease;
 }
 
 .readingPulse {
@@ -178,16 +230,16 @@
   position: absolute;
   inset: 0;
   background: linear-gradient(
-    120deg,
+    115deg,
     transparent 0%,
-    rgba(255, 255, 255, 0.6) 35%,
-    rgba(255, 255, 255, 0.9) 50%,
-    rgba(255, 255, 255, 0.6) 65%,
+    var(--accent-glow) 25%,
+    rgba(255, 255, 255, 0.6) 50%,
+    var(--accent-glow) 75%,
     transparent 100%
   );
-  animation: shimmer 1s ease forwards;
+  animation: shimmer 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards;
   pointer-events: none;
-  mix-blend-mode: screen;
+  mix-blend-mode: overlay;
 }
 
 @media (max-width: 1200px) {
