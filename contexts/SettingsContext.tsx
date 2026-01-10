@@ -11,25 +11,13 @@ import {
 } from "react";
 import {
   DEFAULT_SETTINGS,
+  SENSITIVE_SETTINGS_FIELDS,
   SETTINGS_STORAGE_KEY,
   applySettings,
+  isAllowedGeminiTtsModel,
   mergeSettings,
   type ReaderSettings,
 } from "@/lib/settings";
-
-const ALLOWED_GEMINI_TTS_MODELS = [
-  "gemini-2.5-flash-preview-tts",
-  "gemini-2.5-pro-preview-tts",
-] as const;
-
-type AllowedGeminiTtsModel = (typeof ALLOWED_GEMINI_TTS_MODELS)[number];
-
-function isAllowedGeminiTtsModel(value: unknown): value is AllowedGeminiTtsModel {
-  return (
-    typeof value === "string" &&
-    (ALLOWED_GEMINI_TTS_MODELS as readonly string[]).includes(value)
-  );
-}
 
 function sanitizeSettings(value: ReaderSettings): ReaderSettings {
   const geminiModel = isAllowedGeminiTtsModel(value.geminiModel)
@@ -49,7 +37,7 @@ interface SettingsContextValue {
 const SettingsContext = createContext<SettingsContextValue | null>(null);
 
 // 敏感字段只存本地，不同步云端
-const LOCAL_ONLY_FIELDS = ["azureApiKey", "elevenApiKey", "geminiApiKey"] as const;
+const LOCAL_ONLY_FIELDS = SENSITIVE_SETTINGS_FIELDS;
 
 export function SettingsProvider({
   children,

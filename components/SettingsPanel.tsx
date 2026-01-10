@@ -1,15 +1,29 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { useSettings } from "@/contexts/SettingsContext";
 import {
   type ApplyTextNormalization,
   type AzureTTSVoice,
   type ElevenOutputFormat,
   type GeminiTTSModel,
-  type TTSProvider,
 } from "@/lib/settings";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
+import {
+  alignOptions,
+  azureVoiceOptions,
+  boldOptions,
+  elevenModelOptions,
+  elevenOutputFormatOptions,
+  fontFamilies,
+  geminiModelOptions,
+  latencyOptions,
+  readingModeOptions,
+  textNormalizationOptions,
+  themeOptions,
+  ttsProviderOptions,
+  widthModeOptions,
+} from "@/components/settings/options";
 import styles from "./SettingsPanel.module.css";
 
 interface SettingsPanelProps {
@@ -17,124 +31,6 @@ interface SettingsPanelProps {
   onClose: () => void;
   onArticlesCleared?: () => void;
 }
-
-const readingModeOptions = [
-  { value: "pure" as const, label: "纯净阅读" },
-  { value: "audio" as const, label: "音频播放" },
-];
-
-const boldOptions = [
-  { value: "off" as const, label: "关闭" },
-  { value: "low" as const, label: "低 " },
-  { value: "medium" as const, label: "中 " },
-  { value: "high" as const, label: "高 " },
-  { value: "custom" as const, label: "自定义" },
-];
-
-const themeOptions = [
-  { value: "sepia" as const, label: "米色" },
-  { value: "white" as const, label: "纯白" },
-  { value: "dark" as const, label: "深色" },
-  { value: "oled" as const, label: "纯黑" },
-];
-
-const alignOptions = [
-  { value: "left" as const, label: "左对齐" },
-  { value: "center" as const, label: "居中" },
-  { value: "right" as const, label: "右对齐" },
-  { value: "justify" as const, label: "两端对齐" },
-];
-
-const widthModeOptions = [
-  { value: "px" as const, label: "固定像素" },
-  { value: "vw" as const, label: "视口百分比" },
-  { value: "ch" as const, label: "按字符数" },
-];
-
-const azureVoiceOptions: { value: AzureTTSVoice; label: string }[] = [
-  { value: "en-US-Ava:DragonHDLatestNeural", label: "Ava Dragon HD (女声)" },
-  { value: "en-US-JennyNeural", label: "Jenny (女声)" },
-  { value: "en-US-GuyNeural", label: "Guy (男声)" },
-  { value: "en-GB-SoniaNeural", label: "Sonia (英式女声)" },
-];
-
-const ttsProviderOptions: { value: TTSProvider; label: string }[] = [
-  { value: "azure", label: "Azure Speech" },
-  { value: "elevenlabs", label: "ElevenLabs" },
-  { value: "gemini", label: "Google Gemini" },
-];
-
-const geminiModelOptions: { value: GeminiTTSModel; label: string }[] = [
-  { value: "gemini-2.5-flash-preview-tts", label: "Gemini 2.5 Flash TTS（低延迟）" },
-  { value: "gemini-2.5-pro-preview-tts", label: "Gemini 2.5 Pro TTS（高质量）" },
-];
-
-const elevenModelOptions = [
-  { value: "eleven_v3", label: "Eleven v3（高质量，适合情感/长文本）" },
-  { value: "eleven_turbo_v2_5", label: "Turbo v2.5（高质量均衡）" },
-  { value: "eleven_flash_v2_5", label: "Flash v2.5（低延迟）" },
-  { value: "eleven_multilingual_v2", label: "Multilingual v2（多语种高质量）" },
-];
-
-const elevenOutputFormatOptions: { value: ElevenOutputFormat; label: string }[] = [
-  { value: "mp3_44100_128", label: "MP3 44.1kHz 128kbps" },
-  { value: "mp3_44100_192", label: "MP3 44.1kHz 192kbps" },
-  { value: "mp3_24000_48", label: "MP3 24kHz 48kbps" },
-  { value: "opus_48000_128", label: "Opus 48kHz 128kbps" },
-  { value: "pcm_24000", label: "PCM 24kHz" },
-  { value: "ulaw_8000", label: "μ-law 8kHz（Twilio 常用）" },
-];
-
-const textNormalizationOptions: { value: ApplyTextNormalization; label: string }[] = [
-  { value: "auto", label: "自动" },
-  { value: "on", label: "开启" },
-  { value: "off", label: "关闭" },
-];
-
-const latencyOptions: { value: number | ""; label: string }[] = [
-  { value: "", label: "默认" },
-  { value: 0, label: "0 - 无优化" },
-  { value: 1, label: "1 - 低延迟优化" },
-  { value: 2, label: "2 - 中等优化" },
-  { value: 3, label: "3 - 强化优化" },
-  { value: 4, label: "4 - 最低延迟（关闭正则化）" },
-];
-
-
-const fontFamilies = [
-  {
-    value: "Georgia, 'Times New Roman', serif",
-    label: "Georgia（衬线，推荐）",
-  },
-  {
-    value: "'Times New Roman', Georgia, serif",
-    label: "Times New Roman（衬线）",
-  },
-  {
-    value: "'Palatino Linotype', 'Book Antiqua', Palatino, serif",
-    label: "Palatino（衬线）",
-  },
-  {
-    value: "Arial, 'Helvetica Neue', Helvetica, sans-serif",
-    label: "Arial / Helvetica（无衬线）",
-  },
-  {
-    value: "Verdana, Geneva, sans-serif",
-    label: "Verdana（无衬线）",
-  },
-  {
-    value: "Tahoma, Geneva, sans-serif",
-    label: "Tahoma（无衬线）",
-  },
-  {
-    value: "'Trebuchet MS', Helvetica, sans-serif",
-    label: "Trebuchet MS（无衬线）",
-  },
-  {
-    value: "'Courier New', Courier, monospace",
-    label: "Courier New（等宽）",
-  },
-];
 
 export function SettingsPanel({ isOpen, onClose, onArticlesCleared }: SettingsPanelProps) {
   const { settings, updateSettings, resetSettings, hydrated } = useSettings();
@@ -279,22 +175,11 @@ export function SettingsPanel({ isOpen, onClose, onArticlesCleared }: SettingsPa
             <div className={styles.sectionHeader}>阅读模式</div>
             
             <div className={styles.fieldRow}>
-              <div className={styles.segmentedControl}>
-                {readingModeOptions.map((option) => (
-                  <button
-                    key={option.value}
-                    className={`${styles.segmentButton} ${
-                      settings.readingMode === option.value
-                        ? styles.segmentActive
-                        : ""
-                    }`}
-                    onClick={() => updateSettings({ readingMode: option.value })}
-                    type="button"
-                  >
-                    {option.label}
-                  </button>
-                ))}
-              </div>
+              <SegmentedControl
+                value={settings.readingMode}
+                options={readingModeOptions}
+                onChange={(value) => updateSettings({ readingMode: value })}
+              />
               <p className={styles.apiKeyHint}>
                 纯净阅读：仅支持单词查词；音频播放：点击段落可生成并播放音频。
               </p>
@@ -305,42 +190,20 @@ export function SettingsPanel({ isOpen, onClose, onArticlesCleared }: SettingsPa
             <div className={styles.sectionHeader}>显示外观</div>
             
             <div className={styles.fieldRow}>
-              <div className={styles.segmentedControl}>
-                {themeOptions.map((option) => (
-                  <button
-                    key={option.value}
-                    className={`${styles.segmentButton} ${
-                      settings.theme === option.value
-                        ? styles.segmentActive
-                        : ""
-                    }`}
-                    onClick={() => updateSettings({ theme: option.value })}
-                    type="button"
-                  >
-                    {option.label}
-                  </button>
-                ))}
-              </div>
+              <SegmentedControl
+                value={settings.theme}
+                options={themeOptions}
+                onChange={(value) => updateSettings({ theme: value })}
+              />
             </div>
 
             <div className={styles.fieldRow}>
               <span className={styles.fieldLabel}>仿生强度</span>
-              <div className={styles.segmentedControl}>
-                {boldOptions.map((option) => (
-                  <button
-                    key={option.value}
-                    className={`${styles.segmentButton} ${
-                      settings.boldRatio === option.value
-                        ? styles.segmentActive
-                        : ""
-                    }`}
-                    onClick={() => updateSettings({ boldRatio: option.value })}
-                    type="button"
-                  >
-                    {option.label}
-                  </button>
-                ))}
-              </div>
+              <SegmentedControl
+                value={settings.boldRatio}
+                options={boldOptions}
+                onChange={(value) => updateSettings({ boldRatio: value })}
+              />
               {settings.boldRatio === "custom" ? (
                 <RangeField
                   label="自定义比例"
@@ -436,22 +299,11 @@ export function SettingsPanel({ isOpen, onClose, onArticlesCleared }: SettingsPa
 
             <div className={styles.fieldRow}>
               <span className={styles.fieldLabel}>对齐方式</span>
-              <div className={styles.segmentedControl}>
-                {alignOptions.map((option) => (
-                  <button
-                    key={option.value}
-                    className={`${styles.segmentButton} ${
-                      settings.textAlign === option.value
-                        ? styles.segmentActive
-                        : ""
-                    }`}
-                    onClick={() => updateSettings({ textAlign: option.value })}
-                    type="button"
-                  >
-                    {option.label}
-                  </button>
-                ))}
-              </div>
+              <SegmentedControl
+                value={settings.textAlign}
+                options={alignOptions}
+                onChange={(value) => updateSettings({ textAlign: value })}
+              />
             </div>
           </section>
 
@@ -459,20 +311,11 @@ export function SettingsPanel({ isOpen, onClose, onArticlesCleared }: SettingsPa
             <div className={styles.sectionHeader}>页面布局</div>
             <div className={styles.fieldRow}>
               <span className={styles.fieldLabel}>宽度模式</span>
-              <div className={styles.segmentedControl}>
-                {widthModeOptions.map((option) => (
-                  <button
-                    key={option.value}
-                    className={`${styles.segmentButton} ${
-                      widthMode === option.value ? styles.segmentActive : ""
-                    }`}
-                    onClick={() => updateSettings({ pageWidthMode: option.value })}
-                    type="button"
-                  >
-                    {option.label}
-                  </button>
-                ))}
-              </div>
+              <SegmentedControl
+                value={widthMode}
+                options={widthModeOptions}
+                onChange={(value) => updateSettings({ pageWidthMode: value })}
+              />
             </div>
 
             <div className={styles.grid2}>
@@ -499,54 +342,36 @@ export function SettingsPanel({ isOpen, onClose, onArticlesCleared }: SettingsPa
 
           <div className={styles.fieldRow}>
             <span className={styles.fieldLabel}>TTS 提供商</span>
-            <div className={styles.segmentedControl}>
-              {ttsProviderOptions.map((option) => (
-                <button
-                  key={option.value}
-                  className={`${styles.segmentButton} ${
-                    settings.ttsProvider === option.value ? styles.segmentActive : ""
-                  }`}
-                  onClick={() => updateSettings({ ttsProvider: option.value })}
-                  type="button"
-                >
-                  {option.label}
-                </button>
-              ))}
-            </div>
+            <SegmentedControl
+              value={settings.ttsProvider}
+              options={ttsProviderOptions}
+              onChange={(value) => updateSettings({ ttsProvider: value })}
+            />
           </div>
 
           {settings.ttsProvider === "azure" ? (
             <>
-              <div className={styles.fieldColumn}>
-                <label className={styles.fieldLabel}>Azure API Key</label>
-                <div className={styles.apiKeyWrapper}>
-                  <input
-                    type={showApiKey ? "text" : "password"}
-                    className={styles.apiKeyInput}
-                    value={settings.azureApiKey}
-                    onChange={(e) => updateSettings({ azureApiKey: e.target.value })}
-                    placeholder="输入您的 API Key"
-                  />
-                  <button
-                    type="button"
-                    className={styles.apiKeyToggle}
-                    onClick={() => setShowApiKey(!showApiKey)}
-                  >
-                    {showApiKey ? "隐藏" : "显示"}
-                  </button>
-                </div>
-                <p className={styles.apiKeyHint}>
-                  从{" "}
-                  <a
-                    href="https://portal.azure.com/#create/Microsoft.CognitiveServicesSpeechServices"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    Azure Portal
-                  </a>{" "}
-                  创建语音服务获取 API Key
-                </p>
-              </div>
+              <SecretTextField
+                label="Azure API Key"
+                value={settings.azureApiKey}
+                placeholder="输入您的 API Key"
+                visible={showApiKey}
+                onToggleVisible={() => setShowApiKey((prev) => !prev)}
+                onChange={(value) => updateSettings({ azureApiKey: value })}
+                hint={
+                  <>
+                    从{" "}
+                    <a
+                      href="https://portal.azure.com/#create/Microsoft.CognitiveServicesSpeechServices"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      Azure Portal
+                    </a>{" "}
+                    创建语音服务获取 API Key
+                  </>
+                }
+              />
 
               <div className={styles.fieldColumn}>
                 <label className={styles.fieldLabel}>朗读声音</label>
@@ -606,32 +431,27 @@ export function SettingsPanel({ isOpen, onClose, onArticlesCleared }: SettingsPa
             </>
           ) : settings.ttsProvider === "elevenlabs" ? (
             <>
-              <div className={styles.fieldColumn}>
-                <label className={styles.fieldLabel}>ElevenLabs API Key</label>
-                <div className={styles.apiKeyWrapper}>
-                  <input
-                    type={showElevenApiKey ? "text" : "password"}
-                    className={styles.apiKeyInput}
-                    value={settings.elevenApiKey}
-                    onChange={(e) => updateSettings({ elevenApiKey: e.target.value })}
-                    placeholder="xi-api-key"
-                  />
-                  <button
-                    type="button"
-                    className={styles.apiKeyToggle}
-                    onClick={() => setShowElevenApiKey(!showElevenApiKey)}
-                  >
-                    {showElevenApiKey ? "隐藏" : "显示"}
-                  </button>
-                </div>
-                <p className={styles.apiKeyHint}>
-                  在{" "}
-                  <a href="https://elevenlabs.io/app" target="_blank" rel="noopener noreferrer">
-                    ElevenLabs 控制台
-                  </a>{" "}
-                  获取 API Key。建议使用静态密钥。
-                </p>
-              </div>
+              <SecretTextField
+                label="ElevenLabs API Key"
+                value={settings.elevenApiKey}
+                placeholder="xi-api-key"
+                visible={showElevenApiKey}
+                onToggleVisible={() => setShowElevenApiKey((prev) => !prev)}
+                onChange={(value) => updateSettings({ elevenApiKey: value })}
+                hint={
+                  <>
+                    在{" "}
+                    <a
+                      href="https://elevenlabs.io/app"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      ElevenLabs 控制台
+                    </a>{" "}
+                    获取 API Key。建议使用静态密钥。
+                  </>
+                }
+              />
 
               <div className={styles.grid2}>
                 <div className={styles.fieldColumn}>
@@ -733,16 +553,13 @@ export function SettingsPanel({ isOpen, onClose, onArticlesCleared }: SettingsPa
                 />
               </div>
 
-              <label className={styles.switchLabel}>
-                <span className={styles.fieldLabel}>Speaker Boost</span>
-                <input
-                  type="checkbox"
-                  hidden
-                  checked={settings.elevenUseSpeakerBoost}
-                  onChange={(e) => updateSettings({ elevenUseSpeakerBoost: e.target.checked })}
-                />
-                <span className={styles.switchSlider}></span>
-              </label>
+              <SwitchField
+                label="Speaker Boost"
+                checked={settings.elevenUseSpeakerBoost}
+                onChange={(checked) =>
+                  updateSettings({ elevenUseSpeakerBoost: checked })
+                }
+              />
 
               <div className={styles.grid2}>
                 <div className={styles.fieldColumn}>
@@ -782,16 +599,13 @@ export function SettingsPanel({ isOpen, onClose, onArticlesCleared }: SettingsPa
               </div>
 
               <div className={styles.grid2}>
-                <label className={styles.switchLabel}>
-                  <span className={styles.fieldLabel}>启用日志 (enable_logging)</span>
-                  <input
-                    type="checkbox"
-                    hidden
-                    checked={settings.elevenEnableLogging}
-                    onChange={(e) => updateSettings({ elevenEnableLogging: e.target.checked })}
-                  />
-                  <span className={styles.switchSlider}></span>
-                </label>
+                <SwitchField
+                  label="启用日志 (enable_logging)"
+                  checked={settings.elevenEnableLogging}
+                  onChange={(checked) =>
+                    updateSettings({ elevenEnableLogging: checked })
+                  }
+                />
 
                 <div className={styles.fieldColumn}>
                   <label className={styles.fieldLabel}>流式延迟优化</label>
@@ -817,36 +631,27 @@ export function SettingsPanel({ isOpen, onClose, onArticlesCleared }: SettingsPa
             </>
           ) : (
             <>
-              <div className={styles.fieldColumn}>
-                <label className={styles.fieldLabel}>Gemini API Key</label>
-                <div className={styles.apiKeyWrapper}>
-                  <input
-                    type={showGeminiApiKey ? "text" : "password"}
-                    className={styles.apiKeyInput}
-                    value={settings.geminiApiKey}
-                    onChange={(e) => updateSettings({ geminiApiKey: e.target.value })}
-                    placeholder="输入您的 API Key"
-                  />
-                  <button
-                    type="button"
-                    className={styles.apiKeyToggle}
-                    onClick={() => setShowGeminiApiKey(!showGeminiApiKey)}
-                  >
-                    {showGeminiApiKey ? "隐藏" : "显示"}
-                  </button>
-                </div>
-                <p className={styles.apiKeyHint}>
-                  在{" "}
-                  <a
-                    href="https://aistudio.google.com/app/apikey"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    Google AI Studio
-                  </a>{" "}
-                  创建 API Key（请勿提交到仓库）。
-                </p>
-              </div>
+              <SecretTextField
+                label="Gemini API Key"
+                value={settings.geminiApiKey}
+                placeholder="输入您的 API Key"
+                visible={showGeminiApiKey}
+                onToggleVisible={() => setShowGeminiApiKey((prev) => !prev)}
+                onChange={(value) => updateSettings({ geminiApiKey: value })}
+                hint={
+                  <>
+                    在{" "}
+                    <a
+                      href="https://aistudio.google.com/app/apikey"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      Google AI Studio
+                    </a>{" "}
+                    创建 API Key（请勿提交到仓库）。
+                  </>
+                }
+              />
 
               <div className={styles.grid2}>
                 <div className={styles.fieldColumn}>
@@ -905,18 +710,13 @@ export function SettingsPanel({ isOpen, onClose, onArticlesCleared }: SettingsPa
                 </p>
               </div>
 
-              <label className={styles.switchLabel}>
-                <span className={styles.fieldLabel}>多角色朗读（最多 2 人）</span>
-                <input
-                  type="checkbox"
-                  hidden
-                  checked={settings.geminiUseMultiSpeaker}
-                  onChange={(e) =>
-                    updateSettings({ geminiUseMultiSpeaker: e.target.checked })
-                  }
-                />
-                <span className={styles.switchSlider}></span>
-              </label>
+              <SwitchField
+                label="多角色朗读（最多 2 人）"
+                checked={settings.geminiUseMultiSpeaker}
+                onChange={(checked) =>
+                  updateSettings({ geminiUseMultiSpeaker: checked })
+                }
+              />
 
               {settings.geminiUseMultiSpeaker ? (
                 <>
@@ -982,40 +782,25 @@ export function SettingsPanel({ isOpen, onClose, onArticlesCleared }: SettingsPa
             </>
           )}
 
-          <label className={styles.switchLabel}>
-            <span className={styles.fieldLabel}>自动播放下一段</span>
-            <input
-              type="checkbox"
-              hidden
-              checked={settings.autoPlayNext}
-              onChange={(e) => updateSettings({ autoPlayNext: e.target.checked })}
-            />
-            <span className={styles.switchSlider}></span>
-          </label>
+          <SwitchField
+            label="自动播放下一段"
+            checked={settings.autoPlayNext}
+            onChange={(checked) => updateSettings({ autoPlayNext: checked })}
+          />
 
-          <label
-            className={`${styles.switchLabel} ${
-              wordSyncHighlightSupported ? "" : styles.switchLabelDisabled
-            }`}
-            aria-disabled={!wordSyncHighlightSupported}
+          <SwitchField
+            label="单词同步高亮（仅支持 ElevenLabs）"
+            checked={settings.elevenWordSyncHighlight}
+            disabled={!wordSyncHighlightSupported}
             title={
               wordSyncHighlightSupported
                 ? undefined
                 : "仅在选择 ElevenLabs 作为 TTS 提供商时可用"
             }
-          >
-            <span className={styles.fieldLabel}>单词同步高亮（仅支持 ElevenLabs）</span>
-            <input
-              type="checkbox"
-              hidden
-              checked={settings.elevenWordSyncHighlight}
-              disabled={!wordSyncHighlightSupported}
-              onChange={(e) =>
-                updateSettings({ elevenWordSyncHighlight: e.target.checked })
-              }
-            />
-            <span className={styles.switchSlider}></span>
-          </label>
+            onChange={(checked) =>
+              updateSettings({ elevenWordSyncHighlight: checked })
+            }
+          />
 
           <div className={styles.fieldColumn}>
             <label className={styles.fieldLabel}>并发生成上限</label>
@@ -1054,6 +839,115 @@ export function SettingsPanel({ isOpen, onClose, onArticlesCleared }: SettingsPa
         </div>
       </aside>
     </>
+  );
+}
+
+type SegmentedOption<TValue extends string> = {
+  value: TValue;
+  label: string;
+};
+
+function SegmentedControl<TValue extends string>({
+  value,
+  options,
+  onChange,
+}: {
+  value: TValue;
+  options: ReadonlyArray<SegmentedOption<TValue>>;
+  onChange: (value: TValue) => void;
+}) {
+  return (
+    <div className={styles.segmentedControl}>
+      {options.map((option) => (
+        <button
+          key={option.value}
+          className={`${styles.segmentButton} ${
+            value === option.value ? styles.segmentActive : ""
+          }`}
+          onClick={() => onChange(option.value)}
+          type="button"
+        >
+          {option.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function SwitchField({
+  label,
+  checked,
+  disabled,
+  title,
+  onChange,
+}: {
+  label: string;
+  checked: boolean;
+  disabled?: boolean;
+  title?: string;
+  onChange: (checked: boolean) => void;
+}) {
+  const isDisabled = Boolean(disabled);
+
+  return (
+    <label
+      className={`${styles.switchLabel} ${
+        isDisabled ? styles.switchLabelDisabled : ""
+      }`}
+      aria-disabled={isDisabled ? true : undefined}
+      title={title}
+    >
+      <span className={styles.fieldLabel}>{label}</span>
+      <input
+        type="checkbox"
+        hidden
+        checked={checked}
+        disabled={isDisabled}
+        onChange={(e) => onChange(e.target.checked)}
+      />
+      <span className={styles.switchSlider}></span>
+    </label>
+  );
+}
+
+function SecretTextField({
+  label,
+  value,
+  placeholder,
+  visible,
+  onToggleVisible,
+  onChange,
+  hint,
+}: {
+  label: string;
+  value: string;
+  placeholder?: string;
+  visible: boolean;
+  onToggleVisible: () => void;
+  onChange: (value: string) => void;
+  hint?: ReactNode;
+}) {
+  return (
+    <div className={styles.fieldColumn}>
+      <label className={styles.fieldLabel}>{label}</label>
+      <div className={styles.apiKeyWrapper}>
+        <input
+          type={visible ? "text" : "password"}
+          className={styles.apiKeyInput}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={placeholder}
+        />
+        <button
+          type="button"
+          className={styles.apiKeyToggle}
+          onClick={onToggleVisible}
+        >
+          {visible ? "隐藏" : "显示"}
+        </button>
+      </div>
+      {hint ? <p className={styles.apiKeyHint}>{hint}</p> : null}
+    </div>
   );
 }
 

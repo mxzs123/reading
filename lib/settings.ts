@@ -8,9 +8,21 @@ export type AzureTTSVoice =
   | "en-US-GuyNeural"
   | "en-GB-SoniaNeural";
 
-export type GeminiTTSModel =
-  | "gemini-2.5-flash-preview-tts"
-  | "gemini-2.5-pro-preview-tts";
+export const ALLOWED_GEMINI_TTS_MODELS = [
+  "gemini-2.5-flash-preview-tts",
+  "gemini-2.5-pro-preview-tts",
+] as const;
+
+export type GeminiTTSModel = (typeof ALLOWED_GEMINI_TTS_MODELS)[number];
+
+export function isAllowedGeminiTtsModel(
+  value: unknown
+): value is GeminiTTSModel {
+  return (
+    typeof value === "string" &&
+    (ALLOWED_GEMINI_TTS_MODELS as readonly string[]).includes(value)
+  );
+}
 
 export type TTSProvider = "azure" | "elevenlabs" | "gemini";
 export type ApplyTextNormalization = "auto" | "on" | "off";
@@ -48,6 +60,12 @@ export interface ElevenVoiceSettings {
 
 export type PageWidthMode = "px" | "vw" | "ch";
 export type BoldRatio = "off" | "low" | "medium" | "high" | "custom";
+
+export const SENSITIVE_SETTINGS_FIELDS = [
+  "azureApiKey",
+  "elevenApiKey",
+  "geminiApiKey",
+] as const;
 
 export interface ReaderSettings {
   fontSize: number;
@@ -109,6 +127,32 @@ export interface ReaderSettings {
   // 阅读模式
   readingMode: ReadingMode;
 }
+
+export type ReaderAppearanceSettings = Pick<
+  ReaderSettings,
+  "theme" | "boldRatio" | "customBoldRatio" | "bionicWeight"
+>;
+
+export type ReaderTypographySettings = Pick<
+  ReaderSettings,
+  | "fontFamily"
+  | "fontSize"
+  | "lineHeight"
+  | "letterSpacing"
+  | "paragraphSpacing"
+  | "bodyFontWeight"
+  | "textIndent"
+  | "textAlign"
+>;
+
+export type ReaderLayoutSettings = Pick<
+  ReaderSettings,
+  | "pageWidthMode"
+  | "pageWidth"
+  | "pageWidthVw"
+  | "pageWidthCh"
+  | "readingPadding"
+>;
 
 export const DEFAULT_SETTINGS: ReaderSettings = {
   fontSize: 18.5,

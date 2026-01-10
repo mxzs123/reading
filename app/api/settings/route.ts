@@ -1,11 +1,15 @@
 import { NextRequest } from "next/server";
 import { kv } from "@vercel/kv";
-import { DEFAULT_SETTINGS, ReaderSettings } from "@/lib/settings";
+import {
+  DEFAULT_SETTINGS,
+  SENSITIVE_SETTINGS_FIELDS,
+  type ReaderSettings,
+} from "@/lib/settings";
 
 const SETTINGS_KEY = "settings:global";
 
 // 不同步到云端的敏感字段
-const SENSITIVE_FIELDS = ["azureApiKey", "elevenApiKey", "geminiApiKey"] as const;
+const SENSITIVE_FIELDS = SENSITIVE_SETTINGS_FIELDS;
 
 type SafeSettings = Omit<ReaderSettings, (typeof SENSITIVE_FIELDS)[number]>;
 
