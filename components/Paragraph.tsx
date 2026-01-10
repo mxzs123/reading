@@ -4,6 +4,7 @@ import { Fragment, useMemo, useCallback } from "react";
 import { useAudioStore } from "@/stores/audioStore";
 import { useSettings } from "@/contexts/SettingsContext";
 import { tokenize, renderBionicWord } from "@/lib/paragraphs";
+import { buildTtsGenerationParams } from "@/lib/settings";
 import { playWordSound } from "@/lib/wordAudio";
 import styles from "./ReadingArea.module.css";
 
@@ -35,85 +36,7 @@ export function Paragraph({
   const generateSegment = useAudioStore((s) => s.generateSegment);
   const segment = useAudioStore((s) => s.segments.find((seg) => seg.id === id));
 
-  const ttsParams = useMemo(() => {
-    if (settings.ttsProvider === "elevenlabs") {
-      return {
-        provider: "elevenlabs" as const,
-        apiKey: settings.elevenApiKey,
-        voiceId: settings.elevenVoiceId,
-        modelId: settings.elevenModelId,
-        languageCode: settings.elevenLanguageCode,
-        outputFormat: settings.elevenOutputFormat,
-        stability: settings.elevenStability,
-        similarityBoost: settings.elevenSimilarityBoost,
-        style: settings.elevenStyle,
-        useSpeakerBoost: settings.elevenUseSpeakerBoost,
-        speed: settings.elevenSpeed,
-        seed: settings.elevenSeed,
-        applyTextNormalization: settings.elevenApplyTextNormalization,
-        enableLogging: settings.elevenEnableLogging,
-        optimizeStreamingLatency: settings.elevenOptimizeStreamingLatency,
-      };
-    }
-
-    if (settings.ttsProvider === "gemini") {
-      return {
-        provider: "gemini" as const,
-        apiKey: settings.geminiApiKey,
-        model: settings.geminiModel,
-        voiceName: settings.geminiVoiceName,
-        languageCode: settings.geminiLanguageCode,
-        stylePrompt: settings.geminiStylePrompt,
-        multiSpeaker: settings.geminiUseMultiSpeaker,
-        speaker1Name: settings.geminiSpeaker1Name,
-        speaker1VoiceName: settings.geminiSpeaker1VoiceName,
-        speaker2Name: settings.geminiSpeaker2Name,
-        speaker2VoiceName: settings.geminiSpeaker2VoiceName,
-      };
-    }
-
-    return {
-      provider: "azure" as const,
-      apiKey: settings.azureApiKey,
-      region: settings.azureRegion,
-      voice: settings.azureVoice,
-      rate: settings.ttsRate,
-      volume: settings.ttsVolume,
-      pauseMs: settings.ttsPauseMs,
-    };
-  }, [
-    settings.azureApiKey,
-    settings.azureRegion,
-    settings.azureVoice,
-    settings.elevenApiKey,
-    settings.elevenApplyTextNormalization,
-    settings.elevenEnableLogging,
-    settings.elevenLanguageCode,
-    settings.elevenModelId,
-    settings.elevenOptimizeStreamingLatency,
-    settings.elevenOutputFormat,
-    settings.elevenSeed,
-    settings.elevenSimilarityBoost,
-    settings.elevenSpeed,
-    settings.elevenStability,
-    settings.elevenStyle,
-    settings.elevenUseSpeakerBoost,
-    settings.elevenVoiceId,
-    settings.geminiApiKey,
-    settings.geminiLanguageCode,
-    settings.geminiModel,
-    settings.geminiSpeaker1Name,
-    settings.geminiSpeaker1VoiceName,
-    settings.geminiSpeaker2Name,
-    settings.geminiSpeaker2VoiceName,
-    settings.geminiStylePrompt,
-    settings.geminiUseMultiSpeaker,
-    settings.geminiVoiceName,
-    settings.ttsPauseMs,
-    settings.ttsProvider,
-    settings.ttsRate,
-    settings.ttsVolume,
-  ]);
+  const ttsParams = useMemo(() => buildTtsGenerationParams(settings), [settings]);
 
   const isActive = activeSegmentId === id && isPlaying;
   const tokens = useMemo(() => tokenize(text), [text]);

@@ -169,7 +169,6 @@ export function SettingsPanel({ isOpen, onClose, onArticlesCleared }: SettingsPa
     }
   };
 
-  const fontFamilyOptions = useMemo(() => fontFamilies, []);
   const widthMode = settings.pageWidthMode ?? "px";
 
   const approxCharsPerLine = useMemo(() => {
@@ -181,12 +180,15 @@ export function SettingsPanel({ isOpen, onClose, onArticlesCleared }: SettingsPa
       return Math.round(settings.pageWidthCh);
     }
 
-    const availableWidth =
-      mode === "vw"
-        ? viewportWidth * (Math.min(Math.max(settings.pageWidthVw, 60), 96) / 100)
-        : isMobile
-          ? Math.min(viewportWidth * 0.96, settings.pageWidth)
-          : settings.pageWidth;
+    let availableWidth: number;
+    if (mode === "vw") {
+      const vw = Math.min(Math.max(settings.pageWidthVw, 60), 96) / 100;
+      availableWidth = viewportWidth * vw;
+    } else if (isMobile) {
+      availableWidth = Math.min(viewportWidth * 0.96, settings.pageWidth);
+    } else {
+      availableWidth = settings.pageWidth;
+    }
 
     const charWidth =
       settings.fontSize * Math.max(0.46, 0.54 + settings.letterSpacing);
@@ -210,6 +212,45 @@ export function SettingsPanel({ isOpen, onClose, onArticlesCleared }: SettingsPa
     settings.pageWidthVw,
     settings.pageWidthCh,
   ]);
+
+  let pageWidthControl: JSX.Element;
+  if (widthMode === "vw") {
+    pageWidthControl = (
+      <RangeField
+        label="内容宽度"
+        value={settings.pageWidthVw}
+        unit="vw"
+        min={60}
+        max={96}
+        step={1}
+        onChange={(value) => updateSettings({ pageWidthVw: value })}
+      />
+    );
+  } else if (widthMode === "ch") {
+    pageWidthControl = (
+      <RangeField
+        label="内容宽度"
+        value={settings.pageWidthCh}
+        unit="ch"
+        min={40}
+        max={120}
+        step={1}
+        onChange={(value) => updateSettings({ pageWidthCh: value })}
+      />
+    );
+  } else {
+    pageWidthControl = (
+      <RangeField
+        label="内容宽度"
+        value={settings.pageWidth}
+        unit="px"
+        min={400}
+        max={1200}
+        step={10}
+        onChange={(value) => updateSettings({ pageWidth: value })}
+      />
+    );
+  }
 
   return (
     <>
@@ -330,7 +371,7 @@ export function SettingsPanel({ isOpen, onClose, onArticlesCleared }: SettingsPa
                 value={settings.fontFamily}
                 onChange={(e) => updateSettings({ fontFamily: e.target.value })}
               >
-                {fontFamilyOptions.map((option) => (
+                {fontFamilies.map((option) => (
                   <option key={option.value} value={option.value}>
                     {option.label}
                   </option>
@@ -435,37 +476,7 @@ export function SettingsPanel({ isOpen, onClose, onArticlesCleared }: SettingsPa
             </div>
 
             <div className={styles.grid2}>
-              {widthMode === "vw" ? (
-                <RangeField
-                  label="内容宽度"
-                  value={settings.pageWidthVw}
-                  unit="vw"
-                  min={60}
-                  max={96}
-                  step={1}
-                  onChange={(value) => updateSettings({ pageWidthVw: value })}
-                />
-              ) : widthMode === "ch" ? (
-                <RangeField
-                  label="内容宽度"
-                  value={settings.pageWidthCh}
-                  unit="ch"
-                  min={40}
-                  max={120}
-                  step={1}
-                  onChange={(value) => updateSettings({ pageWidthCh: value })}
-                />
-              ) : (
-                <RangeField
-                  label="内容宽度"
-                  value={settings.pageWidth}
-                  unit="px"
-                  min={400}
-                  max={1200}
-                  step={10}
-                  onChange={(value) => updateSettings({ pageWidth: value })}
-                />
-              )}
+              {pageWidthControl}
               <RangeField
                 label="页边距"
                 value={settings.readingPadding}

@@ -11,10 +11,10 @@ import {
 } from "react";
 import {
   DEFAULT_SETTINGS,
-  ReaderSettings,
   SETTINGS_STORAGE_KEY,
   applySettings,
   mergeSettings,
+  type ReaderSettings,
 } from "@/lib/settings";
 
 const ALLOWED_GEMINI_TTS_MODELS = [
@@ -32,14 +32,11 @@ function isAllowedGeminiTtsModel(value: unknown): value is AllowedGeminiTtsModel
 }
 
 function sanitizeSettings(value: ReaderSettings): ReaderSettings {
-  const next = { ...value } as Record<string, unknown>;
+  const geminiModel = isAllowedGeminiTtsModel(value.geminiModel)
+    ? value.geminiModel
+    : DEFAULT_SETTINGS.geminiModel;
 
-  const geminiModel = next.geminiModel;
-  if (!isAllowedGeminiTtsModel(geminiModel)) {
-    next.geminiModel = DEFAULT_SETTINGS.geminiModel;
-  }
-
-  return next as unknown as ReaderSettings;
+  return { ...value, geminiModel };
 }
 
 interface SettingsContextValue {
@@ -61,8 +58,8 @@ export function SettingsProvider({
 }) {
   const [settings, setSettings] = useState<ReaderSettings>(DEFAULT_SETTINGS);
   const [hydrated, setHydrated] = useState(false);
-  const saveTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const cloudSyncTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cloudSyncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const updateSettings = useCallback((patch: Partial<ReaderSettings>) => {
     setSettings((prev) => mergeSettings(prev, patch));
@@ -98,9 +95,9 @@ export function SettingsProvider({
     try {
       // 移除敏感字段
       const cloudSettings = { ...(value as unknown as Record<string, unknown>) };
-      delete cloudSettings.azureApiKey;
-      delete cloudSettings.elevenApiKey;
-      delete cloudSettings.geminiApiKey;
+      for (const field of LOCAL_ONLY_FIELDS) {
+        delete cloudSettings[field];
+      }
 
       await fetch("/api/settings", {
         method: "PUT",

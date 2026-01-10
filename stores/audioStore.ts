@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { base64ToAudioBlob } from "@/lib/paragraphs";
 import { UploadAudioError, uploadAudio, type WordTiming } from "@/lib/storage";
-import { type ApplyTextNormalization, type GeminiTTSModel } from "@/lib/settings";
+import type { TtsGenerationParams } from "@/lib/settings";
 
 const DEFAULT_TTS_CONCURRENCY = 4;
 const DEFAULT_UPLOAD_CONCURRENCY = 6;
@@ -37,56 +37,9 @@ export interface UploadAllResult {
   failed: number;
 }
 
-type AzureGenerationParams = {
-  provider: "azure";
-  apiKey: string;
-  region: string;
-  voice: string;
-  rate: number;
-  volume: number;
-  pauseMs: number;
-};
-
-type ElevenLabsGenerationParams = {
-  provider: "elevenlabs";
-  apiKey: string;
-  voiceId: string;
-  modelId: string;
-  languageCode?: string;
-  outputFormat?: string;
-  stability?: number;
-  similarityBoost?: number;
-  style?: number;
-  useSpeakerBoost?: boolean;
-  speed?: number;
-  seed?: number | null;
-  applyTextNormalization?: ApplyTextNormalization;
-  enableLogging?: boolean;
-  optimizeStreamingLatency?: number | null;
-};
-
-type GeminiGenerationParams = {
-  provider: "gemini";
-  apiKey: string;
-  model: GeminiTTSModel;
-  voiceName: string;
-  languageCode?: string;
-  stylePrompt?: string;
-  multiSpeaker?: boolean;
-  speaker1Name?: string;
-  speaker1VoiceName?: string;
-  speaker2Name?: string;
-  speaker2VoiceName?: string;
-};
-
-type GenerationParams =
-  | AzureGenerationParams
-  | ElevenLabsGenerationParams
-  | GeminiGenerationParams;
-
 interface GenerationTask {
   id: string;
-  params: GenerationParams;
+  params: TtsGenerationParams;
   settle: () => void;
 }
 
@@ -117,10 +70,10 @@ interface AudioStore {
   initSegments: (paragraphs: string[]) => void;
   generateSegment: (
     id: string,
-    params: GenerationParams
+    params: TtsGenerationParams
   ) => Promise<void>;
   generateAll: (
-    params: GenerationParams
+    params: TtsGenerationParams
   ) => void;
   playSegment: (id: string) => void;
   togglePlayPause: () => void;
@@ -182,7 +135,66 @@ function findWordIndexAtTime(wordTimings: WordTiming[], time: number): number | 
 // 追踪排队或正在生成的段落，避免重复生成
 const pendingGenerationIds = new Set<string>();
 
-const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+function sleep(ms: number): Promise<void> {
+  return new Promise<void>((resolve) => setTimeout(resolve, ms));
+}
+
+function buildTtsRequest(text: string, params: TtsGenerationParams): { endpoint: string; body: Record<string, unknown> } {
+  if (params.provider === "azure") {
+    return {
+      endpoint: "/api/tts",
+      body: {
+        text,
+        apiKey: params.apiKey,
+        region: params.region,
+        voice: params.voice,
+        rate: params.rate,
+        volume: params.volume,
+        pauseMs: params.pauseMs,
+      },
+    };
+  }
+
+  if (params.provider === "elevenlabs") {
+    return {
+      endpoint: "/api/tts/elevenlabs",
+      body: {
+        text,
+        apiKey: params.apiKey,
+        voiceId: params.voiceId,
+        modelId: params.modelId,
+        languageCode: params.languageCode,
+        outputFormat: params.outputFormat,
+        stability: params.stability,
+        similarityBoost: params.similarityBoost,
+        style: params.style,
+        useSpeakerBoost: params.useSpeakerBoost,
+        speed: params.speed,
+        seed: params.seed ?? null,
+        applyTextNormalization: params.applyTextNormalization,
+        enableLogging: params.enableLogging,
+        optimizeStreamingLatency: params.optimizeStreamingLatency,
+      },
+    };
+  }
+
+  return {
+    endpoint: "/api/tts/gemini",
+    body: {
+      text,
+      apiKey: params.apiKey,
+      model: params.model,
+      voiceName: params.voiceName || "Kore",
+      languageCode: params.languageCode,
+      stylePrompt: params.stylePrompt,
+      multiSpeaker: params.multiSpeaker,
+      speaker1Name: params.speaker1Name,
+      speaker1VoiceName: params.speaker1VoiceName,
+      speaker2Name: params.speaker2Name,
+      speaker2VoiceName: params.speaker2VoiceName,
+    },
+  };
+}
 
 function normalizeWordTimings(value: unknown): WordTiming[] | undefined {
   if (!Array.isArray(value) || value.length === 0) return undefined;
@@ -394,54 +406,7 @@ export const useAudioStore = create<AudioStore>((set, get) => {
       if (!trimmedText) {
         throw new Error("段落内容为空，无法生成音频");
       }
-      let endpoint = "/api/tts";
-      let body: Record<string, unknown>;
-
-      if (params.provider === "azure") {
-        body = {
-          text: trimmedText,
-          apiKey: params.apiKey,
-          region: params.region,
-          voice: params.voice,
-          rate: params.rate,
-          volume: params.volume,
-          pauseMs: params.pauseMs,
-        };
-      } else if (params.provider === "elevenlabs") {
-        endpoint = "/api/tts/elevenlabs";
-        body = {
-          text: trimmedText,
-          apiKey: params.apiKey,
-          voiceId: params.voiceId,
-          modelId: params.modelId,
-          languageCode: params.languageCode,
-          outputFormat: params.outputFormat,
-          stability: params.stability,
-          similarityBoost: params.similarityBoost,
-          style: params.style,
-          useSpeakerBoost: params.useSpeakerBoost,
-          speed: params.speed,
-          seed: params.seed ?? null,
-          applyTextNormalization: params.applyTextNormalization,
-          enableLogging: params.enableLogging,
-          optimizeStreamingLatency: params.optimizeStreamingLatency,
-        };
-      } else {
-        endpoint = "/api/tts/gemini";
-        body = {
-          text: trimmedText,
-          apiKey: params.apiKey,
-          model: params.model,
-          voiceName: params.voiceName || "Kore",
-          languageCode: params.languageCode,
-          stylePrompt: params.stylePrompt,
-          multiSpeaker: params.multiSpeaker,
-          speaker1Name: params.speaker1Name,
-          speaker1VoiceName: params.speaker1VoiceName,
-          speaker2Name: params.speaker2Name,
-          speaker2VoiceName: params.speaker2VoiceName,
-        };
-      }
+      const { endpoint, body } = buildTtsRequest(trimmedText, params);
 
       const response = await fetch(endpoint, {
         method: "POST",

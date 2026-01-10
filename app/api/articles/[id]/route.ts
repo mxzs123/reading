@@ -15,7 +15,7 @@ interface ArticleMetadata {
 type RouteContext = { params: Promise<{ id: string }> };
 
 // GET /api/articles/[id] - 获取单篇文章
-export async function GET(request: NextRequest, context: RouteContext) {
+export async function GET(request: NextRequest, context: RouteContext): Promise<Response> {
   try {
     const { id } = await context.params;
     const article = await kv.hgetall(`article:${id}`);
@@ -32,7 +32,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
 }
 
 // PUT /api/articles/[id] - 更新文章
-export async function PUT(request: NextRequest, context: RouteContext) {
+export async function PUT(request: NextRequest, context: RouteContext): Promise<Response> {
   try {
     const { id } = await context.params;
     const body = await request.json();
@@ -60,7 +60,7 @@ export async function PUT(request: NextRequest, context: RouteContext) {
 }
 
 // DELETE /api/articles/[id] - 删除文章
-export async function DELETE(request: NextRequest, context: RouteContext) {
+export async function DELETE(request: NextRequest, context: RouteContext): Promise<Response> {
   try {
     const { id } = await context.params;
 

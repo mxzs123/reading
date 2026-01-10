@@ -39,7 +39,7 @@ type ElevenLabsWithTimestampsResponse = {
 
 const WORD_REGEX = /[A-Za-z]+(?:['-][A-Za-z]+)*/g;
 
-export async function POST(request: NextRequest) {
+export async function POST(request: NextRequest): Promise<Response> {
   let body: ElevenLabsRequest;
 
   try {

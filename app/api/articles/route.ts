@@ -17,7 +17,7 @@ function generateId(): string {
 }
 
 // GET /api/articles - 获取文章列表
-export async function GET() {
+export async function GET(): Promise<Response> {
   try {
     const articleIds = await kv.zrange("articles:index", 0, -1, { rev: true });
 
@@ -37,7 +37,7 @@ export async function GET() {
 }
 
 // POST /api/articles - 创建文章
-export async function POST(request: NextRequest) {
+export async function POST(request: NextRequest): Promise<Response> {
   try {
     const body = await request.json();
 
@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
 }
 
 // DELETE /api/articles - 清除所有文章
-export async function DELETE() {
+export async function DELETE(): Promise<Response> {
   try {
     const articleIds = await kv.zrange("articles:index", 0, -1);
 

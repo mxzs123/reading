@@ -13,7 +13,7 @@ interface TTSRequest {
   pauseMs?: number;
 }
 
-export async function POST(request: NextRequest) {
+export async function POST(request: NextRequest): Promise<Response> {
   let body: TTSRequest;
 
   try {

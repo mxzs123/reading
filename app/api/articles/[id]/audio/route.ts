@@ -72,7 +72,7 @@ const upsertAudioUrlsScript = kv.createScript<string>(
 );
 
 // POST /api/articles/[id]/audio - 上传段落音频
-export async function POST(request: NextRequest, context: RouteContext) {
+export async function POST(request: NextRequest, context: RouteContext): Promise<Response> {
   const { id } = await context.params;
   let segmentId: string | null = null;
   let wordTimingsJson = "";

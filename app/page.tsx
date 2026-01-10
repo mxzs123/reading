@@ -5,12 +5,19 @@ import { SettingsPanel } from "@/components/SettingsPanel";
 import { DictionaryPanel, type DictionaryData } from "@/components/DictionaryPanel";
 import ArticleManager from "@/components/ArticleManager";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
+import { buildTtsGenerationParams } from "@/lib/settings";
 import type { Article } from "@/lib/storage";
 import { ReadingArea } from "@/components/ReadingArea";
 import { MiniPlayer } from "@/components/MiniPlayer";
 import { useAudioStore } from "@/stores/audioStore";
 import { useSettings } from "@/contexts/SettingsContext";
 import styles from "./page.module.css";
+
+function normalizeDictionaryWord(word: string): { trimmed: string; normalized: string } | null {
+  const trimmed = word.trim();
+  if (!trimmed) return null;
+  return { trimmed, normalized: trimmed.toLowerCase() };
+}
 
 export default function Home() {
   const [sourceText, setSourceText] = useState("");
@@ -31,85 +38,7 @@ export default function Home() {
   const loadAudioUrls = useAudioStore((s) => s.loadAudioUrls);
   const loadSegmentWordTimings = useAudioStore((s) => s.loadSegmentWordTimings);
   const setConcurrencyLimit = useAudioStore((s) => s.setConcurrencyLimit);
-  const ttsParams = useMemo(() => {
-    if (settings.ttsProvider === "elevenlabs") {
-      return {
-        provider: "elevenlabs" as const,
-        apiKey: settings.elevenApiKey,
-        voiceId: settings.elevenVoiceId,
-        modelId: settings.elevenModelId,
-        languageCode: settings.elevenLanguageCode,
-        outputFormat: settings.elevenOutputFormat,
-        stability: settings.elevenStability,
-        similarityBoost: settings.elevenSimilarityBoost,
-        style: settings.elevenStyle,
-        useSpeakerBoost: settings.elevenUseSpeakerBoost,
-        speed: settings.elevenSpeed,
-        seed: settings.elevenSeed,
-        applyTextNormalization: settings.elevenApplyTextNormalization,
-        enableLogging: settings.elevenEnableLogging,
-        optimizeStreamingLatency: settings.elevenOptimizeStreamingLatency,
-      };
-    }
-
-    if (settings.ttsProvider === "gemini") {
-      return {
-        provider: "gemini" as const,
-        apiKey: settings.geminiApiKey,
-        model: settings.geminiModel,
-        voiceName: settings.geminiVoiceName,
-        languageCode: settings.geminiLanguageCode,
-        stylePrompt: settings.geminiStylePrompt,
-        multiSpeaker: settings.geminiUseMultiSpeaker,
-        speaker1Name: settings.geminiSpeaker1Name,
-        speaker1VoiceName: settings.geminiSpeaker1VoiceName,
-        speaker2Name: settings.geminiSpeaker2Name,
-        speaker2VoiceName: settings.geminiSpeaker2VoiceName,
-      };
-    }
-
-    return {
-      provider: "azure" as const,
-      apiKey: settings.azureApiKey,
-      region: settings.azureRegion,
-      voice: settings.azureVoice,
-      rate: settings.ttsRate,
-      volume: settings.ttsVolume,
-      pauseMs: settings.ttsPauseMs,
-    };
-  }, [
-    settings.azureApiKey,
-    settings.azureRegion,
-    settings.azureVoice,
-    settings.elevenApiKey,
-    settings.elevenApplyTextNormalization,
-    settings.elevenEnableLogging,
-    settings.elevenLanguageCode,
-    settings.elevenModelId,
-    settings.elevenOptimizeStreamingLatency,
-    settings.elevenOutputFormat,
-    settings.elevenSeed,
-    settings.elevenSimilarityBoost,
-    settings.elevenSpeed,
-    settings.elevenStability,
-    settings.elevenStyle,
-    settings.elevenUseSpeakerBoost,
-    settings.elevenVoiceId,
-    settings.geminiApiKey,
-    settings.geminiLanguageCode,
-    settings.geminiModel,
-    settings.geminiSpeaker1Name,
-    settings.geminiSpeaker1VoiceName,
-    settings.geminiSpeaker2Name,
-    settings.geminiSpeaker2VoiceName,
-    settings.geminiStylePrompt,
-    settings.geminiUseMultiSpeaker,
-    settings.geminiVoiceName,
-    settings.ttsPauseMs,
-    settings.ttsProvider,
-    settings.ttsRate,
-    settings.ttsVolume,
-  ]);
+  const ttsParams = useMemo(() => buildTtsGenerationParams(settings), [settings]);
 
   // 待加载的音频 URLs（文章加载后等 segments 初始化完成再恢复）
   const pendingAudioUrlsRef = useRef<string[] | null>(null);
@@ -133,6 +62,7 @@ export default function Home() {
   const abortRef = useRef<AbortController | null>(null);
   const dictionaryCacheRef = useRef<Map<string, DictionaryData>>(new Map());
   const dictionaryPrefetchControllersRef = useRef<Map<string, AbortController>>(new Map());
+  const dictionaryAnchorCleanupTimeoutRef = useRef<number | null>(null);
   const isMobile = useMediaQuery("(max-width: 768px)");
   const settingsOpen = userSettingsOpen;
   const inputSectionRef = useRef<HTMLElement | null>(null);
@@ -159,8 +89,9 @@ export default function Home() {
 
   const prefetchDictionary = useCallback(
     (word: string) => {
-      const normalized = word.trim().toLowerCase();
-      if (!normalized) return;
+      const parsed = normalizeDictionaryWord(word);
+      if (!parsed) return;
+      const { normalized } = parsed;
       if (dictionaryCacheRef.current.has(normalized) || dictionaryPrefetchControllersRef.current.has(normalized)) {
         return;
       }
@@ -185,9 +116,9 @@ export default function Home() {
 
   const handleWordClick = useCallback(
     (word: string, rect: DOMRect) => {
-      const trimmed = word.trim();
-      if (!trimmed) return;
-      const normalized = trimmed.toLowerCase();
+      const parsed = normalizeDictionaryWord(word);
+      if (!parsed) return;
+      const { trimmed, normalized } = parsed;
 
       setSelectedWord(trimmed);
       setDictionaryAnchor(
@@ -236,8 +167,12 @@ export default function Home() {
     setSelectedWord("");
 
     // 延迟清除 anchor，等待关闭动画完成（0.28s），防止位置跳变导致闪烁
-    setTimeout(() => {
+    if (dictionaryAnchorCleanupTimeoutRef.current) {
+      window.clearTimeout(dictionaryAnchorCleanupTimeoutRef.current);
+    }
+    dictionaryAnchorCleanupTimeoutRef.current = window.setTimeout(() => {
       setDictionaryAnchor(null);
+      dictionaryAnchorCleanupTimeoutRef.current = null;
     }, 300);
 
     if (typeof document !== "undefined") {
@@ -273,6 +208,10 @@ export default function Home() {
     const controllers = dictionaryPrefetchControllersRef.current;
     return () => {
       abortRef.current?.abort();
+      if (dictionaryAnchorCleanupTimeoutRef.current) {
+        window.clearTimeout(dictionaryAnchorCleanupTimeoutRef.current);
+        dictionaryAnchorCleanupTimeoutRef.current = null;
+      }
       controllers.forEach((controller) => controller.abort());
       controllers.clear();
     };
