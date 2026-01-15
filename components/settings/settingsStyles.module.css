@@ -1,0 +1,149 @@
+/* Shared Settings Panel Section Styles */
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+  padding: 1rem;
+  background: var(--whisper);
+  border-radius: 16px;
+  border: 1px solid var(--color-border);
+}
+
+.sectionHeader {
+  font-family: var(--font-ui), system-ui, sans-serif;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 0.25rem;
+}
+
+.fieldRow {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+
+.fieldColumn {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.fieldLabel {
+  font-size: 0.88rem;
+  font-weight: 500;
+  color: var(--color-text);
+}
+
+.grid2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  column-gap: 1rem;
+  row-gap: 1.2rem;
+}
+
+.select {
+  width: 100%;
+  padding: 0.7rem 1rem;
+  border-radius: 12px;
+  border: 1px solid var(--input-border);
+  background: var(--input-surface);
+  font-size: 0.95rem;
+}
+
+.apiKeyInput {
+  flex: 1;
+  padding: 0.7rem 1rem;
+  border-radius: 12px;
+  border: 1px solid var(--input-border);
+  background: var(--input-surface);
+  font-size: 0.95rem;
+  font-family: monospace;
+}
+
+.apiKeyInput:focus {
+  outline: none;
+  border-color: var(--color-primary);
+}
+
+.apiKeyHint {
+  font-size: 0.8rem;
+  color: var(--color-muted);
+  margin: 0;
+}
+
+.apiKeyHint a {
+  color: var(--color-primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.callout {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.75rem 0.85rem;
+  background: var(--panel-muted-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+}
+
+.calloutText {
+  margin: 0;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: var(--color-muted);
+}
+
+.calloutButton {
+  font-family: var(--font-ui), system-ui, sans-serif;
+  font-size: 0.82rem;
+  font-weight: 700;
+  white-space: nowrap;
+  padding: 0.45rem 0.9rem;
+  border-radius: 999px;
+  background: var(--control-active-surface);
+  border: 1px solid var(--color-border);
+  color: var(--accent);
+  transition: transform 0.15s ease, background 0.2s ease;
+}
+
+.calloutButton:hover {
+  background: var(--panel-strong-bg);
+  transform: translateY(-1px);
+}
+
+.details {
+  border: 1px solid var(--color-border);
+  background: var(--panel-muted-bg);
+  border-radius: 14px;
+  padding: 0.75rem 0.85rem;
+}
+
+.detailsSummary {
+  cursor: pointer;
+  font-family: var(--font-ui), system-ui, sans-serif;
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.detailsSummary::-webkit-details-marker {
+  display: none;
+}
+
+.detailsBody {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-top: 0.85rem;
+}
+
+@media (max-width: 768px) {
+  .grid2 {
+    grid-template-columns: 1fr;
+  }
+}

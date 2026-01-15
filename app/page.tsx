@@ -5,6 +5,7 @@ import { SettingsPanel } from "@/components/SettingsPanel";
 import { DictionaryPanel, type DictionaryData } from "@/components/DictionaryPanel";
 import ArticleManager from "@/components/ArticleManager";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
+import { useDictionary } from "@/hooks/useDictionary";
 import { buildTtsGenerationParams } from "@/lib/settings";
 import type { Article } from "@/lib/storage";
 import { ReadingArea } from "@/components/ReadingArea";
@@ -13,19 +14,10 @@ import { useAudioStore } from "@/stores/audioStore";
 import { useSettings } from "@/contexts/SettingsContext";
 import styles from "./page.module.css";
 
-function normalizeDictionaryWord(word: string): { trimmed: string; normalized: string } | null {
-  const trimmed = word.trim();
-  if (!trimmed) return null;
-  return { trimmed, normalized: trimmed.toLowerCase() };
-}
-
 export default function Home() {
   const [sourceText, setSourceText] = useState("");
-  // 默认折叠设置面板（桌面与移动端一致）
   const [userSettingsOpen, setUserSettingsOpen] = useState<boolean>(false);
-  // 文章管理弹窗
   const [articlesOpen, setArticlesOpen] = useState<boolean>(false);
-  // 原文输入是否折叠
   const [inputCollapsed, setInputCollapsed] = useState(false);
   const [selectedWord, setSelectedWord] = useState("");
   const selectedWordRef = useRef<string>("");
@@ -47,134 +39,71 @@ export default function Home() {
   const setConcurrencyLimit = useAudioStore((s) => s.setConcurrencyLimit);
   const ttsParams = useMemo(() => buildTtsGenerationParams(settings), [settings]);
 
-  // 待加载的音频 URLs（文章加载后等 segments 初始化完成再恢复）
+  // 待加载的音频 URLs
   const pendingAudioUrlsRef = useRef<string[] | null>(null);
   const pendingSegmentWordTimingsRef = useRef<Article["segmentWordTimings"] | null>(null);
   const wasArticlePlayingRef = useRef(false);
-  const [dictionaryAnchor, setDictionaryAnchor] = useState<
-    | {
-        top: number;
-        left: number;
-        width: number;
-        height: number;
-      }
-    | null
-  >(null);
+
+  // 词典状态
+  const [dictionaryAnchor, setDictionaryAnchor] = useState<{
+    top: number;
+    left: number;
+    width: number;
+    height: number;
+  } | null>(null);
   const [dictionaryData, setDictionaryData] = useState<DictionaryData | undefined>();
   const [dictionaryLoading, setDictionaryLoading] = useState(false);
   const [dictionaryError, setDictionaryError] = useState<string | undefined>();
   const [dictionaryOpen, setDictionaryOpen] = useState(false);
-  // 文章和音频状态
-  const [currentArticleId, setCurrentArticleId] = useState<string | null>(null);
-  const abortRef = useRef<AbortController | null>(null);
-  const closeDictionaryRef = useRef<() => void>(() => {});
-  const dictionaryCacheRef = useRef<Map<string, DictionaryData>>(new Map());
-  const dictionaryPrefetchControllersRef = useRef<Map<string, AbortController>>(new Map());
   const dictionaryAnchorCleanupTimeoutRef = useRef<number | null>(null);
+
+  // 文章状态
+  const [currentArticleId, setCurrentArticleId] = useState<string | null>(null);
+
+  // Refs
+  const closeDictionaryRef = useRef<() => void>(() => {});
   const isMobile = useMediaQuery("(max-width: 768px)");
   const settingsOpen = userSettingsOpen;
   const inputSectionRef = useRef<HTMLElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const outputSectionRef = useRef<HTMLElement | null>(null);
 
-  const requestDictionary = useCallback(async (word: string, signal?: AbortSignal): Promise<DictionaryData> => {
-    const response = await fetch(`/api/dictionary?word=${encodeURIComponent(word)}`, {
-      signal,
-    });
-    if (!response.ok) {
-      throw new Error("查询失败");
-    }
-    const data = (await response.json()) as DictionaryData & { error?: string };
-    if (data.error) {
-      throw new Error(data.error);
-    }
-    return {
-      phonetics: data.phonetics,
-      meanings: data.meanings ?? [],
-      webTranslations: data.webTranslations ?? [],
-    };
-  }, []);
-
-  const prefetchDictionary = useCallback(
-    (word: string) => {
-      const parsed = normalizeDictionaryWord(word);
-      if (!parsed) return;
-      const { normalized } = parsed;
-      if (dictionaryCacheRef.current.has(normalized) || dictionaryPrefetchControllersRef.current.has(normalized)) {
-        return;
-      }
-
-      const controller = new AbortController();
-      dictionaryPrefetchControllersRef.current.set(normalized, controller);
-
-      requestDictionary(normalized, controller.signal)
-        .then((data) => {
-          dictionaryCacheRef.current.set(normalized, data);
-        })
-        .catch((error) => {
-          if (controller.signal.aborted) return;
-          console.debug("词典预取失败", error);
-        })
-        .finally(() => {
-          dictionaryPrefetchControllersRef.current.delete(normalized);
-        });
+  // 词典 hook
+  const dictionary = useDictionary({
+    onData: setDictionaryData,
+    onError: (error) => {
+      setDictionaryData(undefined);
+      setDictionaryError(error);
     },
-    [requestDictionary]
-  );
+    onLoadingChange: setDictionaryLoading,
+  });
 
   const handleWordClick = useCallback(
     (word: string, rect: DOMRect) => {
-      const parsed = normalizeDictionaryWord(word);
-      if (!parsed) return;
-      const { trimmed, normalized } = parsed;
+      const result = dictionary.lookup(word);
+      if (!result) return;
 
-      setSelectedWordValue(trimmed);
+      setSelectedWordValue(result.trimmed);
       setDictionaryAnchor(
         isMobile ? null : { top: rect.top, left: rect.left, width: rect.width, height: rect.height }
       );
       setDictionaryOpen(true);
       setDictionaryError(undefined);
 
-      const cached = dictionaryCacheRef.current.get(normalized);
-      if (cached) {
-        setDictionaryData(cached);
-        setDictionaryLoading(false);
+      if (result.cached) {
+        setDictionaryData(result.cached);
       } else {
         setDictionaryData(undefined);
-        setDictionaryLoading(true);
       }
-
-      abortRef.current?.abort();
-      const controller = new AbortController();
-      abortRef.current = controller;
-
-      requestDictionary(normalized, controller.signal)
-        .then((data) => {
-          dictionaryCacheRef.current.set(normalized, data);
-          if (controller.signal.aborted) return;
-          setDictionaryData(data);
-        })
-        .catch((error: Error) => {
-          if (controller.signal.aborted) return;
-          console.warn("词典查询错误", error);
-          setDictionaryData(undefined);
-          setDictionaryError("查询失败，请稍后再试");
-        })
-        .finally(() => {
-          if (!controller.signal.aborted) {
-            setDictionaryLoading(false);
-          }
-        });
     },
-    [isMobile, requestDictionary, setSelectedWordValue]
+    [isMobile, dictionary, setSelectedWordValue]
   );
 
   const handleCloseDictionary = useCallback(() => {
-    abortRef.current?.abort();
+    dictionary.abortCurrentLookup();
     setDictionaryOpen(false);
     setSelectedWordValue("");
 
-    // 延迟清除 anchor，等待关闭动画完成（0.28s），防止位置跳变导致闪烁
     if (dictionaryAnchorCleanupTimeoutRef.current) {
       window.clearTimeout(dictionaryAnchorCleanupTimeoutRef.current);
     }
@@ -189,7 +118,7 @@ export default function Home() {
         active.blur();
       }
     }
-  }, [setSelectedWordValue]);
+  }, [dictionary, setSelectedWordValue]);
 
   useEffect(() => {
     closeDictionaryRef.current = handleCloseDictionary;
@@ -216,10 +145,9 @@ export default function Home() {
     handleResumeArticleAudio();
   }, [handleCloseDictionary, handleResumeArticleAudio]);
 
+  // Cleanup timeouts
   useEffect(() => {
-    const controllers = dictionaryPrefetchControllersRef.current;
     return () => {
-      abortRef.current?.abort();
       if (dictionaryAnchorCleanupTimeoutRef.current) {
         window.clearTimeout(dictionaryAnchorCleanupTimeoutRef.current);
         dictionaryAnchorCleanupTimeoutRef.current = null;
@@ -228,19 +156,14 @@ export default function Home() {
         window.clearTimeout(readingPulseTimeoutRef.current);
         readingPulseTimeoutRef.current = null;
       }
-      controllers.forEach((controller) => controller.abort());
-      controllers.clear();
     };
   }, []);
-
-  useEffect(() => {
-    prefetchDictionary("warmup");
-  }, [prefetchDictionary]);
 
   useEffect(() => {
     setConcurrencyLimit(settings.ttsConcurrency);
   }, [settings.ttsConcurrency, setConcurrencyLimit]);
 
+  // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.repeat) return;
@@ -280,7 +203,6 @@ export default function Home() {
         return;
       }
 
-      // 词典未显示时，避免打断按钮/链接/单词的键盘交互
       if ((tagName && ["BUTTON", "A"].includes(tagName)) || target?.closest?.(".bionic-word") || target?.closest?.('[role="button"]')) {
         return;
       }
@@ -331,17 +253,14 @@ export default function Home() {
   );
 
   const confirmAndCollapse = useCallback(() => {
-    // 没有文本不折叠
     if (!sourceText.trim()) return;
     setInputCollapsed(true);
     triggerReadingPulse();
-    // 聚焦阅读区域
     setTimeout(() => {
       outputSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     }, 0);
   }, [sourceText, triggerReadingPulse]);
 
-  // 加载保存的文章
   const handleArticleLoad = useCallback((article: Article) => {
     setSourceText(article.text);
     setCurrentArticleId(article.id);
@@ -350,7 +269,7 @@ export default function Home() {
     setSelectedWordValue("");
     setDictionaryAnchor(null);
     triggerReadingPulse();
-    // 保存待加载的音频 URLs
+
     if (article.audioUrls && article.audioUrls.length > 0) {
       pendingAudioUrlsRef.current = article.audioUrls;
     } else {
@@ -362,17 +281,16 @@ export default function Home() {
     } else {
       pendingSegmentWordTimingsRef.current = null;
     }
+
     setTimeout(() => {
       outputSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     }, 0);
   }, [setSelectedWordValue, triggerReadingPulse]);
 
-  // 文章保存后更新 ID
   const handleArticleSaved = useCallback((article: Article) => {
     setCurrentArticleId(article.id);
   }, []);
 
-  // 当 segments 初始化完成后，加载待恢复的音频
   useEffect(() => {
     if (pendingAudioUrlsRef.current && total > 0) {
       loadAudioUrls(pendingAudioUrlsRef.current);
@@ -544,13 +462,12 @@ export default function Home() {
               <ReadingArea
                 text={sourceText}
                 onWordClick={handleWordClick}
-                onWordPrefetch={prefetchDictionary}
+                onWordPrefetch={dictionary.prefetch}
                 onStopArticleAudio={handleStopArticleAudio}
                 onWordAudioEnd={handleWordAudioEnd}
               />
             </div>
           </section>
-
         </main>
 
         <SettingsPanel

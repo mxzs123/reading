@@ -1,0 +1,65 @@
+import type { ReaderSettings } from "./types";
+
+export const DEFAULT_SETTINGS: ReaderSettings = {
+  fontSize: 18.5,
+  lineHeight: 1.58,
+  letterSpacing: 0.012,
+  paragraphSpacing: 1.05,
+  boldRatio: "medium",
+  customBoldRatio: 0.45,
+  bionicWeight: 600,
+  bodyFontWeight: 400,
+  fontFamily: "Georgia, 'Times New Roman', serif",
+  theme: "sepia",
+  pageWidthMode: "px",
+  pageWidth: 680,
+  pageWidthVw: 92,
+  pageWidthCh: 72,
+  readingPadding: 36,
+  textIndent: 0,
+  textAlign: "left",
+  ttsProvider: "azure",
+  azureApiKey: "",
+  azureRegion: "eastus2",
+  azureVoice: "en-US-Ava:DragonHDLatestNeural",
+  elevenApiKey: "",
+  elevenVoiceId: "EXAVITQu4vr4xnSDxMaL",
+  elevenModelId: "eleven_v3",
+  elevenLanguageCode: "en",
+  elevenOutputFormat: "mp3_44100_128",
+  elevenStability: 0.5,
+  elevenSimilarityBoost: 0.75,
+  elevenStyle: 0,
+  elevenUseSpeakerBoost: true,
+  elevenSpeed: 1,
+  elevenSeed: null,
+  elevenApplyTextNormalization: "auto",
+  elevenEnableLogging: true,
+  elevenOptimizeStreamingLatency: null,
+  elevenWordSyncHighlight: true,
+  geminiApiKey: "",
+  geminiModel: "gemini-2.5-flash-preview-tts",
+  geminiVoiceName: "Kore",
+  geminiLanguageCode: "en-US",
+  geminiStylePrompt: "",
+  geminiUseMultiSpeaker: false,
+  geminiSpeaker1Name: "Speaker1",
+  geminiSpeaker1VoiceName: "Kore",
+  geminiSpeaker2Name: "Speaker2",
+  geminiSpeaker2VoiceName: "Puck",
+  autoPlayNext: true,
+  ttsConcurrency: 4,
+  ttsRate: 1,
+  ttsVolume: 1,
+  ttsPauseMs: 400,
+  readingMode: "audio",
+};
+
+export const SETTINGS_STORAGE_KEY = "bionicReaderSettings";
+
+export function mergeSettings(
+  base: ReaderSettings,
+  patch: Partial<ReaderSettings>
+): ReaderSettings {
+  return { ...base, ...patch };
+}
