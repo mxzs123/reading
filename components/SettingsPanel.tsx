@@ -41,9 +41,15 @@ export function SettingsPanel({ isOpen, onClose, onArticlesCleared }: SettingsPa
   const [showGeminiApiKey, setShowGeminiApiKey] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
   const isMobile = useMediaQuery("(max-width: 768px)");
-  const [viewportWidth] = useState<number>(() =>
+  const [viewportWidth, setViewportWidth] = useState<number>(() =>
     typeof window !== "undefined" ? window.innerWidth || 0 : 0
   );
+
+  useEffect(() => {
+    const handleResize = () => setViewportWidth(window.innerWidth || 0);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   const canConfigureTts = settings.readingMode === "audio";
   const [activeTab, setActiveTab] = useState<SettingsTab>("reading");
@@ -134,7 +140,7 @@ export function SettingsPanel({ isOpen, onClose, onArticlesCleared }: SettingsPa
     settings.pageWidthCh,
   ]);
 
-  let pageWidthControl: JSX.Element;
+  let pageWidthControl: ReactNode;
   if (widthMode === "vw") {
     pageWidthControl = (
       <RangeField
