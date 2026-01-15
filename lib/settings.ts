@@ -237,18 +237,15 @@ export function applySettings(settings: ReaderSettings): void {
     typeof window !== "undefined" &&
     window.matchMedia("(max-width: 768px)").matches;
 
-  const fontSizePx = clampNumber(settings.fontSize, 14, isMobile ? 26 : 30);
+  const fontSizePx = clampNumber(settings.fontSize, 14, 30);
   const lineHeight = clampNumber(settings.lineHeight, 1.2, 2.4);
   const letterSpacingEm = clampNumber(settings.letterSpacing, -0.05, 0.12);
   const paragraphSpacingEm = clampNumber(settings.paragraphSpacing, 0.4, 2.0);
-  const pageWidthPx = clampNumber(settings.pageWidth, 400, 1200);
+  const pageWidthMinPx = isMobile ? 260 : 400;
+  const pageWidthPx = clampNumber(settings.pageWidth, pageWidthMinPx, 1200);
   const pageWidthVw = clampNumber(settings.pageWidthVw, 60, 96);
   const pageWidthCh = clampNumber(settings.pageWidthCh, 40, 120);
-  const readingPaddingPx = clampNumber(
-    settings.readingPadding,
-    isMobile ? 8 : 12,
-    isMobile ? 60 : 120
-  );
+  const readingPaddingPx = clampNumber(settings.readingPadding, 8, 120);
   const textIndentEm = clampNumber(settings.textIndent ?? 0, 0, 2);
   const bodyFontWeight = clampNumber(settings.bodyFontWeight ?? 400, 300, 800);
   const bionicWeight = clampNumber(settings.bionicWeight ?? 600, 400, 850);
@@ -256,19 +253,17 @@ export function applySettings(settings: ReaderSettings): void {
     settings.pageWidthMode ?? "px";
 
   const responsiveFontSize = isMobile
-    ? `clamp(15px, calc(${fontSizePx}px + 0.7vw), 26px)`
+    ? `clamp(15px, calc(${fontSizePx}px + 0.7vw), 30px)`
     : `clamp(17px, calc(${fontSizePx}px + 0.4vw), 30px)`;
 
   let responsivePageWidth: string;
   if (pageWidthMode === "vw") {
-    const vwValue = isMobile ? Math.min(pageWidthVw, 94) : pageWidthVw;
-    responsivePageWidth = `${vwValue}vw`;
+    responsivePageWidth = `${pageWidthVw}vw`;
   } else if (pageWidthMode === "ch") {
-    const chValue = isMobile ? Math.min(pageWidthCh, 92) : pageWidthCh;
-    responsivePageWidth = `${chValue}ch`;
+    responsivePageWidth = `${pageWidthCh}ch`;
   } else {
     responsivePageWidth = isMobile
-      ? "92vw"
+      ? `min(${pageWidthPx}px, 94vw)`
       : `clamp(400px, 82vw, ${pageWidthPx}px)`;
   }
 

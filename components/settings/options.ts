@@ -12,15 +12,15 @@ import type {
 } from "@/lib/settings";
 
 export const readingModeOptions = [
-  { value: "pure", label: "纯净阅读" },
-  { value: "audio", label: "音频播放" },
+  { value: "pure", label: "纯净" },
+  { value: "audio", label: "音频" },
 ] as const satisfies readonly { value: ReadingMode; label: string }[];
 
 export const boldOptions = [
   { value: "off", label: "关闭" },
-  { value: "low", label: "低 " },
-  { value: "medium", label: "中 " },
-  { value: "high", label: "高 " },
+  { value: "low", label: "低" },
+  { value: "medium", label: "中" },
+  { value: "high", label: "高" },
   { value: "custom", label: "自定义" },
 ] as const satisfies readonly { value: BoldRatio; label: string }[];
 
@@ -32,16 +32,16 @@ export const themeOptions = [
 ] as const satisfies readonly { value: Theme; label: string }[];
 
 export const alignOptions = [
-  { value: "left", label: "左对齐" },
-  { value: "center", label: "居中" },
-  { value: "right", label: "右对齐" },
-  { value: "justify", label: "两端对齐" },
+  { value: "left", label: "左" },
+  { value: "center", label: "中" },
+  { value: "right", label: "右" },
+  { value: "justify", label: "两端" },
 ] as const satisfies readonly { value: TextAlign; label: string }[];
 
 export const widthModeOptions = [
-  { value: "px", label: "固定像素" },
-  { value: "vw", label: "视口百分比" },
-  { value: "ch", label: "按字符数" },
+  { value: "px", label: "像素" },
+  { value: "vw", label: "视口" },
+  { value: "ch", label: "字符" },
 ] as const satisfies readonly { value: PageWidthMode; label: string }[];
 
 export const azureVoiceOptions = [
@@ -52,9 +52,9 @@ export const azureVoiceOptions = [
 ] as const satisfies readonly { value: AzureTTSVoice; label: string }[];
 
 export const ttsProviderOptions = [
-  { value: "azure", label: "Azure Speech" },
+  { value: "azure", label: "Azure" },
   { value: "elevenlabs", label: "ElevenLabs" },
-  { value: "gemini", label: "Google Gemini" },
+  { value: "gemini", label: "Gemini" },
 ] as const satisfies readonly { value: TTSProvider; label: string }[];
 
 export const geminiModelOptions = [

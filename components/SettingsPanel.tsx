@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useSettings } from "@/contexts/SettingsContext";
 import {
   type ApplyTextNormalization,
@@ -32,6 +32,8 @@ interface SettingsPanelProps {
   onArticlesCleared?: () => void;
 }
 
+type SettingsTab = "reading" | "typography" | "layout" | "tts";
+
 export function SettingsPanel({ isOpen, onClose, onArticlesCleared }: SettingsPanelProps) {
   const { settings, updateSettings, resetSettings, hydrated } = useSettings();
   const [showApiKey, setShowApiKey] = useState(false);
@@ -39,10 +41,33 @@ export function SettingsPanel({ isOpen, onClose, onArticlesCleared }: SettingsPa
   const [showGeminiApiKey, setShowGeminiApiKey] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
   const isMobile = useMediaQuery("(max-width: 768px)");
-  const wordSyncHighlightSupported = settings.ttsProvider === "elevenlabs";
   const [viewportWidth] = useState<number>(() =>
     typeof window !== "undefined" ? window.innerWidth || 0 : 0
   );
+
+  const canConfigureTts = settings.readingMode === "audio";
+  const [activeTab, setActiveTab] = useState<SettingsTab>("reading");
+
+  const tabOptions = useMemo<ReadonlyArray<SegmentedOption<SettingsTab>>>(
+    () => {
+      const base: ReadonlyArray<SegmentedOption<SettingsTab>> = [
+        { value: "reading", label: "阅读" },
+        { value: "typography", label: "排版" },
+        { value: "layout", label: "布局" },
+      ];
+
+      return canConfigureTts
+        ? [...base, { value: "tts", label: "朗读" }]
+        : base;
+    },
+    [canConfigureTts]
+  );
+
+  useEffect(() => {
+    if (!canConfigureTts && activeTab === "tts") {
+      setActiveTab("reading");
+    }
+  }, [activeTab, canConfigureTts]);
 
   const handleClearAllArticles = async () => {
     if (!confirm("确定要删除所有文章吗？此操作不可恢复！")) {
@@ -81,7 +106,7 @@ export function SettingsPanel({ isOpen, onClose, onArticlesCleared }: SettingsPa
       const vw = Math.min(Math.max(settings.pageWidthVw, 60), 96) / 100;
       availableWidth = viewportWidth * vw;
     } else if (isMobile) {
-      availableWidth = Math.min(viewportWidth * 0.96, settings.pageWidth);
+      availableWidth = Math.min(viewportWidth * 0.94, settings.pageWidth);
     } else {
       availableWidth = settings.pageWidth;
     }
@@ -135,14 +160,19 @@ export function SettingsPanel({ isOpen, onClose, onArticlesCleared }: SettingsPa
       />
     );
   } else {
+    const pageWidthMin = isMobile ? 260 : 400;
+    const pageWidthMax = isMobile
+      ? Math.max(pageWidthMin, Math.round(viewportWidth * 0.94) || 420)
+      : 1200;
+
     pageWidthControl = (
       <RangeField
         label="内容宽度"
         value={settings.pageWidth}
         unit="px"
-        min={400}
-        max={1200}
-        step={10}
+        min={pageWidthMin}
+        max={pageWidthMax}
+        step={isMobile ? 2 : 10}
         onChange={(value) => updateSettings({ pageWidth: value })}
       />
     );
@@ -170,8 +200,18 @@ export function SettingsPanel({ isOpen, onClose, onArticlesCleared }: SettingsPa
           </button>
         </header>
 
+        <div className={styles.tabs}>
+          <SegmentedControl
+            value={activeTab}
+            options={tabOptions}
+            onChange={setActiveTab}
+            layout="tabs"
+          />
+        </div>
+
         <div className={styles.scrollContent}>
-          <section className={styles.section}>
+          <div hidden={activeTab !== "reading"} className={styles.tabContent}>
+            <section className={styles.section}>
             <div className={styles.sectionHeader}>阅读模式</div>
             
             <div className={styles.fieldRow}>
@@ -183,10 +223,28 @@ export function SettingsPanel({ isOpen, onClose, onArticlesCleared }: SettingsPa
               <p className={styles.apiKeyHint}>
                 纯净阅读：仅支持单词查词；音频播放：点击段落可生成并播放音频。
               </p>
-            </div>
-          </section>
 
-          <section className={styles.section}>
+              {settings.readingMode === "pure" ? (
+                <div className={styles.callout}>
+                  <p className={styles.calloutText}>
+                    纯净阅读不会生成段落音频；切换到「音频播放」后可配置朗读。
+                  </p>
+                  <button
+                    type="button"
+                    className={styles.calloutButton}
+                    onClick={() => {
+                      updateSettings({ readingMode: "audio" });
+                      setActiveTab("tts");
+                    }}
+                  >
+                    切换到音频播放
+                  </button>
+                </div>
+              ) : null}
+            </div>
+            </section>
+
+            <section className={styles.section}>
             <div className={styles.sectionHeader}>显示外观</div>
             
             <div className={styles.fieldRow}>
@@ -223,122 +281,138 @@ export function SettingsPanel({ isOpen, onClose, onArticlesCleared }: SettingsPa
                 onChange={(value) => updateSettings({ bionicWeight: value })}
               />
             </div>
-          </section>
+            </section>
+          </div>
 
-          <section className={styles.section}>
-            <div className={styles.sectionHeader}>排版样式</div>
-            
-            <div className={styles.fieldColumn}>
-              <select
-                className={styles.select}
-                value={settings.fontFamily}
-                onChange={(e) => updateSettings({ fontFamily: e.target.value })}
-              >
-                {fontFamilies.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </div>
+          <div hidden={activeTab !== "typography"} className={styles.tabContent}>
+            <section className={styles.section}>
+              <div className={styles.sectionHeader}>字体与排版</div>
 
-            <div className={styles.grid2}>
-              <RangeField
-                label="字号"
-                value={settings.fontSize}
-                unit="px"
-                min={14}
-                max={30}
-                step={0.25}
-                onChange={(value) => updateSettings({ fontSize: value })}
-              />
-              <RangeField
-                label="行高"
-                value={settings.lineHeight}
-                min={1.2}
-                max={2.4}
-                step={0.02}
-                onChange={(value) => updateSettings({ lineHeight: value })}
-              />
-              <RangeField
-                label="字间距"
-                value={settings.letterSpacing}
-                unit="em"
-                min={-0.05}
-                max={0.12}
-                step={0.002}
-                onChange={(value) => updateSettings({ letterSpacing: value })}
-              />
-              <RangeField
-                label="段落间距"
-                value={settings.paragraphSpacing}
-                unit="em"
-                min={0.4}
-                max={2}
-                step={0.05}
-                onChange={(value) => updateSettings({ paragraphSpacing: value })}
-              />
-              <RangeField
-                label="正文字重"
-                value={settings.bodyFontWeight}
-                min={350}
-                max={800}
-                step={25}
-                onChange={(value) => updateSettings({ bodyFontWeight: value })}
-              />
-              <RangeField
-                label="首行缩进"
-                value={settings.textIndent}
-                unit="em"
-                min={0}
-                max={2}
-                step={0.1}
-                onChange={(value) => updateSettings({ textIndent: value })}
-              />
-            </div>
+              <div className={styles.fieldColumn}>
+                <label className={styles.fieldLabel}>字体</label>
+                <select
+                  className={styles.select}
+                  value={settings.fontFamily}
+                  onChange={(e) => updateSettings({ fontFamily: e.target.value })}
+                >
+                  {fontFamilies.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-            <div className={styles.fieldRow}>
-              <span className={styles.fieldLabel}>对齐方式</span>
-              <SegmentedControl
-                value={settings.textAlign}
-                options={alignOptions}
-                onChange={(value) => updateSettings({ textAlign: value })}
-              />
-            </div>
-          </section>
+              <div className={styles.grid2}>
+                <RangeField
+                  label="字号"
+                  value={settings.fontSize}
+                  unit="px"
+                  min={14}
+                  max={30}
+                  step={0.25}
+                  onChange={(value) => updateSettings({ fontSize: value })}
+                />
+                <RangeField
+                  label="行高"
+                  value={settings.lineHeight}
+                  min={1.2}
+                  max={2.4}
+                  step={0.02}
+                  onChange={(value) => updateSettings({ lineHeight: value })}
+                />
+                <RangeField
+                  label="段落间距"
+                  value={settings.paragraphSpacing}
+                  unit="em"
+                  min={0.4}
+                  max={2}
+                  step={0.05}
+                  onChange={(value) => updateSettings({ paragraphSpacing: value })}
+                />
+              </div>
 
-          <section className={styles.section}>
-            <div className={styles.sectionHeader}>页面布局</div>
-            <div className={styles.fieldRow}>
-              <span className={styles.fieldLabel}>宽度模式</span>
-              <SegmentedControl
-                value={widthMode}
-                options={widthModeOptions}
-                onChange={(value) => updateSettings({ pageWidthMode: value })}
-              />
-            </div>
+              <details className={styles.details}>
+                <summary className={styles.detailsSummary}>高级排版</summary>
+                <div className={styles.detailsBody}>
+                  <div className={styles.grid2}>
+                    <RangeField
+                      label="字间距"
+                      value={settings.letterSpacing}
+                      unit="em"
+                      min={-0.05}
+                      max={0.12}
+                      step={0.002}
+                      onChange={(value) => updateSettings({ letterSpacing: value })}
+                    />
+                    <RangeField
+                      label="正文字重"
+                      value={settings.bodyFontWeight}
+                      min={350}
+                      max={800}
+                      step={25}
+                      onChange={(value) => updateSettings({ bodyFontWeight: value })}
+                    />
+                    <RangeField
+                      label="首行缩进"
+                      value={settings.textIndent}
+                      unit="em"
+                      min={0}
+                      max={2}
+                      step={0.1}
+                      onChange={(value) => updateSettings({ textIndent: value })}
+                    />
+                  </div>
 
-            <div className={styles.grid2}>
-              {pageWidthControl}
-              <RangeField
-                label="页边距"
-                value={settings.readingPadding}
-                unit="px"
-                min={8}
-                max={120}
-                step={2}
-                onChange={(value) => updateSettings({ readingPadding: value })}
-              />
-            </div>
-            <p className={styles.apiKeyHint}>
-              {approxCharsPerLine
-                ? `估算约 ${approxCharsPerLine} 字/行；移动端自动收紧以避免超宽。`
-                : "移动端自动收紧以避免超宽。"}
-            </p>
-          </section>
+                  <div className={styles.fieldRow}>
+                    <span className={styles.fieldLabel}>对齐方式</span>
+                    <SegmentedControl
+                      value={settings.textAlign}
+                      options={alignOptions}
+                      onChange={(value) => updateSettings({ textAlign: value })}
+                    />
+                  </div>
+                </div>
+              </details>
+            </section>
+          </div>
 
-        <section className={styles.section}>
-          <div className={styles.sectionHeader}>语音朗读</div>
+          <div hidden={activeTab !== "layout"} className={styles.tabContent}>
+            <section className={styles.section}>
+              <div className={styles.sectionHeader}>页面布局</div>
+              <div className={styles.fieldRow}>
+                <span className={styles.fieldLabel}>宽度模式</span>
+                <SegmentedControl
+                  value={widthMode}
+                  options={widthModeOptions}
+                  onChange={(value) => updateSettings({ pageWidthMode: value })}
+                />
+              </div>
+
+              <div className={styles.grid2}>
+                {pageWidthControl}
+                <RangeField
+                  label="页边距"
+                  value={settings.readingPadding}
+                  unit="px"
+                  min={8}
+                  max={120}
+                  step={2}
+                  onChange={(value) => updateSettings({ readingPadding: value })}
+                />
+              </div>
+              <p className={styles.apiKeyHint}>
+                {approxCharsPerLine
+                  ? `估算约 ${approxCharsPerLine} 字/行；窄屏下会受屏宽限制。`
+                  : "窄屏下会受屏宽限制。"}
+              </p>
+            </section>
+          </div>
+
+          {canConfigureTts ? (
+            <div hidden={activeTab !== "tts"} className={styles.tabContent}>
+              <section className={styles.section}>
+                <div className={styles.sectionHeader}>语音朗读</div>
 
           <div className={styles.fieldRow}>
             <span className={styles.fieldLabel}>TTS 提供商</span>
@@ -390,44 +464,51 @@ export function SettingsPanel({ isOpen, onClose, onArticlesCleared }: SettingsPa
                 </select>
               </div>
 
-              <RangeField
-                label="语速"
-                value={settings.ttsRate}
-                min={0.6}
-                max={1.6}
-                step={0.05}
-                onChange={(value) => updateSettings({ ttsRate: value })}
-              />
+              <details className={styles.details}>
+                <summary className={styles.detailsSummary}>高级参数</summary>
+                <div className={styles.detailsBody}>
+                  <div className={styles.grid2}>
+                    <RangeField
+                      label="语速"
+                      value={settings.ttsRate}
+                      min={0.6}
+                      max={1.6}
+                      step={0.05}
+                      onChange={(value) => updateSettings({ ttsRate: value })}
+                    />
 
-              <RangeField
-                label="音量"
-                value={settings.ttsVolume}
-                min={0}
-                max={1}
-                step={0.05}
-                onChange={(value) => updateSettings({ ttsVolume: value })}
-              />
+                    <RangeField
+                      label="音量"
+                      value={settings.ttsVolume}
+                      min={0}
+                      max={1}
+                      step={0.05}
+                      onChange={(value) => updateSettings({ ttsVolume: value })}
+                    />
+                  </div>
 
-              <div className={styles.fieldColumn}>
-                <label className={styles.fieldLabel}>句间停顿 (毫秒)</label>
-                <input
-                  type="number"
-                  min={0}
-                  className={styles.apiKeyInput}
-                  value={settings.ttsPauseMs}
-                  onChange={(e) => {
-                    const parsed = parseInt(e.target.value, 10);
-                    updateSettings({
-                      ttsPauseMs: Number.isNaN(parsed)
-                        ? 400
-                        : Math.max(0, Math.min(2000, parsed)),
-                    });
-                  }}
-                />
-                <p className={styles.apiKeyHint}>
-                  控制段落或句子之间的停顿时长，可在长文本朗读时留出缓冲。
-                </p>
-              </div>
+                  <div className={styles.fieldColumn}>
+                    <label className={styles.fieldLabel}>句间停顿 (毫秒)</label>
+                    <input
+                      type="number"
+                      min={0}
+                      className={styles.apiKeyInput}
+                      value={settings.ttsPauseMs}
+                      onChange={(e) => {
+                        const parsed = parseInt(e.target.value, 10);
+                        updateSettings({
+                          ttsPauseMs: Number.isNaN(parsed)
+                            ? 400
+                            : Math.max(0, Math.min(2000, parsed)),
+                        });
+                      }}
+                    />
+                    <p className={styles.apiKeyHint}>
+                      控制段落或句子之间的停顿时长，可在长文本朗读时留出缓冲。
+                    </p>
+                  </div>
+                </div>
+              </details>
             </>
           ) : settings.ttsProvider === "elevenlabs" ? (
             <>
@@ -534,100 +615,111 @@ export function SettingsPanel({ isOpen, onClose, onArticlesCleared }: SettingsPa
                 />
               </div>
 
-              <div className={styles.grid2}>
-                <RangeField
-                  label="风格 (Style)"
-                  value={settings.elevenStyle}
-                  min={0}
-                  max={1}
-                  step={0.05}
-                  onChange={(value) => updateSettings({ elevenStyle: value })}
-                />
-                <RangeField
-                  label="语速 (Speed)"
-                  value={settings.elevenSpeed}
-                  min={0.5}
-                  max={2}
-                  step={0.05}
-                  onChange={(value) => updateSettings({ elevenSpeed: value })}
-                />
-              </div>
+              <details className={styles.details}>
+                <summary className={styles.detailsSummary}>高级参数</summary>
+                <div className={styles.detailsBody}>
+                  <div className={styles.grid2}>
+                    <RangeField
+                      label="风格 (Style)"
+                      value={settings.elevenStyle}
+                      min={0}
+                      max={1}
+                      step={0.05}
+                      onChange={(value) => updateSettings({ elevenStyle: value })}
+                    />
+                    <RangeField
+                      label="语速 (Speed)"
+                      value={settings.elevenSpeed}
+                      min={0.5}
+                      max={2}
+                      step={0.05}
+                      onChange={(value) => updateSettings({ elevenSpeed: value })}
+                    />
+                  </div>
 
-              <SwitchField
-                label="Speaker Boost"
-                checked={settings.elevenUseSpeakerBoost}
-                onChange={(checked) =>
-                  updateSettings({ elevenUseSpeakerBoost: checked })
-                }
-              />
-
-              <div className={styles.grid2}>
-                <div className={styles.fieldColumn}>
-                  <label className={styles.fieldLabel}>Seed (可选)</label>
-                  <input
-                    type="number"
-                    className={styles.apiKeyInput}
-                    value={settings.elevenSeed ?? ""}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      const parsed = parseInt(val, 10);
-                      updateSettings({
-                        elevenSeed: val === "" || Number.isNaN(parsed) ? null : Math.max(0, parsed),
-                      });
-                    }}
-                    placeholder="留空则随机"
-                  />
-                </div>
-                <div className={styles.fieldColumn}>
-                  <label className={styles.fieldLabel}>文本正则化</label>
-                  <select
-                    className={styles.select}
-                    value={settings.elevenApplyTextNormalization}
-                    onChange={(e) =>
-                      updateSettings({
-                        elevenApplyTextNormalization: e.target.value as ApplyTextNormalization,
-                      })
+                  <SwitchField
+                    label="Speaker Boost"
+                    checked={settings.elevenUseSpeakerBoost}
+                    onChange={(checked) =>
+                      updateSettings({ elevenUseSpeakerBoost: checked })
                     }
-                  >
-                    {textNormalizationOptions.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
+                  />
 
-              <div className={styles.grid2}>
-                <SwitchField
-                  label="启用日志 (enable_logging)"
-                  checked={settings.elevenEnableLogging}
-                  onChange={(checked) =>
-                    updateSettings({ elevenEnableLogging: checked })
-                  }
-                />
+                  <div className={styles.grid2}>
+                    <div className={styles.fieldColumn}>
+                      <label className={styles.fieldLabel}>Seed (可选)</label>
+                      <input
+                        type="number"
+                        className={styles.apiKeyInput}
+                        value={settings.elevenSeed ?? ""}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          const parsed = parseInt(val, 10);
+                          updateSettings({
+                            elevenSeed:
+                              val === "" || Number.isNaN(parsed)
+                                ? null
+                                : Math.max(0, parsed),
+                          });
+                        }}
+                        placeholder="留空则随机"
+                      />
+                    </div>
+                    <div className={styles.fieldColumn}>
+                      <label className={styles.fieldLabel}>文本正则化</label>
+                      <select
+                        className={styles.select}
+                        value={settings.elevenApplyTextNormalization}
+                        onChange={(e) =>
+                          updateSettings({
+                            elevenApplyTextNormalization:
+                              e.target.value as ApplyTextNormalization,
+                          })
+                        }
+                      >
+                        {textNormalizationOptions.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
 
-                <div className={styles.fieldColumn}>
-                  <label className={styles.fieldLabel}>流式延迟优化</label>
-                  <select
-                    className={styles.select}
-                    value={settings.elevenOptimizeStreamingLatency ?? ""}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      updateSettings({
-                        elevenOptimizeStreamingLatency:
-                          val === "" ? null : Math.max(0, Math.min(4, Number(val))),
-                      });
-                    }}
-                  >
-                    {latencyOptions.map((option) => (
-                      <option key={option.label} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
+                  <div className={styles.grid2}>
+                    <SwitchField
+                      label="启用日志 (enable_logging)"
+                      checked={settings.elevenEnableLogging}
+                      onChange={(checked) =>
+                        updateSettings({ elevenEnableLogging: checked })
+                      }
+                    />
+
+                    <div className={styles.fieldColumn}>
+                      <label className={styles.fieldLabel}>流式延迟优化</label>
+                      <select
+                        className={styles.select}
+                        value={settings.elevenOptimizeStreamingLatency ?? ""}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          updateSettings({
+                            elevenOptimizeStreamingLatency:
+                              val === ""
+                                ? null
+                                : Math.max(0, Math.min(4, Number(val))),
+                          });
+                        }}
+                      >
+                        {latencyOptions.map((option) => (
+                          <option key={option.label} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
                 </div>
-              </div>
+              </details>
             </>
           ) : (
             <>
@@ -695,90 +787,106 @@ export function SettingsPanel({ isOpen, onClose, onArticlesCleared }: SettingsPa
                 />
               </div>
 
-              <div className={styles.fieldColumn}>
-                <label className={styles.fieldLabel}>风格提示词（Style Prompt，可选）</label>
-                <textarea
-                  className={styles.apiKeyInput}
-                  value={settings.geminiStylePrompt}
-                  onChange={(e) => updateSettings({ geminiStylePrompt: e.target.value })}
-                  placeholder={`例如：Say in a spooky whisper:\n或：Say cheerfully: {{text}}`}
-                  rows={4}
-                />
-                <p className={styles.apiKeyHint}>
-                  Gemini 官方通过自然语言提示词控制语气/情绪/口音/语速；未填写则直接朗读原文。
-                  支持使用 {"{{text}}"} 作为占位符。
-                </p>
-              </div>
-
-              <SwitchField
-                label="多角色朗读（最多 2 人）"
-                checked={settings.geminiUseMultiSpeaker}
-                onChange={(checked) =>
-                  updateSettings({ geminiUseMultiSpeaker: checked })
-                }
-              />
-
-              {settings.geminiUseMultiSpeaker ? (
-                <>
-                  <div className={styles.grid2}>
-                    <div className={styles.fieldColumn}>
-                      <label className={styles.fieldLabel}>角色 1 名称</label>
-                      <input
-                        type="text"
-                        className={styles.apiKeyInput}
-                        value={settings.geminiSpeaker1Name}
-                        onChange={(e) =>
-                          updateSettings({ geminiSpeaker1Name: e.target.value })
-                        }
-                        placeholder="例如 Speaker1 / Joe"
-                      />
-                    </div>
-                    <div className={styles.fieldColumn}>
-                      <label className={styles.fieldLabel}>角色 1 音色（voiceName）</label>
-                      <input
-                        type="text"
-                        className={styles.apiKeyInput}
-                        value={settings.geminiSpeaker1VoiceName}
-                        onChange={(e) =>
-                          updateSettings({ geminiSpeaker1VoiceName: e.target.value })
-                        }
-                        placeholder="例如 Kore"
-                      />
-                    </div>
+              <details className={styles.details}>
+                <summary className={styles.detailsSummary}>高级：风格与多角色</summary>
+                <div className={styles.detailsBody}>
+                  <div className={styles.fieldColumn}>
+                    <label className={styles.fieldLabel}>风格提示词（Style Prompt，可选）</label>
+                    <textarea
+                      className={styles.apiKeyInput}
+                      value={settings.geminiStylePrompt}
+                      onChange={(e) =>
+                        updateSettings({ geminiStylePrompt: e.target.value })
+                      }
+                      placeholder={`例如：Say in a spooky whisper:\n或：Say cheerfully: {{text}}`}
+                      rows={4}
+                    />
+                    <p className={styles.apiKeyHint}>
+                      Gemini 官方通过自然语言提示词控制语气/情绪/口音/语速；未填写则直接朗读原文。
+                      支持使用 {"{{text}}"} 作为占位符。
+                    </p>
                   </div>
 
-                  <div className={styles.grid2}>
-                    <div className={styles.fieldColumn}>
-                      <label className={styles.fieldLabel}>角色 2 名称</label>
-                      <input
-                        type="text"
-                        className={styles.apiKeyInput}
-                        value={settings.geminiSpeaker2Name}
-                        onChange={(e) =>
-                          updateSettings({ geminiSpeaker2Name: e.target.value })
-                        }
-                        placeholder="例如 Speaker2 / Jane"
-                      />
-                    </div>
-                    <div className={styles.fieldColumn}>
-                      <label className={styles.fieldLabel}>角色 2 音色（voiceName）</label>
-                      <input
-                        type="text"
-                        className={styles.apiKeyInput}
-                        value={settings.geminiSpeaker2VoiceName}
-                        onChange={(e) =>
-                          updateSettings({ geminiSpeaker2VoiceName: e.target.value })
-                        }
-                        placeholder="例如 Puck"
-                      />
-                    </div>
-                  </div>
+                  <SwitchField
+                    label="多角色朗读（最多 2 人）"
+                    checked={settings.geminiUseMultiSpeaker}
+                    onChange={(checked) =>
+                      updateSettings({ geminiUseMultiSpeaker: checked })
+                    }
+                  />
 
-                  <p className={styles.apiKeyHint}>
-                    文本需包含与上方名称一致的对话行，例如：{settings.geminiSpeaker1Name || "Speaker1"}: ...。
-                  </p>
-                </>
-              ) : null}
+                  {settings.geminiUseMultiSpeaker ? (
+                    <>
+                      <div className={styles.grid2}>
+                        <div className={styles.fieldColumn}>
+                          <label className={styles.fieldLabel}>角色 1 名称</label>
+                          <input
+                            type="text"
+                            className={styles.apiKeyInput}
+                            value={settings.geminiSpeaker1Name}
+                            onChange={(e) =>
+                              updateSettings({
+                                geminiSpeaker1Name: e.target.value,
+                              })
+                            }
+                            placeholder="例如 Speaker1 / Joe"
+                          />
+                        </div>
+                        <div className={styles.fieldColumn}>
+                          <label className={styles.fieldLabel}>角色 1 音色（voiceName）</label>
+                          <input
+                            type="text"
+                            className={styles.apiKeyInput}
+                            value={settings.geminiSpeaker1VoiceName}
+                            onChange={(e) =>
+                              updateSettings({
+                                geminiSpeaker1VoiceName: e.target.value,
+                              })
+                            }
+                            placeholder="例如 Kore"
+                          />
+                        </div>
+                      </div>
+
+                      <div className={styles.grid2}>
+                        <div className={styles.fieldColumn}>
+                          <label className={styles.fieldLabel}>角色 2 名称</label>
+                          <input
+                            type="text"
+                            className={styles.apiKeyInput}
+                            value={settings.geminiSpeaker2Name}
+                            onChange={(e) =>
+                              updateSettings({
+                                geminiSpeaker2Name: e.target.value,
+                              })
+                            }
+                            placeholder="例如 Speaker2 / Jane"
+                          />
+                        </div>
+                        <div className={styles.fieldColumn}>
+                          <label className={styles.fieldLabel}>角色 2 音色（voiceName）</label>
+                          <input
+                            type="text"
+                            className={styles.apiKeyInput}
+                            value={settings.geminiSpeaker2VoiceName}
+                            onChange={(e) =>
+                              updateSettings({
+                                geminiSpeaker2VoiceName: e.target.value,
+                              })
+                            }
+                            placeholder="例如 Puck"
+                          />
+                        </div>
+                      </div>
+
+                      <p className={styles.apiKeyHint}>
+                        文本需包含与上方名称一致的对话行，例如：
+                        {settings.geminiSpeaker1Name || "Speaker1"}: ...。
+                      </p>
+                    </>
+                  ) : null}
+                </div>
+              </details>
             </>
           )}
 
@@ -788,19 +896,15 @@ export function SettingsPanel({ isOpen, onClose, onArticlesCleared }: SettingsPa
             onChange={(checked) => updateSettings({ autoPlayNext: checked })}
           />
 
-          <SwitchField
-            label="单词同步高亮（仅支持 ElevenLabs）"
-            checked={settings.elevenWordSyncHighlight}
-            disabled={!wordSyncHighlightSupported}
-            title={
-              wordSyncHighlightSupported
-                ? undefined
-                : "仅在选择 ElevenLabs 作为 TTS 提供商时可用"
-            }
-            onChange={(checked) =>
-              updateSettings({ elevenWordSyncHighlight: checked })
-            }
-          />
+          {settings.ttsProvider === "elevenlabs" ? (
+            <SwitchField
+              label="单词同步高亮"
+              checked={settings.elevenWordSyncHighlight}
+              onChange={(checked) =>
+                updateSettings({ elevenWordSyncHighlight: checked })
+              }
+            />
+          ) : null}
 
           <div className={styles.fieldColumn}>
             <label className={styles.fieldLabel}>并发生成上限</label>
@@ -822,7 +926,9 @@ export function SettingsPanel({ isOpen, onClose, onArticlesCleared }: SettingsPa
               每批请求会并行发送至多该数量的段落音频，完成后再继续下一批；并发越高越易触发配额限制。
             </p>
           </div>
-        </section>
+              </section>
+            </div>
+          ) : null}
         </div>
 
         <div className={styles.footer}>
@@ -851,13 +957,25 @@ function SegmentedControl<TValue extends string>({
   value,
   options,
   onChange,
+  layout = "auto",
 }: {
   value: TValue;
   options: ReadonlyArray<SegmentedOption<TValue>>;
   onChange: (value: TValue) => void;
+  layout?: "auto" | "tabs";
 }) {
+  const columns = useMemo(() => {
+    if (layout === "tabs") return Math.min(4, Math.max(1, options.length));
+
+    const count = options.length;
+    if (count <= 1) return 1;
+    if (count === 4) return 2;
+    if (count === 5) return 3;
+    return Math.min(3, count);
+  }, [layout, options.length]);
+
   return (
-    <div className={styles.segmentedControl}>
+    <div className={styles.segmentedControl} data-columns={columns}>
       {options.map((option) => (
         <button
           key={option.value}
@@ -866,6 +984,7 @@ function SegmentedControl<TValue extends string>({
           }`}
           onClick={() => onChange(option.value)}
           type="button"
+          title={option.label}
         >
           {option.label}
         </button>
