@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { useAudioStore } from "@/stores/audioStore";
 import { buildParagraphs, buildParagraphKey } from "@/lib/paragraphs";
 import { Paragraph } from "./Paragraph";
@@ -23,6 +23,7 @@ export function ReadingArea({
 }: ReadingAreaProps) {
   const segments = useAudioStore((s) => s.segments);
   const initSegments = useAudioStore((s) => s.initSegments);
+  const lastParagraphKeyRef = useRef<string | null>(null);
 
   // 构建段落
   const paragraphs = useMemo(() => buildParagraphs(text), [text]);
@@ -30,6 +31,8 @@ export function ReadingArea({
 
   // 当文本变化时重新初始化 segments
   useEffect(() => {
+    if (lastParagraphKeyRef.current === paragraphKey) return;
+    lastParagraphKeyRef.current = paragraphKey;
     initSegments(paragraphs);
   }, [paragraphKey, paragraphs, initSegments]);
 

@@ -27,18 +27,20 @@ export function Paragraph({
 }: ParagraphProps) {
   const { settings } = useSettings();
 
-  // 从 store 订阅状态
-  const activeSegmentId = useAudioStore((s) => s.activeSegmentId);
-  const isPlaying = useAudioStore((s) => s.isPlaying);
-  const activeWordIndex = useAudioStore((s) => s.activeWordIndex);
   const playSegment = useAudioStore((s) => s.playSegment);
   const startSequenceFrom = useAudioStore((s) => s.startSequenceFrom);
   const generateSegment = useAudioStore((s) => s.generateSegment);
-  const segment = useAudioStore((s) => s.segments.find((seg) => seg.id === id));
+
+  const isActive = useAudioStore((s) => s.activeSegmentId === id && s.isPlaying);
+  const syncHighlightEnabled = settings.ttsProvider === "elevenlabs" && settings.elevenWordSyncHighlight;
+  const syncedWordIndex = useAudioStore((s) => {
+    if (!syncHighlightEnabled) return null;
+    if (s.activeSegmentId !== id) return null;
+    return s.activeWordIndex;
+  });
 
   const ttsParams = useMemo(() => buildTtsGenerationParams(settings), [settings]);
 
-  const isActive = activeSegmentId === id && isPlaying;
   const tokens = useMemo(() => tokenize(text), [text]);
   const wordIndexByTokenIndex = useMemo(() => {
     const indices: Array<number | null> = new Array(tokens.length);
@@ -59,17 +61,19 @@ export function Paragraph({
 
       const play = settings.autoPlayNext ? startSequenceFrom : playSegment;
 
+      const currentSegment = useAudioStore.getState().segments.find((seg) => seg.id === id);
+
       // 如果已生成，直接播放
-      if (segment?.status === "ready") {
+      if (currentSegment?.status === "ready") {
         play(id);
-      } else if (segment?.status !== "generating") {
+      } else if (currentSegment?.status !== "generating") {
         // 未生成则先生成再播放
         await generateSegment(id, ttsParams);
         // 生成完成后播放
         play(id);
       }
     },
-    [id, segment, playSegment, startSequenceFrom, generateSegment, settings.autoPlayNext, ttsParams, settings.readingMode]
+    [id, playSegment, startSequenceFrom, generateSegment, settings.autoPlayNext, ttsParams, settings.readingMode]
   );
 
   // 单词点击处理
@@ -98,12 +102,9 @@ export function Paragraph({
 
           const wordIdx = wordIndexByTokenIndex[i];
           const isSyncHighlighted =
-            settings.ttsProvider === "elevenlabs" &&
-            settings.elevenWordSyncHighlight &&
-            activeSegmentId === id &&
             wordIdx !== null &&
-            activeWordIndex !== null &&
-            activeWordIndex === wordIdx;
+            syncedWordIndex !== null &&
+            syncedWordIndex === wordIdx;
 
           return (
             <span

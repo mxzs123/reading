@@ -28,6 +28,13 @@ export default function Home() {
   // 原文输入是否折叠
   const [inputCollapsed, setInputCollapsed] = useState(false);
   const [selectedWord, setSelectedWord] = useState("");
+  const selectedWordRef = useRef<string>("");
+  const setSelectedWordValue = useCallback((value: string) => {
+    selectedWordRef.current = value;
+    setSelectedWord(value);
+  }, []);
+  const [readingPulse, setReadingPulse] = useState(false);
+  const readingPulseTimeoutRef = useRef<number | null>(null);
 
   // 音频 store
   const { settings } = useSettings();
@@ -60,6 +67,7 @@ export default function Home() {
   // 文章和音频状态
   const [currentArticleId, setCurrentArticleId] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const closeDictionaryRef = useRef<() => void>(() => {});
   const dictionaryCacheRef = useRef<Map<string, DictionaryData>>(new Map());
   const dictionaryPrefetchControllersRef = useRef<Map<string, AbortController>>(new Map());
   const dictionaryAnchorCleanupTimeoutRef = useRef<number | null>(null);
@@ -120,7 +128,7 @@ export default function Home() {
       if (!parsed) return;
       const { trimmed, normalized } = parsed;
 
-      setSelectedWord(trimmed);
+      setSelectedWordValue(trimmed);
       setDictionaryAnchor(
         isMobile ? null : { top: rect.top, left: rect.left, width: rect.width, height: rect.height }
       );
@@ -158,13 +166,13 @@ export default function Home() {
           }
         });
     },
-    [isMobile, requestDictionary]
+    [isMobile, requestDictionary, setSelectedWordValue]
   );
 
   const handleCloseDictionary = useCallback(() => {
     abortRef.current?.abort();
     setDictionaryOpen(false);
-    setSelectedWord("");
+    setSelectedWordValue("");
 
     // 延迟清除 anchor，等待关闭动画完成（0.28s），防止位置跳变导致闪烁
     if (dictionaryAnchorCleanupTimeoutRef.current) {
@@ -181,7 +189,11 @@ export default function Home() {
         active.blur();
       }
     }
-  }, []);
+  }, [setSelectedWordValue]);
+
+  useEffect(() => {
+    closeDictionaryRef.current = handleCloseDictionary;
+  }, [handleCloseDictionary]);
 
   const handleStopArticleAudio = useCallback(() => {
     const { isPlaying, pause } = useAudioStore.getState();
@@ -212,6 +224,10 @@ export default function Home() {
         window.clearTimeout(dictionaryAnchorCleanupTimeoutRef.current);
         dictionaryAnchorCleanupTimeoutRef.current = null;
       }
+      if (readingPulseTimeoutRef.current) {
+        window.clearTimeout(readingPulseTimeoutRef.current);
+        readingPulseTimeoutRef.current = null;
+      }
       controllers.forEach((controller) => controller.abort());
       controllers.clear();
     };
@@ -240,13 +256,13 @@ export default function Home() {
         if (!isMiniPlayerSeek) return;
       }
 
-      const dictionaryVisible = Boolean(selectedWord.trim());
+      const dictionaryVisible = Boolean(selectedWordRef.current.trim());
       if (dictionaryVisible) {
         event.preventDefault();
         event.stopPropagation();
         (event as unknown as { stopImmediatePropagation?: () => void }).stopImmediatePropagation?.();
 
-        handleCloseDictionary();
+        closeDictionaryRef.current();
 
         const { activeSegmentId, isPlaying, segments, playSegment, togglePlayPause } = useAudioStore.getState();
         if (activeSegmentId) {
@@ -287,15 +303,22 @@ export default function Home() {
 
     window.addEventListener("keydown", handleKeyDown, { capture: true });
     return () => window.removeEventListener("keydown", handleKeyDown, { capture: true });
-  }, [handleCloseDictionary, selectedWord]);
+  }, []);
 
-  const readingPulseKey = useMemo(() => {
-    const trimmed = sourceText.trim();
-    if (!trimmed) return "output-static";
-    const first = trimmed.charCodeAt(0) || 0;
-    const last = trimmed.charCodeAt(trimmed.length - 1) || 0;
-    return `output-${trimmed.length}-${first}-${last}`;
-  }, [sourceText]);
+  const triggerReadingPulse = useCallback(() => {
+    if (readingPulseTimeoutRef.current) {
+      window.clearTimeout(readingPulseTimeoutRef.current);
+      readingPulseTimeoutRef.current = null;
+    }
+
+    setReadingPulse(false);
+    requestAnimationFrame(() => setReadingPulse(true));
+
+    readingPulseTimeoutRef.current = window.setTimeout(() => {
+      setReadingPulse(false);
+      readingPulseTimeoutRef.current = null;
+    }, 340);
+  }, []);
 
   const placeholder = useMemo(
     () =>
@@ -311,11 +334,12 @@ export default function Home() {
     // 没有文本不折叠
     if (!sourceText.trim()) return;
     setInputCollapsed(true);
+    triggerReadingPulse();
     // 聚焦阅读区域
     setTimeout(() => {
       outputSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     }, 0);
-  }, [sourceText]);
+  }, [sourceText, triggerReadingPulse]);
 
   // 加载保存的文章
   const handleArticleLoad = useCallback((article: Article) => {
@@ -323,8 +347,9 @@ export default function Home() {
     setCurrentArticleId(article.id);
     setInputCollapsed(true);
     setDictionaryOpen(false);
-    setSelectedWord("");
+    setSelectedWordValue("");
     setDictionaryAnchor(null);
+    triggerReadingPulse();
     // 保存待加载的音频 URLs
     if (article.audioUrls && article.audioUrls.length > 0) {
       pendingAudioUrlsRef.current = article.audioUrls;
@@ -340,7 +365,7 @@ export default function Home() {
     setTimeout(() => {
       outputSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     }, 0);
-  }, []);
+  }, [setSelectedWordValue, triggerReadingPulse]);
 
   // 文章保存后更新 ID
   const handleArticleSaved = useCallback((article: Article) => {
@@ -433,7 +458,7 @@ export default function Home() {
                       onClick={() => {
                         setSourceText("");
                         setDictionaryOpen(false);
-                        setSelectedWord("");
+                        setSelectedWordValue("");
                         setDictionaryAnchor(null);
                         setDictionaryData(undefined);
                         setDictionaryLoading(false);
@@ -512,9 +537,8 @@ export default function Home() {
             </div>
 
             <div
-              key={readingPulseKey}
               className={`${styles.outputInner} ${
-                sourceText.trim() ? styles.readingPulse : ""
+                readingPulse && sourceText.trim() ? styles.readingPulse : ""
               }`}
             >
               <ReadingArea
