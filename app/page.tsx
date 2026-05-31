@@ -10,6 +10,7 @@ import {
   Settings,
   Sparkles,
   Volume2,
+  Wrench,
   X,
 } from "lucide-react";
 import { SettingsPanel } from "@/components/SettingsPanel";
@@ -515,7 +516,11 @@ export default function Home() {
         <aside className={styles.toolSidebar} data-collapsed={toolSidebarOpen ? "false" : "true"}>
           {toolSidebarOpen ? (
             <>
-              <div className={styles.toolTopActions}>
+              <div className={styles.toolHeader}>
+                <h2 className={styles.toolTitle}>
+                  <Wrench aria-hidden="true" className={styles.toolTitleIcon} />
+                  <span>{t("tools.title")}</span>
+                </h2>
                 <button
                   type="button"
                   className={`${styles.clearButton} ${styles.iconButton}`}
@@ -619,7 +624,9 @@ export default function Home() {
                     <Volume2 aria-hidden="true" className={styles.sectionIcon} />
                     <span>{t("audio.readAloud")}</span>
                   </h3>
-                  <span>{settings.readingMode === "audio" ? t("audio.audioMode") : t("audio.pureMode")}</span>
+                  <span className={styles.toolStatus}>
+                    {settings.readingMode === "audio" ? t("audio.audioMode") : t("audio.pureMode")}
+                  </span>
                 </div>
                 {settings.readingMode === "audio" && trimmedSource && total > 0 ? (
                   <div className={styles.toolStack}>
@@ -660,7 +667,11 @@ export default function Home() {
               aria-label={t("audio.expandTools")}
               title={t("audio.expandTools")}
             >
-              <PanelRightOpen aria-hidden="true" />
+              <PanelRightOpen aria-hidden="true" className={styles.railActionIcon} />
+              <span className={styles.railIdentity}>
+                <Wrench aria-hidden="true" />
+                <span>{t("tools.title")}</span>
+              </span>
             </button>
           )}
         </aside>

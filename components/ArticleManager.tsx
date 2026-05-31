@@ -9,6 +9,7 @@ import {
   Edit3,
   MoreHorizontal,
   PanelLeftClose,
+  PanelLeftOpen,
   Plus,
   Save,
   Search,
@@ -449,7 +450,11 @@ export default function ArticleManager({
             aria-label={t("article.expand")}
             title={t("article.expand")}
           >
-            <BookOpen aria-hidden="true" />
+            <PanelLeftOpen aria-hidden="true" className={styles.railActionIcon} />
+            <span className={styles.railIdentity}>
+              <BookOpen aria-hidden="true" />
+              <span>{t("article.title")}</span>
+            </span>
           </button>
         ) : null}
 
