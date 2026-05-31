@@ -24,6 +24,8 @@
 .DS_Store
 *.pem
 .local-data/
+.codex-screenshots/
+.npm-cache/
 
 # debug
 npm-debug.log*

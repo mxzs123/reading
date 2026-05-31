@@ -1,21 +1,21 @@
 import type { ReaderSettings } from "./types";
 
 export const DEFAULT_SETTINGS: ReaderSettings = {
-  fontSize: 18.5,
-  lineHeight: 1.7,
-  letterSpacing: 0.012,
-  paragraphSpacing: 1.4,
-  boldRatio: "medium",
-  customBoldRatio: 0.45,
-  bionicWeight: 600,
+  fontSize: 19.25,
+  lineHeight: 1.88,
+  letterSpacing: 0,
+  paragraphSpacing: 1.34,
+  boldRatio: "low",
+  customBoldRatio: 0.36,
+  bionicWeight: 525,
   bodyFontWeight: 400,
-  fontFamily: "Georgia, 'Times New Roman', serif",
+  fontFamily: "Charter, \"Bitstream Charter\", \"TsangerJinKai\", \"Tsanger JinKai\", \"Iowan Old Style\", \"Source Serif 4\", \"Noto Serif\", \"Songti SC\", \"Yu Mincho\", Georgia, serif",
   theme: "sepia",
   pageWidthMode: "px",
-  pageWidth: 680,
-  pageWidthVw: 92,
-  pageWidthCh: 72,
-  readingPadding: 36,
+  pageWidth: 660,
+  pageWidthVw: 90,
+  pageWidthCh: 64,
+  readingPadding: 64,
   textIndent: 0,
   textAlign: "left",
   ttsProvider: "edge",
@@ -43,7 +43,6 @@ export const DEFAULT_SETTINGS: ReaderSettings = {
   geminiApiKey: "",
   geminiModel: "gemini-2.5-flash-preview-tts",
   geminiVoiceName: "Kore",
-  geminiLanguageCode: "en-US",
   geminiStylePrompt: "",
   geminiUseMultiSpeaker: false,
   geminiSpeaker1Name: "Speaker1",
@@ -65,10 +64,3 @@ export const DEFAULT_SETTINGS: ReaderSettings = {
 };
 
 export const SETTINGS_STORAGE_KEY = "bionicReaderSettings";
-
-export function mergeSettings(
-  base: ReaderSettings,
-  patch: Partial<ReaderSettings>
-): ReaderSettings {
-  return { ...base, ...patch };
-}

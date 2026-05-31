@@ -4,7 +4,3 @@ export { LayoutTab } from "./LayoutTab";
 export { TtsTab } from "./TtsTab";
 export { AiTab } from "./AiTab";
 export { SyncTab } from "./SyncTab";
-export { TtsEdgeSettings } from "./TtsEdgeSettings";
-export { TtsAzureSettings } from "./TtsAzureSettings";
-export { TtsElevenSettings } from "./TtsElevenSettings";
-export { TtsGeminiSettings } from "./TtsGeminiSettings";

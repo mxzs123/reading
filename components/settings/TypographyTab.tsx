@@ -1,35 +1,32 @@
 "use client";
 
-import { useSettings } from "@/contexts/SettingsContext";
+import { useSettingFieldUpdater, useSettings } from "@/contexts/SettingsContext";
 import { useI18n } from "@/contexts/I18nContext";
-import { SegmentedControl, RangeField } from "@/components/ui";
+import { SegmentedControl, RangeField, SelectField } from "@/components/ui";
 import { alignOptions, fontFamilies, translateOptions } from "./options";
-import styles from "./settingsStyles.module.css";
+import {
+  FieldGrid,
+  FieldRow,
+  SettingsDetails,
+  SettingsFieldLabel,
+  SettingsSection,
+} from "./SettingsLayout";
 
 export function TypographyTab() {
-  const { settings, updateSettings } = useSettings();
+  const { settings } = useSettings();
+  const updateField = useSettingFieldUpdater();
   const { t } = useI18n();
 
   return (
-    <section className={styles.section}>
-      <div className={styles.sectionHeader}>{t("settings.typography.section")}</div>
+    <SettingsSection title={t("settings.typography.section")}>
+      <SelectField
+        label={t("settings.typography.font")}
+        value={settings.fontFamily}
+        options={translateOptions(fontFamilies, t)}
+        onChange={updateField("fontFamily")}
+      />
 
-      <div className={styles.fieldColumn}>
-        <label className={styles.fieldLabel}>{t("settings.typography.font")}</label>
-        <select
-          className={styles.select}
-          value={settings.fontFamily}
-          onChange={(e) => updateSettings({ fontFamily: e.target.value })}
-        >
-          {translateOptions(fontFamilies, t).map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      <div className={styles.grid2}>
+      <FieldGrid>
         <RangeField
           label={t("settings.typography.fontSize")}
           value={settings.fontSize}
@@ -37,7 +34,7 @@ export function TypographyTab() {
           min={14}
           max={30}
           step={0.25}
-          onChange={(value) => updateSettings({ fontSize: value })}
+          onChange={updateField("fontSize")}
         />
         <RangeField
           label={t("settings.typography.lineHeight")}
@@ -45,7 +42,7 @@ export function TypographyTab() {
           min={1.2}
           max={2.4}
           step={0.02}
-          onChange={(value) => updateSettings({ lineHeight: value })}
+          onChange={updateField("lineHeight")}
         />
         <RangeField
           label={t("settings.typography.paragraphSpacing")}
@@ -54,52 +51,42 @@ export function TypographyTab() {
           min={0.4}
           max={2}
           step={0.05}
-          onChange={(value) => updateSettings({ paragraphSpacing: value })}
+          onChange={updateField("paragraphSpacing")}
         />
-      </div>
+      </FieldGrid>
 
-      <details className={styles.details}>
-        <summary className={styles.detailsSummary}>{t("settings.typography.advanced")}</summary>
-        <div className={styles.detailsBody}>
-          <div className={styles.grid2}>
-            <RangeField
-              label={t("settings.typography.letterSpacing")}
-              value={settings.letterSpacing}
-              unit="em"
-              min={-0.05}
-              max={0.12}
-              step={0.002}
-              onChange={(value) => updateSettings({ letterSpacing: value })}
-            />
-            <RangeField
-              label={t("settings.typography.bodyWeight")}
-              value={settings.bodyFontWeight}
-              min={350}
-              max={800}
-              step={25}
-              onChange={(value) => updateSettings({ bodyFontWeight: value })}
-            />
-            <RangeField
-              label={t("settings.typography.indent")}
-              value={settings.textIndent}
-              unit="em"
-              min={0}
-              max={2}
-              step={0.1}
-              onChange={(value) => updateSettings({ textIndent: value })}
-            />
-          </div>
+      <SettingsDetails title={t("settings.typography.advanced")}>
+        <FieldGrid>
+          <RangeField
+            label={t("settings.typography.bodyWeight")}
+            value={settings.bodyFontWeight}
+            min={350}
+            max={800}
+            step={25}
+            onChange={updateField("bodyFontWeight")}
+          />
+          <RangeField
+            label={t("settings.typography.indent")}
+            value={settings.textIndent}
+            unit="em"
+            min={0}
+            max={2}
+            step={0.1}
+            onChange={updateField("textIndent")}
+          />
+        </FieldGrid>
 
-          <div className={styles.fieldRow}>
-            <span className={styles.fieldLabel}>{t("settings.typography.align")}</span>
-            <SegmentedControl
-              value={settings.textAlign}
-              options={translateOptions(alignOptions, t)}
-              onChange={(value) => updateSettings({ textAlign: value })}
-            />
-          </div>
-        </div>
-      </details>
-    </section>
+        <FieldRow>
+          <SettingsFieldLabel>
+            {t("settings.typography.align")}
+          </SettingsFieldLabel>
+          <SegmentedControl
+            value={settings.textAlign}
+            options={translateOptions(alignOptions, t)}
+            onChange={updateField("textAlign")}
+          />
+        </FieldRow>
+      </SettingsDetails>
+    </SettingsSection>
   );
 }

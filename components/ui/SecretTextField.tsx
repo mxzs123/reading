@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { useI18n } from "@/contexts/I18nContext";
 import styles from "./form.module.css";
 
@@ -8,8 +8,6 @@ interface SecretTextFieldProps {
   label: string;
   value: string;
   placeholder?: string;
-  visible: boolean;
-  onToggleVisible: () => void;
   onChange: (value: string) => void;
   hint?: ReactNode;
 }
@@ -18,12 +16,11 @@ export function SecretTextField({
   label,
   value,
   placeholder,
-  visible,
-  onToggleVisible,
   onChange,
   hint,
 }: SecretTextFieldProps) {
   const { t } = useI18n();
+  const [visible, setVisible] = useState(false);
 
   return (
     <div className={styles.fieldColumn}>
@@ -39,7 +36,7 @@ export function SecretTextField({
         <button
           type="button"
           className={styles.apiKeyToggle}
-          onClick={onToggleVisible}
+          onClick={() => setVisible((current) => !current)}
         >
           {visible ? t("common.hide") : t("common.show")}
         </button>

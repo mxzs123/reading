@@ -1,33 +1,11 @@
 "use client";
 
-import {
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type CSSProperties,
-} from "react";
+import { useEffect, useRef, useState } from "react";
 import type React from "react";
 import { playWordSound } from "@/lib/wordAudio";
+import type { DictionaryData } from "@/lib/dictionary";
 import { useI18n } from "@/contexts/I18nContext";
 import styles from "./DictionaryPanel.module.css";
-
-export interface DictionaryMeaning {
-  pos?: string | null;
-  translation: string;
-}
-
-export interface DictionaryData {
-  phonetics?: {
-    us?: string;
-    uk?: string;
-  };
-  meanings: DictionaryMeaning[];
-  webTranslations: Array<{
-    key: string;
-    translations: string[];
-  }>;
-}
 
 interface DictionaryPanelProps {
   isOpen: boolean;
@@ -35,13 +13,6 @@ interface DictionaryPanelProps {
   data?: DictionaryData;
   loading?: boolean;
   error?: string;
-  anchor?: {
-    top: number;
-    left: number;
-    width: number;
-    height: number;
-  } | null;
-  isMobile: boolean;
   onClose: () => void;
   onStopArticleAudio?: () => void;
   onWordAudioEnd?: () => void;
@@ -53,8 +24,6 @@ export function DictionaryPanel({
   data,
   loading,
   error,
-  anchor,
-  isMobile,
   onClose,
   onStopArticleAudio,
   onWordAudioEnd,
@@ -63,34 +32,7 @@ export function DictionaryPanel({
   const [dragY, setDragY] = useState(0);
   const draggingRef = useRef(false);
   const startYRef = useRef(0);
-  const anchored = !isMobile && Boolean(anchor);
 
-  const panelStyle = useMemo<CSSProperties | undefined>(() => {
-    if (isMobile || !anchor) return undefined;
-
-    const viewportWidth = typeof window !== "undefined" ? window.innerWidth : undefined;
-    const viewportHeight = typeof window !== "undefined" ? window.innerHeight : undefined;
-    const estimatedWidth = 360;
-    const estimatedHeight = 260;
-
-    let top = anchor.top + anchor.height + 12;
-    let left = anchor.left;
-
-    if (viewportWidth) {
-      left = Math.min(left, viewportWidth - estimatedWidth - 16);
-      left = Math.max(16, left);
-    }
-
-    if (viewportHeight) {
-      if (top + estimatedHeight > viewportHeight - 16) {
-        top = Math.max(16, anchor.top - estimatedHeight - 16);
-      }
-    }
-
-    return { top, left };
-  }, [anchor, isMobile]);
-
-  // 允许按下 ESC 快速关闭
   useEffect(() => {
     if (!isOpen) return;
     const onKey = (e: KeyboardEvent) => {
@@ -100,9 +42,8 @@ export function DictionaryPanel({
     return () => window.removeEventListener("keydown", onKey);
   }, [isOpen, onClose]);
 
-  // 拖拽关闭（仅移动端）
   const onPointerDown = (e: React.PointerEvent) => {
-    if (!isMobile || !isOpen) return;
+    if (!isOpen) return;
     draggingRef.current = true;
     startYRef.current = e.clientY;
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
@@ -123,30 +64,25 @@ export function DictionaryPanel({
       setDragY(0);
       onClose();
     } else {
-      // 回弹
       setDragY(0);
     }
   };
 
   const wrapperClassName = [
     styles.wrapper,
-    isMobile ? styles.mobile : anchored ? styles.anchored : styles.floating,
     isOpen ? styles.open : "",
     "surface-card",
   ]
     .filter(Boolean)
     .join(" ");
 
-  const combinedStyle: CSSProperties | undefined = useMemo(() => {
-    if (isMobile) {
-      return {
-        ...(panelStyle ?? {}),
-        transform: dragY > 0 ? `translateY(${dragY}px)` : undefined,
-        transition: dragY > 0 ? "none" : undefined,
-      } as CSSProperties;
-    }
-    return panelStyle;
-  }, [isMobile, panelStyle, dragY]);
+  const panelStyle =
+    dragY > 0
+      ? {
+          transform: `translateY(${dragY}px)`,
+          transition: "none",
+        }
+      : undefined;
 
   return (
     <>
@@ -159,16 +95,14 @@ export function DictionaryPanel({
         className={wrapperClassName}
         role="dialog"
         aria-live="polite"
-        style={combinedStyle}
+        style={panelStyle}
       >
-        {isMobile && (
-          <div
-            className={styles.dragHandle}
-            onPointerDown={onPointerDown}
-            onPointerMove={onPointerMove}
-            onPointerUp={onPointerUp}
-          />
-        )}
+        <div
+          className={styles.dragHandle}
+          onPointerDown={onPointerDown}
+          onPointerMove={onPointerMove}
+          onPointerUp={onPointerUp}
+        />
       <header className={styles.header}>
         <div>
           <h3 className={styles.title}>{word || t("dictionary.title")}</h3>

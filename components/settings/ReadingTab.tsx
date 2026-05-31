@@ -1,9 +1,15 @@
 "use client";
 
-import { useSettings } from "@/contexts/SettingsContext";
+import { useSettingFieldUpdater, useSettings } from "@/contexts/SettingsContext";
 import { useI18n } from "@/contexts/I18nContext";
 import { SegmentedControl, RangeField } from "@/components/ui";
 import { boldOptions, readingModeOptions, themeOptions, translateOptions } from "./options";
+import {
+  FieldRow,
+  SettingsFieldLabel,
+  SettingsHint,
+  SettingsSection,
+} from "./SettingsLayout";
 import styles from "./settingsStyles.module.css";
 
 interface ReadingTabProps {
@@ -11,23 +17,20 @@ interface ReadingTabProps {
 }
 
 export function ReadingTab({ onSwitchToTts }: ReadingTabProps) {
-  const { settings, updateSettings } = useSettings();
+  const { settings, updateSetting } = useSettings();
+  const updateField = useSettingFieldUpdater();
   const { t } = useI18n();
 
   return (
     <>
-      <section className={styles.section}>
-        <div className={styles.sectionHeader}>{t("settings.reading.mode")}</div>
-
-        <div className={styles.fieldRow}>
+      <SettingsSection title={t("settings.reading.mode")}>
+        <FieldRow>
           <SegmentedControl
             value={settings.readingMode}
             options={translateOptions(readingModeOptions, t)}
-            onChange={(value) => updateSettings({ readingMode: value })}
+            onChange={updateField("readingMode")}
           />
-          <p className={styles.apiKeyHint}>
-            {t("settings.reading.modeHint")}
-          </p>
+          <SettingsHint>{t("settings.reading.modeHint")}</SettingsHint>
 
           {settings.readingMode === "pure" ? (
             <div className={styles.callout}>
@@ -38,7 +41,7 @@ export function ReadingTab({ onSwitchToTts }: ReadingTabProps) {
                 type="button"
                 className={styles.calloutButton}
                 onClick={() => {
-                  updateSettings({ readingMode: "audio" });
+                  updateSetting("readingMode", "audio");
                   onSwitchToTts?.();
                 }}
               >
@@ -46,26 +49,26 @@ export function ReadingTab({ onSwitchToTts }: ReadingTabProps) {
               </button>
             </div>
           ) : null}
-        </div>
-      </section>
+        </FieldRow>
+      </SettingsSection>
 
-      <section className={styles.section}>
-        <div className={styles.sectionHeader}>{t("settings.reading.appearance")}</div>
-
-        <div className={styles.fieldRow}>
+      <SettingsSection title={t("settings.reading.appearance")}>
+        <FieldRow>
           <SegmentedControl
             value={settings.theme}
             options={translateOptions(themeOptions, t)}
-            onChange={(value) => updateSettings({ theme: value })}
+            onChange={updateField("theme")}
           />
-        </div>
+        </FieldRow>
 
-        <div className={styles.fieldRow}>
-          <span className={styles.fieldLabel}>{t("settings.reading.bionicStrength")}</span>
+        <FieldRow>
+          <SettingsFieldLabel>
+            {t("settings.reading.bionicStrength")}
+          </SettingsFieldLabel>
           <SegmentedControl
             value={settings.boldRatio}
             options={translateOptions(boldOptions, t)}
-            onChange={(value) => updateSettings({ boldRatio: value })}
+            onChange={updateField("boldRatio")}
           />
           {settings.boldRatio === "custom" ? (
             <RangeField
@@ -74,7 +77,7 @@ export function ReadingTab({ onSwitchToTts }: ReadingTabProps) {
               min={0}
               max={1}
               step={0.01}
-              onChange={(value) => updateSettings({ customBoldRatio: value })}
+              onChange={updateField("customBoldRatio")}
             />
           ) : null}
           <RangeField
@@ -83,10 +86,10 @@ export function ReadingTab({ onSwitchToTts }: ReadingTabProps) {
             min={500}
             max={800}
             step={25}
-            onChange={(value) => updateSettings({ bionicWeight: value })}
+            onChange={updateField("bionicWeight")}
           />
-        </div>
-      </section>
+        </FieldRow>
+      </SettingsSection>
     </>
   );
 }

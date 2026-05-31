@@ -1,54 +1,33 @@
 import { NextRequest } from "next/server";
 import { getDataStore } from "@/lib/dataStore";
+import { readJsonRequest, withApiError } from "@/lib/http";
 import {
   DEFAULT_SETTINGS,
-  SENSITIVE_SETTINGS_FIELDS,
+  removeSensitiveSettings,
   type ReaderSettings,
 } from "@/lib/settings";
 
-// 不同步到云端的敏感字段
-const SENSITIVE_FIELDS = SENSITIVE_SETTINGS_FIELDS;
-
-type SafeSettings = Omit<ReaderSettings, (typeof SENSITIVE_FIELDS)[number]>;
-
-function removeSensitiveFields(settings: Partial<ReaderSettings>): SafeSettings {
-  const safe = { ...settings };
-  for (const field of SENSITIVE_FIELDS) {
-    delete safe[field];
-  }
-  return safe as SafeSettings;
-}
-
-// GET /api/settings - 获取设置
 export async function GET() {
-  try {
+  return withApiError(async () => {
     const settings = await getDataStore().settings.getSettings();
 
     if (!settings || Object.keys(settings).length === 0) {
-      // 返回默认设置（不含敏感字段）
-      return Response.json(removeSensitiveFields(DEFAULT_SETTINGS));
+      return Response.json(removeSensitiveSettings(DEFAULT_SETTINGS));
     }
 
-    return Response.json(settings);
-  } catch (error) {
-    console.error("获取设置失败:", error);
-    return Response.json({ error: "获取设置失败" }, { status: 500 });
-  }
+    return Response.json(removeSensitiveSettings(settings));
+  }, "获取设置失败");
 }
 
-// PUT /api/settings - 更新设置
 export async function PUT(request: NextRequest) {
-  try {
-    const body = await request.json();
+  return withApiError(async () => {
+    const json = await readJsonRequest<Partial<ReaderSettings>>(request);
+    if (!json.ok) return json.response;
 
-    // 移除敏感字段后保存
-    const safeSettings = removeSensitiveFields(body);
+    const safeSettings = removeSensitiveSettings(json.body);
 
     await getDataStore().settings.updateSettings(safeSettings);
 
     return Response.json({ success: true });
-  } catch (error) {
-    console.error("保存设置失败:", error);
-    return Response.json({ error: "保存设置失败" }, { status: 500 });
-  }
+  }, "保存设置失败");
 }

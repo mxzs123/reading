@@ -4,6 +4,7 @@ import {
   normalizeAiExplainText,
   type AiExplainRequestBody,
 } from "@/lib/aiExplain";
+import { errorResponse, jsonRequestInit, readJsonRequest } from "@/lib/http";
 import { isAllowedDeepSeekModel } from "@/lib/settings";
 
 export const runtime = "nodejs";
@@ -30,14 +31,10 @@ interface DeepSeekStreamChunk {
 }
 
 export async function POST(request: NextRequest) {
-  let body: Partial<AiExplainRequestBody>;
+  const json = await readJsonRequest<Partial<AiExplainRequestBody>>(request);
+  if (!json.ok) return json.response;
 
-  try {
-    body = await request.json();
-  } catch {
-    return Response.json({ error: "请求格式错误" }, { status: 400 });
-  }
-
+  const body = json.body;
   const apiKey = typeof body.apiKey === "string" ? body.apiKey.trim() : "";
   const text =
     typeof body.text === "string" ? normalizeAiExplainText(body.text) : "";
@@ -53,15 +50,15 @@ export async function POST(request: NextRequest) {
   );
 
   if (!apiKey) {
-    return Response.json({ error: "缺少 DeepSeek API Key" }, { status: 400 });
+    return errorResponse("缺少 DeepSeek API Key", 400);
   }
 
   if (!text) {
-    return Response.json({ error: "缺少要解释的文本" }, { status: 400 });
+    return errorResponse("缺少要解释的文本", 400);
   }
 
   if (!model) {
-    return Response.json({ error: "模型参数错误" }, { status: 400 });
+    return errorResponse("模型参数错误", 400);
   }
 
   const payload = {
@@ -86,27 +83,25 @@ export async function POST(request: NextRequest) {
   };
 
   try {
-    const upstream = await fetch(DEEPSEEK_ENDPOINT, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify(payload),
-      cache: "no-store",
-      signal: request.signal,
-    });
+    const upstream = await fetch(
+      DEEPSEEK_ENDPOINT,
+      jsonRequestInit(payload, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+        },
+        cache: "no-store",
+        signal: request.signal,
+      })
+    );
 
     if (!upstream.ok) {
       console.warn("DeepSeek explain failed", { status: upstream.status });
-      return Response.json(
-        { error: `DeepSeek 请求失败（状态码 ${upstream.status}）` },
-        { status: upstream.status }
-      );
+      return errorResponse(`DeepSeek 请求失败（状态码 ${upstream.status}）`, upstream.status);
     }
 
     if (!upstream.body) {
-      return Response.json({ error: "模型响应为空" }, { status: 502 });
+      return errorResponse("模型响应为空", 502);
     }
 
     return new Response(createTextStream(upstream.body), {
@@ -117,10 +112,10 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     if (request.signal.aborted) {
-      return Response.json({ error: "请求已取消" }, { status: 499 });
+      return errorResponse("请求已取消", 499);
     }
     console.error("DeepSeek explain request failed", error);
-    return Response.json({ error: "模型请求失败" }, { status: 500 });
+    return errorResponse("模型请求失败", 500);
   }
 }
 

@@ -93,7 +93,7 @@ export function createPlaybackController({ get, set }: PlaybackControllerOptions
 
   const pause = () => {
     const audio = getAudio();
-    if (audio && !audio.paused) {
+    if (!audio.paused) {
       audio.pause();
     }
   };
@@ -117,11 +117,9 @@ export function createPlaybackController({ get, set }: PlaybackControllerOptions
 
   const resetPlayback = () => {
     const audio = getAudio();
-    if (audio) {
-      audio.pause();
-      audio.currentTime = 0;
-      audio.src = "";
-    }
+    audio.pause();
+    audio.currentTime = 0;
+    audio.src = "";
 
     stopSyncLoop();
   };

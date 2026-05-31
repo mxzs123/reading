@@ -11,37 +11,26 @@ import {
 } from "react";
 import {
   DEFAULT_SETTINGS,
-  SENSITIVE_SETTINGS_FIELDS,
   SETTINGS_STORAGE_KEY,
   applySettings,
-  isAllowedDeepSeekModel,
-  isAllowedGeminiTtsModel,
-  mergeSettings,
+  mergeSensitiveLocalSettings,
+  removeSensitiveSettings,
+  sanitizeSettings,
   type ReaderSettings,
 } from "@/lib/settings";
-
-function sanitizeSettings(value: ReaderSettings): ReaderSettings {
-  const geminiModel = isAllowedGeminiTtsModel(value.geminiModel)
-    ? value.geminiModel
-    : DEFAULT_SETTINGS.geminiModel;
-  const deepseekModel = isAllowedDeepSeekModel(value.deepseekModel)
-    ? value.deepseekModel
-    : DEFAULT_SETTINGS.deepseekModel;
-
-  return { ...value, geminiModel, deepseekModel };
-}
+import { requestJson, requestJsonBody } from "@/lib/clientRequest";
 
 interface SettingsContextValue {
   settings: ReaderSettings;
-  updateSettings: (patch: Partial<ReaderSettings>) => void;
+  updateSetting: <TKey extends keyof ReaderSettings>(
+    key: TKey,
+    value: ReaderSettings[TKey]
+  ) => void;
   resetSettings: () => void;
   hydrated: boolean;
 }
 
 const SettingsContext = createContext<SettingsContextValue | null>(null);
-
-// 敏感字段只存本地，不同步云端
-const LOCAL_ONLY_FIELDS = SENSITIVE_SETTINGS_FIELDS;
 
 export function SettingsProvider({
   children,
@@ -53,15 +42,21 @@ export function SettingsProvider({
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const cloudSyncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const updateSettings = useCallback((patch: Partial<ReaderSettings>) => {
-    setSettings((prev) => mergeSettings(prev, patch));
+  const patchSettings = useCallback((patch: Partial<ReaderSettings>) => {
+    setSettings((prev) => ({ ...prev, ...patch }));
   }, []);
+
+  const updateSetting = useCallback(
+    <TKey extends keyof ReaderSettings>(key: TKey, value: ReaderSettings[TKey]) => {
+      patchSettings({ [key]: value } as Pick<ReaderSettings, TKey>);
+    },
+    [patchSettings]
+  );
 
   const resetSettings = useCallback(() => {
     setSettings(DEFAULT_SETTINGS);
   }, []);
 
-  // 从 localStorage 加载
   const loadFromLocalStorage = useCallback((): Partial<ReaderSettings> | null => {
     if (typeof window === "undefined") return null;
     try {
@@ -72,7 +67,6 @@ export function SettingsProvider({
     }
   }, []);
 
-  // 保存到 localStorage
   const saveToLocalStorage = useCallback((value: ReaderSettings) => {
     if (typeof window === "undefined") return;
     try {
@@ -82,56 +76,40 @@ export function SettingsProvider({
     }
   }, []);
 
-  // 同步到云端（不含敏感字段）
   const syncToCloud = useCallback(async (value: ReaderSettings) => {
     try {
-      // 移除敏感字段
-      const cloudSettings = { ...(value as unknown as Record<string, unknown>) };
-      for (const field of LOCAL_ONLY_FIELDS) {
-        delete cloudSettings[field];
-      }
-
-      await fetch("/api/settings", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(cloudSettings),
-      });
+      await requestJsonBody<{ success: boolean }>(
+        "/api/settings",
+        "PUT",
+        removeSensitiveSettings(value),
+        "设置云端同步失败"
+      );
     } catch (error) {
       console.warn("设置云端同步失败", error);
     }
   }, []);
 
-  // 初始化：先从 localStorage 快速加载，再从云端同步
   useEffect(() => {
     async function init() {
-      // 1. 先从 localStorage 快速加载
       const local = loadFromLocalStorage();
       const localSettings = local
         ? { ...DEFAULT_SETTINGS, ...local }
         : DEFAULT_SETTINGS;
       setSettings(sanitizeSettings(localSettings));
 
-      // 2. 尝试从云端同步
       try {
-        const response = await fetch("/api/settings");
-        if (response.ok) {
-          const cloudSettings = await response.json();
-          // 合并：云端设置 + 本地敏感字段
-          const merged = {
-            ...DEFAULT_SETTINGS,
-            ...cloudSettings,
-          };
-          // 保留本地的敏感字段
-          for (const field of LOCAL_ONLY_FIELDS) {
-            if (local?.[field] !== undefined) {
-              merged[field] = local[field];
-            }
-          }
-          const sanitized = sanitizeSettings(merged);
-          setSettings(sanitized);
-          // 更新本地缓存
-          saveToLocalStorage(sanitized);
-        }
+        const cloudSettings = await requestJson<Partial<ReaderSettings>>(
+          "/api/settings",
+          {},
+          "云端设置加载失败"
+        );
+        const merged = mergeSensitiveLocalSettings(
+          { ...DEFAULT_SETTINGS, ...cloudSettings },
+          local
+        );
+        const sanitized = sanitizeSettings(merged);
+        setSettings(sanitized);
+        saveToLocalStorage(sanitized);
       } catch (error) {
         console.warn("云端设置加载失败，使用本地缓存", error);
       }
@@ -142,16 +120,13 @@ export function SettingsProvider({
     init();
   }, [loadFromLocalStorage, saveToLocalStorage]);
 
-  // 应用设置到 CSS
   useEffect(() => {
     applySettings(settings);
   }, [settings]);
 
-  // 设置变更时保存（本地 + 云端）
   useEffect(() => {
     if (!hydrated) return;
 
-    // 本地保存（防抖 500ms）
     if (saveTimerRef.current) {
       clearTimeout(saveTimerRef.current);
     }
@@ -159,7 +134,6 @@ export function SettingsProvider({
       saveToLocalStorage(settings);
     }, 500);
 
-    // 云端同步（防抖 1000ms，避免频繁请求）
     if (cloudSyncTimerRef.current) {
       clearTimeout(cloudSyncTimerRef.current);
     }
@@ -178,8 +152,8 @@ export function SettingsProvider({
   }, [settings, hydrated, saveToLocalStorage, syncToCloud]);
 
   const value = useMemo<SettingsContextValue>(
-    () => ({ settings, updateSettings, resetSettings, hydrated }),
-    [settings, updateSettings, resetSettings, hydrated]
+    () => ({ settings, updateSetting, resetSettings, hydrated }),
+    [settings, updateSetting, resetSettings, hydrated]
   );
 
   return (
@@ -195,4 +169,13 @@ export function useSettings(): SettingsContextValue {
     throw new Error("useSettings 必须在 SettingsProvider 内使用");
   }
   return context;
+}
+
+export function useSettingFieldUpdater() {
+  const { updateSetting } = useSettings();
+  return useCallback(
+    <TKey extends keyof ReaderSettings>(key: TKey) =>
+      (value: ReaderSettings[TKey]) => updateSetting(key, value),
+    [updateSetting]
+  );
 }

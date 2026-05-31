@@ -1,4 +1,19 @@
 import { NextRequest } from "next/server";
+import {
+  TTS_GENERATION_ERROR,
+  errorResponse,
+  readJsonRequest,
+  readResponseErrorMessage,
+  withApiError,
+} from "@/lib/http";
+import { DEFAULT_SETTINGS } from "@/lib/settings";
+import { parseRequiredString, parseTtsText } from "@/lib/ttsRoute";
+import {
+  audioJsonResponse,
+  clampRounded,
+  escapeXml,
+  formatSignedUnit,
+} from "@/lib/ttsServer";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -14,54 +29,45 @@ interface TTSRequest {
 }
 
 export async function POST(request: NextRequest): Promise<Response> {
-  let body: TTSRequest;
+  const json = await readJsonRequest<TTSRequest>(request);
+  if (!json.ok) return json.response;
 
-  try {
-    body = await request.json();
-  } catch {
-    return Response.json({ error: "请求格式错误" }, { status: 400 });
-  }
+  const text = parseTtsText(json.body.text, {
+    requiredError: "缺少必要参数: text 或 apiKey",
+    lengthError: "文本过长，请分段生成（最大 5000 字符）",
+    maxLength: 5000,
+  });
+  const apiKey = parseRequiredString(
+    json.body.apiKey,
+    "缺少必要参数: text 或 apiKey"
+  );
+
+  if (!text.ok) return errorResponse(text.error, 400);
+  if (!apiKey.ok) return errorResponse(apiKey.error, 400);
 
   const {
-    text,
-    apiKey,
-    region = "eastus",
-    voice = "en-US-Ava:DragonHDLatestNeural",
-    rate = 1,
-    volume = 1,
-    pauseMs = 400,
-  } = body;
+    region = DEFAULT_SETTINGS.azureRegion,
+    voice = DEFAULT_SETTINGS.azureVoice,
+    rate = DEFAULT_SETTINGS.ttsRate,
+    volume = DEFAULT_SETTINGS.ttsVolume,
+    pauseMs = DEFAULT_SETTINGS.ttsPauseMs,
+  } = json.body;
 
-  if (!text || !apiKey) {
-    return Response.json(
-      { error: "缺少必要参数: text 或 apiKey" },
-      { status: 400 }
-    );
-  }
-
-  if (text.length > 5000) {
-    return Response.json(
-      { error: "文本过长，请分段生成（最大 5000 字符）" },
-      { status: 400 }
-    );
-  }
-
-  // 从语音名称中提取语言代码 (例如 "en-US-Ava:DragonHDLatestNeural" -> "en-US")
   const langMatch = voice.match(/^([a-z]{2}-[A-Z]{2})/);
   const lang = langMatch ? langMatch[1] : "en-US";
 
-  const ratePercent = Math.max(-50, Math.min(50, Math.round((rate - 1) * 100)));
-  const volumeDb = Math.max(-20, Math.min(6, Math.round((volume - 1) * 12)));
-  const normalizedPause = Math.max(0, Math.min(2000, pauseMs));
+  const ratePercent = clampRounded((rate - 1) * 100, -50, 50);
+  const volumeDb = clampRounded((volume - 1) * 12, -20, 6);
+  const normalizedPause = clampRounded(pauseMs, 0, 2000);
 
-  const rateAttr = `${ratePercent >= 0 ? "+" : ""}${ratePercent}%`;
-  const volumeAttr = volumeDb === 0 ? "default" : `${volumeDb >= 0 ? "+" : ""}${volumeDb}dB`;
+  const rateAttr = formatSignedUnit(ratePercent, "%");
+  const volumeAttr =
+    volumeDb === 0 ? "default" : formatSignedUnit(volumeDb, "dB");
 
-  // 构建 SSML
   const ssml = `<speak version='1.0' xml:lang='${lang}'>
   <voice name='${voice}'>
     <prosody rate='${rateAttr}' volume='${volumeAttr}'>
-      ${escapeXml(text)}
+      ${escapeXml(text.value)}
     </prosody>
     <break time='${normalizedPause}ms'/>
   </voice>
@@ -69,11 +75,11 @@ export async function POST(request: NextRequest): Promise<Response> {
 
   const endpoint = `https://${region}.tts.speech.microsoft.com/cognitiveservices/v1`;
 
-  try {
+  return withApiError(async () => {
     const response = await fetch(endpoint, {
       method: "POST",
       headers: {
-        "Ocp-Apim-Subscription-Key": apiKey,
+        "Ocp-Apim-Subscription-Key": apiKey.value,
         "Content-Type": "application/ssml+xml",
         "X-Microsoft-OutputFormat": "audio-24khz-48kbitrate-mono-mp3",
         "User-Agent": "BionicReader/1.0",
@@ -82,56 +88,19 @@ export async function POST(request: NextRequest): Promise<Response> {
     });
 
     if (!response.ok) {
-      const errorText = await response.text().catch(() => "");
+      const errorText = await readResponseErrorMessage(response);
 
       if (response.status === 401 || response.status === 403) {
-        return Response.json(
-          { error: "Azure API Key 无效或无权限" },
-          { status: 401 }
-        );
+        return errorResponse("Azure API Key 无效或无权限", 401);
       }
 
       if (response.status === 400) {
-        return Response.json(
-          { error: "请求格式错误，请检查语音设置" },
-          { status: 400 }
-        );
+        return errorResponse("请求格式错误，请检查语音设置", 400);
       }
 
-      return Response.json(
-        { error: errorText.slice(0, 300) || "TTS 服务请求失败" },
-        { status: response.status }
-      );
+      return errorResponse(errorText || "TTS 服务请求失败", response.status);
     }
 
-    // Azure 直接返回音频二进制数据
-    const audioBuffer = await response.arrayBuffer();
-    const audioBase64 = arrayBufferToBase64(audioBuffer);
-
-    return Response.json({
-      audio: audioBase64,
-      mimeType: "audio/mpeg",
-    });
-  } catch (error) {
-    console.error("TTS 生成失败", error);
-    return Response.json({ error: "音频生成失败，请稍后重试" }, { status: 500 });
-  }
-}
-
-function arrayBufferToBase64(buffer: ArrayBuffer): string {
-  const bytes = new Uint8Array(buffer);
-  let binary = "";
-  for (let i = 0; i < bytes.byteLength; i++) {
-    binary += String.fromCharCode(bytes[i]);
-  }
-  return btoa(binary);
-}
-
-function escapeXml(text: string): string {
-  return text
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&apos;");
+    return audioJsonResponse(await response.arrayBuffer(), "audio/mpeg");
+  }, TTS_GENERATION_ERROR);
 }

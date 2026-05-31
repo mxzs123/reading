@@ -21,11 +21,10 @@ export function createGenerationQueue<TTask extends { id: string }>(
   let version = 0;
 
   const pump = () => {
-    const limit = Math.max(1, getConcurrency());
+    const limit = getConcurrency();
 
     while (activeCount < limit && queue.length > 0) {
-      const queued = queue.shift();
-      if (!queued) return;
+      const queued = queue.shift()!;
 
       activeCount += 1;
       activeControllers.set(queued.task.id, queued.controller);
@@ -38,7 +37,7 @@ export function createGenerationQueue<TTask extends { id: string }>(
             return;
           }
 
-          activeCount = Math.max(0, activeCount - 1);
+          activeCount -= 1;
           activeControllers.delete(queued.task.id);
           pendingIds.delete(queued.task.id);
           queued.settle();

@@ -5,13 +5,15 @@
   --radius-small: 4px;
   width: 100%;
   max-width: 100%;
+  height: 100vh;
   min-height: 100vh;
   margin: 0 auto;
-  padding: 16px 24px calc(40px + var(--mini-player-space));
+  padding: 14px 20px;
   scroll-padding-bottom: calc(var(--mini-player-space) + env(safe-area-inset-bottom) + 20px);
   display: flex;
   flex-direction: column;
   gap: 0;
+  overflow: hidden;
 }
 
 .actionGroup {
@@ -98,28 +100,37 @@
 
 .ideShell {
   display: grid;
-  grid-template-columns: 320px minmax(0, 1fr) 320px;
-  gap: 22px;
+  grid-template-columns: 304px minmax(0, 1fr) 304px;
+  gap: 18px;
   align-items: start;
+  height: calc(100vh - 28px);
+  min-height: 0;
+  overflow: hidden;
+  transition:
+    grid-template-columns 0.28s cubic-bezier(0.32, 0.72, 0, 1),
+    gap 0.28s cubic-bezier(0.32, 0.72, 0, 1);
 }
 
 .ideShell[data-left-collapsed="true"] {
-  grid-template-columns: 56px minmax(0, 1fr) 320px;
+  grid-template-columns: 72px minmax(0, 1fr) 304px;
 }
 
 .ideShell[data-right-collapsed="true"] {
-  grid-template-columns: 320px minmax(0, 1fr) 56px;
+  grid-template-columns: 304px minmax(0, 1fr) 72px;
 }
 
 .ideShell[data-left-collapsed="true"][data-right-collapsed="true"] {
-  grid-template-columns: 56px minmax(0, 1fr) 56px;
+  grid-template-columns: 72px minmax(0, 1fr) 72px;
 }
 
 .main {
   min-width: 0;
+  min-height: 0;
+  height: 100%;
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 12px;
+  overflow: hidden;
 }
 
 .inputSection,
@@ -134,24 +145,43 @@
   background: transparent;
 }
 
+.inputSection {
+  flex: 0 0 auto;
+}
+
 .inputSection[data-collapsed="true"] {
-  position: sticky;
-  top: 20px;
+  position: relative;
+  top: auto;
+}
+
+.outputSection {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border-radius: var(--radius-panel);
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.outputSection::-webkit-scrollbar {
+  width: 0;
+  height: 0;
 }
 
 .textarea {
   width: 100%;
-  min-height: 118px;
-  max-height: 190px;
+  min-height: 104px;
+  max-height: 164px;
   resize: vertical;
   border: 0;
   border-radius: var(--radius-panel);
-  padding: 1.15rem 1.2rem;
-  background: var(--input-surface);
+  padding: 1rem 1.08rem;
+  background: color-mix(in srgb, var(--reader-paper) 76%, var(--input-surface));
   outline: none;
   font-family: var(--font-family);
-  font-size: 1rem;
-  line-height: 1.72;
+  font-size: 0.98rem;
+  line-height: 1.68;
   color: var(--ink);
   box-shadow: none;
   transition: background 0.2s ease;
@@ -164,7 +194,7 @@
 
 .textarea:hover,
 .textarea:focus {
-  background: var(--control-active-surface);
+  background: color-mix(in srgb, var(--reader-paper-top) 82%, var(--control-active-surface));
 }
 
 .helperRow {
@@ -190,7 +220,7 @@
   padding: 0 0.75rem;
   border: 0;
   border-radius: var(--radius-control);
-  background: var(--whisper);
+  background: color-mix(in srgb, var(--reader-paper) 80%, var(--whisper));
   color: var(--color-muted);
   font-family: var(--font-ui), system-ui, sans-serif;
   font-size: 0.84rem;
@@ -199,7 +229,7 @@
 }
 
 .sourceBar:hover {
-  background: var(--panel-strong-bg);
+  background: color-mix(in srgb, var(--reader-paper-top) 78%, var(--panel-strong-bg));
   color: var(--ink);
 }
 
@@ -227,20 +257,23 @@
 }
 
 .outputInner {
-  min-height: 70vh;
+  min-height: 100%;
   width: 100%;
-  padding: 12px 0 calc(var(--mini-player-space, 0px) * 0.45 + 1rem);
+  padding: clamp(60px, 7vw, 108px) 0 calc(var(--mini-player-space, 0px) * 0.55 + clamp(3rem, 7vw, 6rem));
   border: 0;
-  border-radius: 0;
-  background: transparent;
+  border-radius: var(--radius-panel);
+  background:
+    linear-gradient(180deg, var(--reader-paper-top), var(--reader-paper-bottom)),
+    var(--reader-paper);
   overflow-x: hidden;
+  box-shadow: none;
 }
 
 .toolSidebar {
-  position: sticky;
-  top: 18px;
-  height: calc(100vh - 36px);
-  min-height: 620px;
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -248,12 +281,21 @@
   border-radius: var(--radius-panel);
   background: var(--whisper);
   overflow: hidden;
+  transition:
+    min-height 0.28s cubic-bezier(0.32, 0.72, 0, 1),
+    height 0.28s cubic-bezier(0.32, 0.72, 0, 1),
+    padding 0.28s cubic-bezier(0.32, 0.72, 0, 1),
+    background 0.22s ease,
+    transform 0.28s cubic-bezier(0.32, 0.72, 0, 1),
+    opacity 0.22s ease;
 }
 
 .toolSidebar[data-collapsed="true"] {
-  width: 56px;
-  min-width: 56px;
-  padding: 8px;
+  height: 44px;
+  min-height: 44px;
+  padding: 0;
+  background: transparent;
+  overflow: visible;
 }
 
 .toolHeader,
@@ -320,6 +362,28 @@
   padding: 2px 0 16px;
   border-radius: 0;
   background: transparent;
+}
+
+.toolBottomDock {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-top: 2px;
+}
+
+.audioSection {
+  gap: 10px;
+  padding: 0;
+}
+
+.audioSection .toolStack {
+  gap: 9px;
+}
+
+.audioSection .progressText {
+  padding: 0 2px;
+  font-size: 0.84rem;
 }
 
 .inspectorSection {
@@ -443,52 +507,66 @@
 }
 
 .toolFooter {
-  margin-top: auto;
-  padding-top: 8px;
+  margin-top: 0;
+  padding-top: 0;
 }
 
+.toolBottomDock .primaryAction,
 .toolFooter .clearButton {
   width: 100%;
+  min-height: 40px;
 }
 
 .toolCollapsedButton {
   width: 100%;
-  height: 100%;
-  min-height: 260px;
+  height: 44px;
+  min-height: 44px;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
-  justify-content: flex-start;
-  gap: 18px;
-  padding: 10px 0 14px;
+  justify-content: center;
+  gap: 0;
+  padding: 0 8px;
   border-radius: var(--radius-panel);
-  background: var(--control-active-surface);
+  background: color-mix(in srgb, var(--control-active-surface) 86%, var(--reader-paper-top));
   color: var(--accent);
   font-family: var(--font-ui), system-ui, sans-serif;
-  font-size: 0.76rem;
+  font-size: 0.74rem;
+  line-height: 1;
   font-weight: 800;
+  transition:
+    background 0.18s ease,
+    color 0.18s ease,
+    transform 0.18s ease;
+}
+
+.toolCollapsedButton:hover {
+  background: var(--control-active-surface);
+  color: var(--ink);
+  transform: translateY(-1px);
 }
 
 .railActionIcon {
-  width: 1rem;
-  height: 1rem;
-  flex: 0 0 auto;
-  color: var(--color-muted);
-  stroke-width: 2.2;
+  display: none;
 }
 
 .railIdentity {
   display: inline-flex;
   align-items: center;
-  gap: 0.42rem;
-  writing-mode: vertical-rl;
-  text-orientation: mixed;
+  justify-content: center;
+  gap: 5px;
+  flex-direction: row;
+  line-height: 1;
 }
 
 .railIdentity svg {
   width: 1rem;
   height: 1rem;
   stroke-width: 2.1;
+}
+
+.railIdentity span {
+  white-space: nowrap;
 }
 
 .readingPulse {
@@ -503,9 +581,9 @@
   background: linear-gradient(
     115deg,
     transparent 0%,
-    var(--accent-glow) 30%,
-    rgba(255, 255, 255, 0.45) 50%,
-    var(--accent-glow) 70%,
+    var(--reader-active) 32%,
+    color-mix(in srgb, var(--reader-paper-top) 54%, transparent) 50%,
+    var(--reader-active) 68%,
     transparent 100%
   );
   animation: shimmer 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards;
@@ -514,11 +592,35 @@
 }
 
 @media (max-width: 1080px) {
+  .page {
+    height: auto;
+    min-height: 100vh;
+    padding: 14px 20px calc(40px + var(--mini-player-space));
+    overflow: visible;
+  }
+
   .ideShell,
   .ideShell[data-left-collapsed="true"],
   .ideShell[data-right-collapsed="true"],
   .ideShell[data-left-collapsed="true"][data-right-collapsed="true"] {
     grid-template-columns: 1fr;
+    height: auto;
+    overflow: visible;
+  }
+
+  .main {
+    height: auto;
+    overflow: visible;
+  }
+
+  .outputSection {
+    flex: 0 1 auto;
+    min-height: auto;
+    overflow: visible;
+  }
+
+  .outputInner {
+    min-height: 70vh;
   }
 
   .toolSidebar {
@@ -531,18 +633,22 @@
     width: 100%;
     min-width: 0;
     height: 48px;
+    min-height: 48px;
     padding: 0;
+    background: var(--whisper);
   }
 
   .toolCollapsedButton {
     min-height: 48px;
+    height: 48px;
     flex-direction: row;
     justify-content: center;
     gap: 10px;
+    box-shadow: none;
   }
 
   .railIdentity {
-    writing-mode: horizontal-tb;
+    flex-direction: row;
   }
 
   .inputSection[data-collapsed="true"] {
@@ -568,6 +674,8 @@
 
   .outputInner {
     min-height: 420px;
+    padding-top: clamp(38px, 10vw, 58px);
+    padding-bottom: calc(var(--mini-player-space, 0px) * 0.48 + 2.75rem);
   }
 }
 

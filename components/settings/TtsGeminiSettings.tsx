@@ -1,17 +1,16 @@
 "use client";
 
-import { useState } from "react";
-import { useSettings } from "@/contexts/SettingsContext";
+import { useSettingFieldUpdater, useSettings } from "@/contexts/SettingsContext";
 import { useI18n } from "@/contexts/I18nContext";
-import type { GeminiTTSModel } from "@/lib/settings";
-import { SecretTextField, SwitchField } from "@/components/ui";
+import { DEFAULT_SETTINGS } from "@/lib/settings";
+import { LinkHint, SecretTextField, SelectField, SwitchField, TextField } from "@/components/ui";
 import { geminiModelOptions, translateOptions } from "./options";
-import styles from "./settingsStyles.module.css";
+import { FieldGrid, SettingsDetails, SettingsHint } from "./SettingsLayout";
 
 export function TtsGeminiSettings() {
-  const { settings, updateSettings } = useSettings();
+  const { settings } = useSettings();
+  const updateField = useSettingFieldUpdater();
   const { t } = useI18n();
-  const [showApiKey, setShowApiKey] = useState(false);
 
   return (
     <>
@@ -19,166 +18,94 @@ export function TtsGeminiSettings() {
         label="Gemini API Key"
         value={settings.geminiApiKey}
         placeholder={t("settings.gemini.apiPlaceholder")}
-        visible={showApiKey}
-        onToggleVisible={() => setShowApiKey((prev) => !prev)}
-        onChange={(value) => updateSettings({ geminiApiKey: value })}
+        onChange={updateField("geminiApiKey")}
         hint={
-          <>
-            {t("settings.gemini.apiHintBefore")}
-            <a
-              href="https://aistudio.google.com/app/apikey"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Google AI Studio
-            </a>
-            {t("settings.gemini.apiHintAfter")}
-          </>
+          <LinkHint
+            before={t("settings.gemini.apiHintBefore")}
+            href="https://aistudio.google.com/app/apikey"
+            after={t("settings.gemini.apiHintAfter")}
+          >
+            Google AI Studio
+          </LinkHint>
         }
       />
 
-      <div className={styles.grid2}>
-        <div className={styles.fieldColumn}>
-          <label className={styles.fieldLabel}>{t("settings.gemini.model")}</label>
-          <select
-            className={styles.select}
-            value={settings.geminiModel}
-            onChange={(e) =>
-              updateSettings({ geminiModel: e.target.value as GeminiTTSModel })
-            }
-          >
-            {translateOptions(geminiModelOptions, t).map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className={styles.fieldColumn}>
-          <label className={styles.fieldLabel}>{t("settings.gemini.voice")}</label>
-          <input
-            type="text"
-            className={styles.apiKeyInput}
-            value={settings.geminiVoiceName}
-            onChange={(e) => updateSettings({ geminiVoiceName: e.target.value })}
-            placeholder={t("settings.gemini.voicePlaceholder")}
-          />
-          <p className={styles.apiKeyHint}>{t("settings.gemini.voiceHint")}</p>
-        </div>
-      </div>
-
-      <div className={styles.fieldColumn}>
-        <label className={styles.fieldLabel}>{t("settings.gemini.language")}</label>
-        <input
-          type="text"
-          className={styles.apiKeyInput}
-          value={settings.geminiLanguageCode}
-          onChange={(e) => updateSettings({ geminiLanguageCode: e.target.value })}
-          placeholder={t("settings.gemini.languagePlaceholder")}
+      <FieldGrid>
+        <SelectField
+          label={t("settings.gemini.model")}
+          value={settings.geminiModel}
+          options={translateOptions(geminiModelOptions, t)}
+          onChange={updateField("geminiModel")}
         />
-      </div>
 
-      <details className={styles.details}>
-        <summary className={styles.detailsSummary}>{t("settings.gemini.advanced")}</summary>
-        <div className={styles.detailsBody}>
-          <div className={styles.fieldColumn}>
-            <label className={styles.fieldLabel}>{t("settings.gemini.stylePrompt")}</label>
-            <textarea
-              className={styles.apiKeyInput}
-              value={settings.geminiStylePrompt}
-              onChange={(e) =>
-                updateSettings({ geminiStylePrompt: e.target.value })
-              }
-              placeholder={t("settings.gemini.stylePlaceholder")}
-              rows={4}
-            />
-            <p className={styles.apiKeyHint}>
-              {t("settings.gemini.styleHint")}
-            </p>
-          </div>
+        <TextField
+          label={t("settings.gemini.voice")}
+          value={settings.geminiVoiceName}
+          onChange={updateField("geminiVoiceName")}
+          placeholder={t("settings.gemini.voicePlaceholder")}
+          hint={t("settings.gemini.voiceHint")}
+        />
+      </FieldGrid>
 
-          <SwitchField
-            label={t("settings.gemini.multiSpeaker")}
-            checked={settings.geminiUseMultiSpeaker}
-            onChange={(checked) =>
-              updateSettings({ geminiUseMultiSpeaker: checked })
-            }
-          />
+      <SettingsDetails title={t("settings.gemini.advanced")}>
+        <TextField
+          label={t("settings.gemini.stylePrompt")}
+          value={settings.geminiStylePrompt}
+          onChange={updateField("geminiStylePrompt")}
+          placeholder={t("settings.gemini.stylePlaceholder")}
+          hint={t("settings.gemini.styleHint")}
+          multiline
+          rows={4}
+        />
 
-          {settings.geminiUseMultiSpeaker ? (
-            <>
-              <div className={styles.grid2}>
-                <div className={styles.fieldColumn}>
-                  <label className={styles.fieldLabel}>{t("settings.gemini.speaker1Name")}</label>
-                  <input
-                    type="text"
-                    className={styles.apiKeyInput}
-                    value={settings.geminiSpeaker1Name}
-                    onChange={(e) =>
-                      updateSettings({
-                        geminiSpeaker1Name: e.target.value,
-                      })
-                    }
-                    placeholder={t("settings.gemini.speakerNamePlaceholder")}
-                  />
-                </div>
-                <div className={styles.fieldColumn}>
-                  <label className={styles.fieldLabel}>{t("settings.gemini.speaker1Voice")}</label>
-                  <input
-                    type="text"
-                    className={styles.apiKeyInput}
-                    value={settings.geminiSpeaker1VoiceName}
-                    onChange={(e) =>
-                      updateSettings({
-                        geminiSpeaker1VoiceName: e.target.value,
-                      })
-                    }
-                    placeholder={t("settings.gemini.voicePlaceholder")}
-                  />
-                </div>
-              </div>
+        <SwitchField
+          label={t("settings.gemini.multiSpeaker")}
+          checked={settings.geminiUseMultiSpeaker}
+          onChange={updateField("geminiUseMultiSpeaker")}
+        />
 
-              <div className={styles.grid2}>
-                <div className={styles.fieldColumn}>
-                  <label className={styles.fieldLabel}>{t("settings.gemini.speaker2Name")}</label>
-                  <input
-                    type="text"
-                    className={styles.apiKeyInput}
-                    value={settings.geminiSpeaker2Name}
-                    onChange={(e) =>
-                      updateSettings({
-                        geminiSpeaker2Name: e.target.value,
-                      })
-                    }
-                    placeholder={t("settings.gemini.speakerNamePlaceholder2")}
-                  />
-                </div>
-                <div className={styles.fieldColumn}>
-                  <label className={styles.fieldLabel}>{t("settings.gemini.speaker2Voice")}</label>
-                  <input
-                    type="text"
-                    className={styles.apiKeyInput}
-                    value={settings.geminiSpeaker2VoiceName}
-                    onChange={(e) =>
-                      updateSettings({
-                        geminiSpeaker2VoiceName: e.target.value,
-                      })
-                    }
-                    placeholder="Puck"
-                  />
-                </div>
-              </div>
+        {settings.geminiUseMultiSpeaker ? (
+          <>
+            <FieldGrid>
+              <TextField
+                label={t("settings.gemini.speaker1Name")}
+                value={settings.geminiSpeaker1Name}
+                onChange={updateField("geminiSpeaker1Name")}
+                placeholder={t("settings.gemini.speakerNamePlaceholder")}
+              />
+              <TextField
+                label={t("settings.gemini.speaker1Voice")}
+                value={settings.geminiSpeaker1VoiceName}
+                onChange={updateField("geminiSpeaker1VoiceName")}
+                placeholder={t("settings.gemini.voicePlaceholder")}
+              />
+            </FieldGrid>
 
-              <p className={styles.apiKeyHint}>
-                {t("settings.gemini.dialogueHint", {
-                  speaker: settings.geminiSpeaker1Name || "Speaker1",
-                })}
-              </p>
-            </>
-          ) : null}
-        </div>
-      </details>
+            <FieldGrid>
+              <TextField
+                label={t("settings.gemini.speaker2Name")}
+                value={settings.geminiSpeaker2Name}
+                onChange={updateField("geminiSpeaker2Name")}
+                placeholder={t("settings.gemini.speakerNamePlaceholder2")}
+              />
+              <TextField
+                label={t("settings.gemini.speaker2Voice")}
+                value={settings.geminiSpeaker2VoiceName}
+                onChange={updateField("geminiSpeaker2VoiceName")}
+                placeholder={DEFAULT_SETTINGS.geminiSpeaker2VoiceName}
+              />
+            </FieldGrid>
+
+            <SettingsHint>
+              {t("settings.gemini.dialogueHint", {
+                speaker:
+                  settings.geminiSpeaker1Name ||
+                  DEFAULT_SETTINGS.geminiSpeaker1Name,
+              })}
+            </SettingsHint>
+          </>
+        ) : null}
+      </SettingsDetails>
     </>
   );
 }

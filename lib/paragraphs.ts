@@ -1,6 +1,6 @@
-export type Token = { type: "word"; value: string } | { type: "text"; value: string };
+import { ENGLISH_WORD_REGEX } from "./englishWords";
 
-const WORD_REGEX = /[A-Za-z]+(?:['-][A-Za-z]+)*/g;
+export type Token = { type: "word"; value: string } | { type: "text"; value: string };
 
 export function buildParagraphs(text: string): string[] {
   const normalized = text.replace(/\r\n?/g, "\n");
@@ -27,7 +27,7 @@ export function tokenize(content: string): Token[] {
   if (!content) return tokens;
 
   let lastIndex = 0;
-  content.replace(WORD_REGEX, (match, offset) => {
+  content.replace(ENGLISH_WORD_REGEX, (match, offset) => {
     if (offset > lastIndex) {
       tokens.push({ type: "text", value: content.slice(lastIndex, offset) });
     }

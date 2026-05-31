@@ -1,17 +1,23 @@
-import { normalizeWordTimings } from "@/lib/tts";
 import type { WordTiming } from "@/lib/storage";
-import type { SegmentState, SegmentStatus, UploadStatus } from "./types";
+import { normalizeWordTimings } from "@/lib/wordTimings";
+import type { SegmentState } from "./types";
 
 export function buildInitialSegments(paragraphs: string[]): SegmentState[] {
-  return paragraphs.map((text, i) => ({
+  return paragraphs.map((text, i): SegmentState => ({
     id: `seg-${i}`,
     text,
-    status: "idle" as SegmentStatus,
+    status: "idle",
   }));
 }
 
-export function countReadySegments(segments: SegmentState[]): number {
-  return segments.filter((segment) => segment.status === "ready").length;
+export function updateSegment(
+  segments: SegmentState[],
+  segmentId: string,
+  patch: Partial<SegmentState>
+): SegmentState[] {
+  return segments.map((segment) =>
+    segment.id === segmentId ? { ...segment, ...patch } : segment
+  );
 }
 
 export function revokeSegmentAudioUrls(segments: SegmentState[]): void {
@@ -28,7 +34,7 @@ export function mergeStoredAudioUrls(
   segments: SegmentState[],
   audioUrls: string[]
 ): SegmentState[] {
-  return segments.map((segment) => {
+  return segments.map((segment): SegmentState => {
     const matchingUrl = audioUrls.find((url) => url.includes(`/${segment.id}.wav`));
     if (!matchingUrl) {
       return segment;
@@ -36,10 +42,10 @@ export function mergeStoredAudioUrls(
 
     return {
       ...segment,
-      status: "ready" as SegmentStatus,
+      status: "ready",
       audioUrl: matchingUrl,
       cloudUrl: matchingUrl,
-      uploadStatus: "success" as UploadStatus,
+      uploadStatus: "success",
       uploadError: undefined,
     };
   });

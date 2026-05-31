@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { SwitchField } from "@/components/ui";
+import { SelectField, SwitchField } from "@/components/ui";
 import { useI18n } from "@/contexts/I18nContext";
+import { postJson } from "@/lib/clientRequest";
+import { SettingsHint, SettingsSection } from "./SettingsLayout";
 import styles from "./settingsStyles.module.css";
 
 type SyncDirection = "local-to-cloud" | "cloud-to-local";
@@ -30,18 +32,11 @@ export function SyncTab() {
     setMessage("");
 
     try {
-      const response = await fetch("/api/sync", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ direction, scopes }),
-      });
-
-      const data = (await response.json()) as Partial<SyncResult>;
-
-      if (!response.ok) {
-        setMessage(t("settings.sync.failed"));
-        return;
-      }
+      const data = await postJson<Partial<SyncResult>>(
+        "/api/sync",
+        { direction, scopes },
+        t("settings.sync.failed")
+      );
 
       setMessage(
         t("settings.sync.success", {
@@ -59,20 +54,16 @@ export function SyncTab() {
   const hasScope = syncArticles || syncSettings;
 
   return (
-    <section className={styles.section}>
-      <div className={styles.sectionHeader}>{t("settings.sync.section")}</div>
-
-      <div className={styles.fieldColumn}>
-        <label className={styles.fieldLabel}>{t("settings.sync.direction")}</label>
-        <select
-          className={styles.select}
-          value={direction}
-          onChange={(event) => setDirection(event.target.value as SyncDirection)}
-        >
-          <option value="local-to-cloud">{t("settings.sync.localToCloud")}</option>
-          <option value="cloud-to-local">{t("settings.sync.cloudToLocal")}</option>
-        </select>
-      </div>
+    <SettingsSection title={t("settings.sync.section")}>
+      <SelectField
+        label={t("settings.sync.direction")}
+        value={direction}
+        options={[
+          { value: "local-to-cloud", label: t("settings.sync.localToCloud") },
+          { value: "cloud-to-local", label: t("settings.sync.cloudToLocal") },
+        ] as const}
+        onChange={setDirection}
+      />
 
       <SwitchField
         label={t("settings.sync.articles")}
@@ -95,7 +86,7 @@ export function SyncTab() {
         {syncing ? t("settings.sync.syncing") : t("settings.sync.start")}
       </button>
 
-      {message ? <p className={styles.apiKeyHint}>{message}</p> : null}
-    </section>
+      {message ? <SettingsHint>{message}</SettingsHint> : null}
+    </SettingsSection>
   );
 }

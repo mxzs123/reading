@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSettings } from "@/contexts/SettingsContext";
 import { useI18n } from "@/contexts/I18nContext";
+import { requestJson } from "@/lib/clientRequest";
 import { LOCALES, type Locale } from "@/lib/i18n";
 import { SegmentedControl, type SegmentedOption } from "@/components/ui";
 import {
@@ -22,6 +23,7 @@ interface SettingsPanelProps {
 }
 
 type SettingsTab = "reading" | "typography" | "layout" | "tts" | "ai" | "sync";
+type ClearArticlesResponse = { deleted: number };
 
 export function SettingsPanel({ isOpen, onClose, onArticlesCleared }: SettingsPanelProps) {
   const { settings, resetSettings } = useSettings();
@@ -69,14 +71,13 @@ export function SettingsPanel({ isOpen, onClose, onArticlesCleared }: SettingsPa
     }
     setIsClearing(true);
     try {
-      const response = await fetch("/api/articles", { method: "DELETE" });
-      if (response.ok) {
-        const data = await response.json();
-        alert(t("settings.deletedArticles", { count: data.deleted }));
-        onArticlesCleared?.();
-      } else {
-        alert(t("settings.deleteFailed"));
-      }
+      const data = await requestJson<ClearArticlesResponse>(
+        "/api/articles",
+        { method: "DELETE" },
+        t("settings.deleteFailed")
+      );
+      alert(t("settings.deletedArticles", { count: data.deleted }));
+      onArticlesCleared?.();
     } catch {
       alert(t("settings.deleteFailed"));
     } finally {
@@ -99,7 +100,6 @@ export function SettingsPanel({ isOpen, onClose, onArticlesCleared }: SettingsPa
         <header className={styles.header}>
           <div>
             <h2 className={styles.title}>{t("settings.title")}</h2>
-            <p className="muted-text">{t("settings.subtitle")}</p>
           </div>
           <label className={styles.languageSelectWrap}>
             <span>{t("language.label")}</span>

@@ -1,41 +1,17 @@
 import { NextRequest } from "next/server";
-import {
-  syncDataStores,
-  type SyncDirection,
-  type SyncScope,
-} from "@/lib/dataStore/sync";
-
-const DIRECTIONS: SyncDirection[] = ["local-to-cloud", "cloud-to-local"];
-const SCOPES: SyncScope[] = ["articles", "settings"];
+import { parseSyncOptions, syncDataStores } from "@/lib/dataStore/sync";
+import { errorResponse, readJsonRequest, withApiError } from "@/lib/http";
 
 export async function POST(request: NextRequest): Promise<Response> {
-  try {
-    const body = (await request.json()) as {
-      direction?: SyncDirection;
-      scopes?: SyncScope[];
-      articleIds?: string[];
-    };
+  return withApiError(async () => {
+    const json = await readJsonRequest<unknown>(request);
+    if (!json.ok) return json.response;
 
-    if (!body.direction || !DIRECTIONS.includes(body.direction)) {
-      return Response.json({ error: "同步方向无效" }, { status: 400 });
-    }
+    const syncOptions = parseSyncOptions(json.body);
+    if (!syncOptions.ok) return errorResponse(syncOptions.error, 400);
 
-    const scopes = (body.scopes ?? []).filter((scope) =>
-      SCOPES.includes(scope)
-    );
-    if (scopes.length === 0) {
-      return Response.json({ error: "请选择同步范围" }, { status: 400 });
-    }
-
-    const result = await syncDataStores({
-      direction: body.direction,
-      scopes,
-      articleIds: body.articleIds,
-    });
+    const result = await syncDataStores(syncOptions.options);
 
     return Response.json(result);
-  } catch (error) {
-    console.error("同步失败", error);
-    return Response.json({ error: "同步失败" }, { status: 500 });
-  }
+  }, "同步失败");
 }

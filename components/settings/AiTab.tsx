@@ -1,75 +1,54 @@
 "use client";
 
-import { useState } from "react";
-import { useSettings } from "@/contexts/SettingsContext";
+import { useSettingFieldUpdater, useSettings } from "@/contexts/SettingsContext";
 import { useI18n } from "@/contexts/I18nContext";
-import type { DeepSeekModel } from "@/lib/settings";
-import { RangeField, SecretTextField, SwitchField } from "@/components/ui";
+import {
+  NumberField,
+  RangeField,
+  SecretTextField,
+  SelectField,
+  SwitchField,
+} from "@/components/ui";
 import { deepseekModelOptions } from "./options";
-import styles from "./settingsStyles.module.css";
+import { FieldGrid, SettingsHint, SettingsSection } from "./SettingsLayout";
 
 export function AiTab() {
-  const { settings, updateSettings } = useSettings();
+  const { settings, updateSetting } = useSettings();
+  const updateField = useSettingFieldUpdater();
   const { t } = useI18n();
-  const [showApiKey, setShowApiKey] = useState(false);
 
   return (
-    <section className={styles.section}>
-      <div className={styles.sectionHeader}>{t("settings.ai.section")}</div>
-
+    <SettingsSection title={t("settings.ai.section")}>
       <SwitchField
         label={t("settings.ai.enable")}
         checked={settings.aiExplainEnabled}
-        onChange={(checked) => updateSettings({ aiExplainEnabled: checked })}
+        onChange={updateField("aiExplainEnabled")}
       />
 
       <SecretTextField
         label="DeepSeek API Key"
         value={settings.deepseekApiKey}
         placeholder={t("settings.ai.placeholder")}
-        visible={showApiKey}
-        onToggleVisible={() => setShowApiKey((prev) => !prev)}
-        onChange={(value) => updateSettings({ deepseekApiKey: value })}
+        onChange={updateField("deepseekApiKey")}
         hint={t("settings.ai.deepseekHint")}
       />
 
-      <div className={styles.grid2}>
-        <div className={styles.fieldColumn}>
-          <label className={styles.fieldLabel}>{t("settings.ai.model")}</label>
-          <select
-            className={styles.select}
-            value={settings.deepseekModel}
-            onChange={(e) =>
-              updateSettings({ deepseekModel: e.target.value as DeepSeekModel })
-            }
-          >
-            {deepseekModelOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className={styles.fieldColumn}>
-          <label className={styles.fieldLabel}>{t("settings.ai.maxTokens")}</label>
-          <input
-            type="number"
-            min={200}
-            max={2000}
-            className={styles.apiKeyInput}
-            value={settings.deepseekMaxTokens}
-            onChange={(e) => {
-              const parsed = Number.parseInt(e.target.value, 10);
-              updateSettings({
-                deepseekMaxTokens: Number.isNaN(parsed)
-                  ? 900
-                  : Math.max(200, Math.min(2000, parsed)),
-              });
-            }}
-          />
-        </div>
-      </div>
+      <FieldGrid>
+        <SelectField
+          label={t("settings.ai.model")}
+          value={settings.deepseekModel}
+          options={deepseekModelOptions}
+          onChange={updateField("deepseekModel")}
+        />
+        <NumberField
+          label={t("settings.ai.maxTokens")}
+          value={settings.deepseekMaxTokens}
+          min={200}
+          max={2000}
+          fallback={900}
+          onChange={(value) => updateSetting("deepseekMaxTokens", value ?? 900)}
+        />
+      </FieldGrid>
 
       <RangeField
         label={t("settings.ai.longPress")}
@@ -78,7 +57,7 @@ export function AiTab() {
         max={1200}
         step={10}
         unit="ms"
-        onChange={(value) => updateSettings({ aiLongPressMs: value })}
+        onChange={updateField("aiLongPressMs")}
       />
 
       <RangeField
@@ -88,12 +67,10 @@ export function AiTab() {
         max={4000}
         step={100}
         unit={t("settings.ai.contextUnit")}
-        onChange={(value) => updateSettings({ aiContextChars: value })}
+        onChange={updateField("aiContextChars")}
       />
 
-      <p className={styles.apiKeyHint}>
-        {t("settings.ai.desktopHint")}
-      </p>
-    </section>
+      <SettingsHint>{t("settings.ai.desktopHint")}</SettingsHint>
+    </SettingsSection>
   );
 }

@@ -1,10 +1,9 @@
 .container {
-  display: flex;
-  flex-direction: column;
-  gap: var(--paragraph-spacing, 1.5rem);
-  width: 100%;
-  align-items: center;
-  padding: 0 var(--reading-padding);
+  display: block;
+  width: min(var(--page-width), calc(100% - var(--reading-padding) - var(--reading-padding)));
+  max-width: var(--page-width);
+  margin: 0 auto;
+  padding: 0;
   padding-bottom: max(
     clamp(2.5rem, 8vw, 4.5rem),
     calc(var(--mini-player-space, 160px) * 0.65)
@@ -14,63 +13,71 @@
 .paragraph {
   position: relative;
   width: 100%;
-  max-width: var(--page-width);
   font-size: var(--font-size);
   line-height: var(--line-height);
   letter-spacing: var(--letter-spacing);
   font-weight: var(--body-font-weight, 400);
   font-family: var(--font-family), system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  color: var(--color-text);
+  color: var(--reader-ink, var(--color-text));
   cursor: pointer;
-  padding: 0.65rem 1.4rem;
+  padding: 0.2rem 0 0.2rem clamp(1.08rem, 2vw, 1.42rem);
   margin: 0;
-  border-radius: 6px;
-  transition: background-color 0.15s ease;
+  border-radius: var(--radius-small, 4px);
+  transition: background 0.18s ease, color 0.18s ease;
   text-align: var(--text-align);
   text-indent: var(--text-indent);
   white-space: pre-wrap;
   word-break: break-word;
   hyphens: auto;
+  font-optical-sizing: auto;
+  font-kerning: normal;
   text-rendering: optimizeLegibility;
+  text-wrap: pretty;
   -webkit-font-smoothing: antialiased;
 }
 
-.paragraph::before,
-.paragraph::after {
-  content: "";
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  width: 3.2rem;
-  pointer-events: auto;
+.paragraph + .paragraph {
+  margin-top: var(--paragraph-spacing, 1.5rem);
 }
 
 .paragraph::before {
+  content: "";
+  position: absolute;
   left: 0;
-}
-
-.paragraph::after {
-  right: 0;
+  top: 0.42em;
+  bottom: 0.42em;
+  width: 2px;
+  border-radius: 999px;
+  background: var(--accent);
+  opacity: 0;
+  transform: scaleY(0.72);
+  transform-origin: center;
+  transition: opacity 0.18s ease, transform 0.18s ease;
+  pointer-events: none;
 }
 
 .paragraph:hover {
-  background-color: var(--whisper);
-  background-image: linear-gradient(to right, var(--accent-light), var(--accent-light));
-  background-size: 2px 100%;
-  background-repeat: no-repeat;
-  background-position: left center;
+  background: linear-gradient(90deg, var(--reader-hover), transparent 72%);
+  color: var(--reader-ink-strong, var(--reader-ink));
+}
+
+.paragraph:hover::before {
+  opacity: 0.36;
+  transform: scaleY(1);
 }
 
 .paragraph.active {
-  background-color: var(--paragraph-active-bg, var(--accent-glow));
-  background-image: linear-gradient(to right, var(--accent), var(--accent));
-  background-size: 2px 100%;
-  background-repeat: no-repeat;
-  background-position: left center;
+  background: linear-gradient(90deg, var(--reader-active), transparent 76%);
+  color: var(--reader-ink-strong, var(--reader-ink));
+}
+
+.paragraph.active::before {
+  opacity: 1;
+  transform: scaleY(1);
 }
 
 .aiPressing {
-  background: var(--color-highlight);
+  background: var(--reader-highlight, var(--color-highlight));
 }
 
 /* 空状态 */
@@ -80,21 +87,25 @@
   align-items: center;
   justify-content: center;
   gap: 12px;
-  min-height: 50vh;
-  padding: 2rem;
+  width: min(var(--page-width), calc(100% - var(--reading-padding) - var(--reading-padding)));
+  max-width: var(--page-width);
+  min-height: 56vh;
+  margin: 0 auto;
+  padding: 2rem 0;
+  color: var(--reader-muted, var(--color-muted));
 }
 
 .emptyIcon {
   width: 2rem;
   height: 2rem;
   stroke-width: 1.5;
-  color: var(--color-muted);
+  color: currentColor;
   opacity: 0.55;
 }
 
 .emptyText {
   margin: 0;
-  color: var(--color-muted);
+  color: currentColor;
   font-family: var(--font-ui), system-ui, sans-serif;
   font-size: 0.92rem;
   text-align: center;
@@ -107,7 +118,7 @@
   margin: 0;
   font-family: var(--font-ui), system-ui, sans-serif;
   font-size: 0.8rem;
-  color: var(--color-muted);
+  color: currentColor;
 }
 
 .kbd {
@@ -118,9 +129,20 @@
   height: 1.3rem;
   padding: 0 0.3rem;
   border-radius: var(--radius-small, 4px);
-  background: var(--whisper);
+  background: var(--reader-hover, var(--whisper));
   font-family: var(--font-ui), system-ui, sans-serif;
   font-size: 0.78rem;
   font-weight: 700;
-  color: var(--color-muted);
+  color: currentColor;
+}
+
+@media (max-width: 768px) {
+  .container,
+  .empty {
+    width: min(100%, calc(100% - clamp(36px, 10vw, 52px)));
+  }
+
+  .paragraph {
+    padding-left: 0.9rem;
+  }
 }

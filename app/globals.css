@@ -1,73 +1,88 @@
-/* 导入 Literata 字体 - 专为屏幕阅读设计 */
-@import url('https://fonts.googleapis.com/css2?family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,500;0,7..72,600;0,7..72,700;1,7..72,400;1,7..72,500&display=swap');
+/* 阅读字体预设：书籍感优先，字体选择只服务长文阅读。 */
+@import url('https://fonts.googleapis.com/css2?family=Literata:ital,opsz,wght@0,7..72,400..700;1,7..72,400..700&family=Lora:ital,wght@0,400..700;1,400..700&family=Newsreader:opsz,wght@6..72,400..700&family=Noto+Serif:ital,wght@0,400..700;1,400..700&family=Source+Serif+4:opsz,wght@8..60,400..700&display=swap');
 
 :root {
   color-scheme: light;
   /* 阅读排版 */
-  --font-size: 18.5px;
-  --line-height: 1.7;
-  --letter-spacing: 0.008em;
-  --paragraph-spacing: 1.4em;
-  --font-family: "Literata", Georgia, "Times New Roman", serif;
-  --page-width: 680px;
-  --reading-padding: 48px;
+  --font-size: 19.25px;
+  --line-height: 1.88;
+  --letter-spacing: 0;
+  --paragraph-spacing: 1.34em;
+  --font-family: Charter, "Bitstream Charter", "TsangerJinKai", "Tsanger JinKai", "Iowan Old Style", "Source Serif 4", "Noto Serif", "Songti SC", "Yu Mincho", Georgia, serif;
+  --page-width: 660px;
+  --reading-padding: 64px;
   --text-align: left;
   --text-indent: 0em;
   --body-font-weight: 400;
-  --bionic-weight: 650;
+  --bionic-weight: 525;
 
   /* 「纸墨」主题 - 书房美学 */
-  --ink: #1a1a1a;
-  --paper: #f7f4ed;
-  --accent: #b8860b;
-  --accent-light: rgba(184, 134, 11, 0.15);
-  --accent-glow: rgba(184, 134, 11, 0.08);
-  --whisper: rgba(0, 0, 0, 0.035);
+  --ink: #172235;
+  --paper: #eee7dc;
+  --accent: #2d5578;
+  --accent-light: rgba(45, 85, 120, 0.14);
+  --accent-glow: rgba(45, 85, 120, 0.08);
+  --whisper: rgba(23, 34, 53, 0.045);
   --shadow: rgba(26, 26, 26, 0.06);
   --shadow-deep: rgba(26, 26, 26, 0.12);
+  --reader-paper: #f7f2e8;
+  --reader-paper-top: #fbf8f0;
+  --reader-paper-bottom: #f1e9dc;
+  --reader-ink: #172235;
+  --reader-ink-strong: #0f1a2a;
+  --reader-muted: rgba(23, 34, 53, 0.58);
+  --reader-hover: rgba(45, 85, 120, 0.055);
+  --reader-active: rgba(45, 85, 120, 0.11);
+  --reader-highlight: rgba(45, 85, 120, 0.16);
 
   /* 映射到现有变量 */
   --color-background: var(--paper);
   --color-text: var(--ink);
-  --color-surface: rgba(255, 255, 255, 0.72);
-  --color-border: rgba(0, 0, 0, 0.06);
+  --color-surface: rgba(255, 250, 241, 0.72);
+  --color-border: rgba(23, 34, 53, 0.08);
   --color-primary: var(--accent);
-  --color-primary-hover: #9a7209;
-  --color-muted: rgba(26, 26, 26, 0.55);
+  --color-primary-hover: #244867;
+  --color-muted: rgba(23, 34, 53, 0.55);
   --color-highlight: var(--accent-light);
-  --background-layer: 
-    radial-gradient(ellipse 80% 50% at 50% -20%, rgba(184, 134, 11, 0.04), transparent),
-    radial-gradient(circle at 80% 80%, rgba(255, 248, 235, 0.5), transparent 50%);
+  --background-layer: none;
   --panel-backdrop: rgba(26, 26, 26, 0.25);
   --panel-muted-bg: var(--whisper);
-  --panel-strong-bg: rgba(0, 0, 0, 0.055);
-  --control-active-surface: #ffffff;
-  --input-surface: rgba(255, 255, 255, 0.7);
-  --input-border: rgba(0, 0, 0, 0.08);
-  --control-track: rgba(0, 0, 0, 0.08);
-  --scrollbar-thumb: rgba(0, 0, 0, 0.12);
-  --scrollbar-thumb-strong: rgba(0, 0, 0, 0.18);
+  --panel-strong-bg: rgba(23, 34, 53, 0.07);
+  --control-active-surface: #fffaf1;
+  --input-surface: rgba(255, 250, 241, 0.7);
+  --input-border: rgba(23, 34, 53, 0.08);
+  --control-track: rgba(23, 34, 53, 0.1);
+  --scrollbar-thumb: rgba(23, 34, 53, 0.14);
+  --scrollbar-thumb-strong: rgba(23, 34, 53, 0.22);
 }
 
 /* 「晨雾」主题 - 纯净白 */
 body.theme-white {
   --ink: #2d2d2d;
   --paper: #ffffff;
-  --accent: #6366f1;
-  --accent-light: rgba(99, 102, 241, 0.12);
-  --accent-glow: rgba(99, 102, 241, 0.06);
+  --accent: #2d5578;
+  --accent-light: rgba(45, 85, 120, 0.12);
+  --accent-glow: rgba(45, 85, 120, 0.06);
   --whisper: rgba(0, 0, 0, 0.025);
   --shadow: rgba(0, 0, 0, 0.05);
   --shadow-deep: rgba(0, 0, 0, 0.1);
+  --reader-paper: #fbfaf7;
+  --reader-paper-top: #ffffff;
+  --reader-paper-bottom: #f5f2eb;
+  --reader-ink: #172235;
+  --reader-ink-strong: #0f1a2a;
+  --reader-muted: rgba(23, 34, 53, 0.56);
+  --reader-hover: rgba(45, 85, 120, 0.055);
+  --reader-active: rgba(45, 85, 120, 0.1);
+  --reader-highlight: rgba(45, 85, 120, 0.15);
   --color-background: var(--paper);
   --color-text: var(--ink);
   --color-surface: rgba(255, 255, 255, 0.95);
   --color-border: rgba(0, 0, 0, 0.06);
   --color-primary: var(--accent);
-  --color-primary-hover: #4f46e5;
+  --color-primary-hover: #244867;
   --color-highlight: var(--accent-light);
-  --background-layer: 
-    radial-gradient(ellipse 60% 40% at 50% 0%, rgba(99, 102, 241, 0.03), transparent);
+  --background-layer: none;
 }
 
 /* 「午夜」主题 - 深邃暗色 */
@@ -81,6 +96,15 @@ body.theme-dark {
   --whisper: rgba(255, 255, 255, 0.035);
   --shadow: rgba(0, 0, 0, 0.3);
   --shadow-deep: rgba(0, 0, 0, 0.5);
+  --reader-paper: #191714;
+  --reader-paper-top: #201d19;
+  --reader-paper-bottom: #141210;
+  --reader-ink: #eee6d8;
+  --reader-ink-strong: #fff8ec;
+  --reader-muted: rgba(238, 230, 216, 0.62);
+  --reader-hover: rgba(212, 165, 116, 0.075);
+  --reader-active: rgba(212, 165, 116, 0.13);
+  --reader-highlight: rgba(212, 165, 116, 0.22);
   --color-background: var(--paper);
   --color-text: var(--ink);
   --color-surface: rgba(30, 30, 30, 0.9);
@@ -89,9 +113,7 @@ body.theme-dark {
   --color-primary-hover: #c49660;
   --color-muted: rgba(232, 228, 220, 0.6);
   --color-highlight: var(--accent-light);
-  --background-layer: 
-    radial-gradient(ellipse 80% 60% at 50% -10%, rgba(212, 165, 116, 0.06), transparent),
-    radial-gradient(circle at 20% 100%, rgba(30, 30, 30, 0.8), transparent 50%);
+  --background-layer: none;
   --panel-backdrop: rgba(0, 0, 0, 0.6);
   --panel-muted-bg: var(--whisper);
   --panel-strong-bg: rgba(255, 255, 255, 0.06);
@@ -114,6 +136,15 @@ body.theme-oled {
   --whisper: rgba(255, 255, 255, 0.04);
   --shadow: rgba(0, 0, 0, 0.5);
   --shadow-deep: rgba(0, 0, 0, 0.8);
+  --reader-paper: #050505;
+  --reader-paper-top: #080808;
+  --reader-paper-bottom: #000000;
+  --reader-ink: #f0ede6;
+  --reader-ink-strong: #fffaf0;
+  --reader-muted: rgba(240, 237, 230, 0.66);
+  --reader-hover: rgba(212, 165, 116, 0.08);
+  --reader-active: rgba(212, 165, 116, 0.14);
+  --reader-highlight: rgba(212, 165, 116, 0.22);
   --background-layer: none;
   --color-background: var(--paper);
   --color-text: var(--ink);
@@ -186,21 +217,18 @@ select {
 
 .bionic-word {
   position: relative;
-  display: inline-flex;
-  align-items: baseline;
+  display: inline;
   color: inherit;
   outline: none;
-  border-radius: 3px;
-  padding: 1px 3px;
-  margin: 0 -1px;
+  border-radius: 4px;
+  padding: 0 0.08em;
+  margin: 0 -0.03em;
   line-height: inherit;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   font-variant-ligatures: none;
   cursor: pointer;
-  transition: 
-    background 0.2s cubic-bezier(0.4, 0, 0.2, 1),
-    transform 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: background 0.18s ease, color 0.18s ease;
 }
 
 .bionic-word b {
@@ -209,81 +237,21 @@ select {
 }
 
 .bionic-word:hover {
-  background: var(--accent-glow, var(--color-highlight));
-  transform: translateY(-1px);
+  background: var(--reader-hover, var(--accent-glow, var(--color-highlight)));
 }
 
 .bionic-word:focus-visible {
-  background: var(--color-highlight);
+  background: var(--reader-highlight, var(--color-highlight));
 }
 
-.bionic-word:active {
-  transform: translateY(0) scale(0.98);
-}
-
-.bionic-word.active-highlight {
-  background: var(--color-highlight);
-}
-
-/* 涟漪效果容器 */
-.bionic-word::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background: var(--accent);
-  opacity: 0;
-  transform: scale(0.8);
-  transition: opacity 0.3s ease, transform 0.3s ease;
-  pointer-events: none;
-}
-
-.bionic-word:active::before {
-  opacity: 0.12;
-  transform: scale(1.1);
+.bionic-word.active-highlight,
+.bionic-word.sync-highlight {
+  background: var(--reader-highlight, var(--color-highlight));
+  color: var(--reader-ink-strong, var(--ink));
 }
 
 :root {
   --panel-blur: blur(18px);
-}
-
-.bionic-shell {
-  width: 100%;
-  padding: 0 var(--reading-padding);
-  display: flex;
-  justify-content: center;
-}
-
-.bionic-content {
-  width: 100%;
-  max-width: var(--page-width);
-  display: block;
-  font-size: var(--font-size);
-  line-height: var(--line-height);
-  letter-spacing: var(--letter-spacing);
-  text-align: var(--text-align);
-  font-family: var(--font-family);
-  animation: contentFade 320ms ease;
-}
-
-.bionic-paragraph {
-  margin: 0 0 var(--paragraph-spacing) 0;
-  white-space: pre-wrap;
-  word-break: break-word;
-}
-
-.bionic-paragraph:last-child {
-  margin-bottom: 0;
-}
-
-.bionic-paragraph.animate-in {
-  animation: riseFade 320ms ease;
-  animation-fill-mode: both;
-}
-
-.bionic-paragraph.is-blank {
-  height: var(--paragraph-spacing);
-  pointer-events: none;
 }
 
 .surface-card {
@@ -294,82 +262,7 @@ select {
   box-shadow: none;
 }
 
-.primary-button {
-  font-family: var(--font-ui), system-ui, sans-serif;
-  background: var(--color-primary);
-  color: #fff;
-  border-radius: var(--radius-control, 6px);
-  padding: 0.7rem 1.5rem;
-  font-weight: 600;
-  font-size: 0.9rem;
-  letter-spacing: 0;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  border: 0;
-  box-shadow: none;
-  transition: 
-    background 0.2s cubic-bezier(0.4, 0, 0.2, 1),
-    transform 0.15s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.primary-button:hover {
-  background: var(--color-primary-hover);
-  transform: translateY(-2px);
-}
-
-.primary-button:active {
-  transform: translateY(0) scale(0.98);
-}
-
 .muted-text {
   color: var(--color-muted);
   font-family: var(--font-ui), system-ui, sans-serif;
-}
-
-/* 图标按钮 - 用于顶栏 */
-.icon-button {
-  width: 44px;
-  height: 44px;
-  border-radius: var(--radius-control, 6px);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--whisper);
-  border: 0;
-  color: var(--color-muted);
-  transition: 
-    background 0.2s ease,
-    color 0.2s ease,
-    transform 0.15s ease;
-}
-
-.icon-button:hover {
-  background: var(--panel-strong-bg);
-  color: var(--color-text);
-  transform: translateY(-1px);
-}
-
-.icon-button:active {
-  transform: translateY(0) scale(0.96);
-}
-
-@keyframes riseFade {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes contentFade {
-  from {
-    opacity: 0.95;
-  }
-  to {
-    opacity: 1;
-  }
 }

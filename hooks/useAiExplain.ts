@@ -6,6 +6,7 @@ import type {
   AiExplainRequestBody,
   AiExplainTarget,
 } from "@/lib/aiExplain";
+import { postJsonResponse } from "@/lib/clientRequest";
 
 interface AiExplainState {
   isOpen: boolean;
@@ -21,11 +22,6 @@ const INITIAL_STATE: AiExplainState = {
   answer: "",
   loading: false,
 };
-
-async function readErrorMessage(response: Response): Promise<string> {
-  const data = (await response.json()) as { error?: string };
-  return data.error || "模型请求失败";
-}
 
 export function useAiExplain() {
   const [state, setState] = useState<AiExplainState>(INITIAL_STATE);
@@ -64,16 +60,9 @@ export function useAiExplain() {
       abortRef.current = controller;
 
       try {
-        const response = await fetch("/api/ai/explain", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
+        const response = await postJsonResponse("/api/ai/explain", payload, "模型请求失败", {
           signal: controller.signal,
         });
-
-        if (!response.ok) {
-          throw new Error(await readErrorMessage(response));
-        }
 
         const reader = response.body!.getReader();
         const decoder = new TextDecoder();

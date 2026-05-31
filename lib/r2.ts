@@ -40,7 +40,7 @@ export async function uploadToR2(
   return `${R2_PUBLIC_URL}/${key}`;
 }
 
-export async function deleteFromR2(key: string): Promise<void> {
+async function deleteFromR2(key: string): Promise<void> {
   await s3Client.send(
     new DeleteObjectCommand({
       Bucket: R2_BUCKET_NAME,
@@ -49,7 +49,7 @@ export async function deleteFromR2(key: string): Promise<void> {
   );
 }
 
-export async function listR2Objects(prefix: string): Promise<string[]> {
+async function listR2Objects(prefix: string): Promise<string[]> {
   const response = await s3Client.send(
     new ListObjectsV2Command({
       Bucket: R2_BUCKET_NAME,

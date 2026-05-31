@@ -3,14 +3,22 @@ import {
   DEFAULT_UPLOAD_CONCURRENCY,
   MAX_UPLOAD_RETRIES,
   MIN_UPLOAD_CONCURRENCY,
+  UPLOAD_CONCURRENCY_BACKOFF_STATUS_CODES,
   UPLOAD_TIMEOUT_MS,
 } from "./constants";
+import { updateSegment } from "./segments";
 import { getUploadErrorInfo, sleep } from "./utils";
-import type { AudioStoreGet, AudioStoreSet, UploadStatus } from "./types";
+import type { AudioStoreGet, AudioStoreSet, SegmentState } from "./types";
 
 interface AudioUploaderOptions {
   get: AudioStoreGet;
   set: AudioStoreSet;
+}
+
+function isSegmentReadyForUpload(
+  segment: SegmentState | undefined
+): segment is SegmentState & { audioBlob: Blob } {
+  return Boolean(segment?.status === "ready" && segment.audioBlob && !segment.cloudUrl);
 }
 
 export function createAudioUploader({ get, set }: AudioUploaderOptions) {
@@ -18,16 +26,16 @@ export function createAudioUploader({ get, set }: AudioUploaderOptions) {
 
   const setSegmentUploadState = (
     segmentId: string,
-    patch: Partial<{ uploadStatus: UploadStatus; uploadError?: string; uploadAttempts?: number }>
+    patch: Partial<SegmentState>
   ) => {
     set((state) => ({
-      segments: state.segments.map((s) => (s.id === segmentId ? { ...s, ...patch } : s)),
+      segments: updateSegment(state.segments, segmentId, patch),
     }));
   };
 
   const uploadSegmentWithRetry = async (articleId: string, segmentId: string) => {
     const segment = get().segments.find((s) => s.id === segmentId);
-    if (!segment?.audioBlob || segment.cloudUrl) {
+    if (!isSegmentReadyForUpload(segment)) {
       return { ok: true as const };
     }
 
@@ -48,11 +56,11 @@ export function createAudioUploader({ get, set }: AudioUploaderOptions) {
         });
 
         set((state) => ({
-          segments: state.segments.map((s) =>
-            s.id === segmentId
-              ? { ...s, cloudUrl, uploadStatus: "success" as UploadStatus, uploadError: undefined }
-              : s
-          ),
+          segments: updateSegment(state.segments, segmentId, {
+            cloudUrl,
+            uploadStatus: "success",
+            uploadError: undefined,
+          }),
         }));
 
         return { ok: true as const };
@@ -96,15 +104,15 @@ export function createAudioUploader({ get, set }: AudioUploaderOptions) {
       uploadInProgress = true;
       try {
         const { segments } = get();
-        const readySegments = segments.filter((s) => s.status === "ready" && s.audioBlob && !s.cloudUrl);
+        const readySegments = segments.filter(isSegmentReadyForUpload);
         if (readySegments.length === 0) {
           return { total: 0, success: 0, failed: 0 };
         }
 
         set((state) => ({
           segments: state.segments.map((s) =>
-            s.status === "ready" && s.audioBlob && !s.cloudUrl
-              ? { ...s, uploadStatus: "pending" as UploadStatus, uploadError: undefined, uploadAttempts: 0 }
+            isSegmentReadyForUpload(s)
+              ? { ...s, uploadStatus: "pending", uploadError: undefined, uploadAttempts: 0 }
               : s
           ),
         }));
@@ -117,7 +125,7 @@ export function createAudioUploader({ get, set }: AudioUploaderOptions) {
           const batch = readySegments.slice(i, i + concurrency);
           const results = await Promise.all(batch.map((seg) => uploadSegmentWithRetry(articleId, seg.id)));
           const shouldBackoff = results.some(
-            (r) => !r.ok && r.status !== undefined && [429, 500, 502, 503, 504].includes(r.status)
+            (r) => !r.ok && r.status !== undefined && UPLOAD_CONCURRENCY_BACKOFF_STATUS_CODES.has(r.status)
           );
           if (shouldBackoff && concurrency > MIN_UPLOAD_CONCURRENCY) {
             concurrency = Math.max(MIN_UPLOAD_CONCURRENCY, Math.floor(concurrency / 2));
@@ -139,7 +147,7 @@ export function createAudioUploader({ get, set }: AudioUploaderOptions) {
 
     uploadSegmentAudio: async (articleId: string, segmentId: string) => {
       const segment = get().segments.find((s) => s.id === segmentId);
-      if (!segment?.audioBlob || segment.cloudUrl) return;
+      if (!isSegmentReadyForUpload(segment)) return;
       if (segment.uploadStatus === "uploading") return;
 
       setSegmentUploadState(segmentId, {

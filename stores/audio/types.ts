@@ -2,25 +2,21 @@ import type { WordTiming } from "@/lib/storage";
 import type { TtsGenerationParams } from "@/lib/settings";
 import type { StoreApi } from "zustand";
 
-export type SegmentStatus = "idle" | "generating" | "ready" | "error";
-
-export type UploadStatus = "pending" | "uploading" | "success" | "failed";
-
 export interface SegmentState {
   id: string;
   text: string;
-  status: SegmentStatus;
+  status: "idle" | "generating" | "ready" | "error";
   error?: string;
   audioUrl?: string;
   audioBlob?: Blob;
   cloudUrl?: string;
   wordTimings?: WordTiming[];
-  uploadStatus?: UploadStatus;
+  uploadStatus?: "pending" | "uploading" | "success" | "failed";
   uploadError?: string;
   uploadAttempts?: number;
 }
 
-export interface UploadAllResult {
+interface UploadAllResult {
   total: number;
   success: number;
   failed: number;
@@ -34,10 +30,6 @@ export interface AudioStore {
   duration: number;
   activeWordIndex: number | null;
   sequenceMode: boolean;
-  readyCount: number;
-  generatingCount: number;
-  total: number;
-  concurrencyLimit: number;
 
   pause: () => void;
   initSegments: (paragraphs: string[]) => void;

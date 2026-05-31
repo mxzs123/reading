@@ -1,6 +1,4 @@
-/**
- * 文章存储客户端 - 通过 REST API 访问当前数据源
- */
+import { request, requestJson, requestJsonBody, requestVoid } from "@/lib/clientRequest";
 
 export interface Article {
   id: string;
@@ -14,92 +12,33 @@ export interface Article {
 
 export type WordTiming = { start: number; end: number };
 
-export class UploadAudioError extends Error {
-  status?: number;
-  constructor(message: string, status?: number) {
-    super(message);
-    this.name = "UploadAudioError";
-    this.status = status;
-  }
-}
-
-/**
- * 获取所有文章（按更新时间倒序）
- */
 export async function getAllArticles(): Promise<Article[]> {
-  const response = await fetch("/api/articles", {
-    cache: "no-store",
-    headers: { "cache-control": "no-cache" },
-  });
-  if (!response.ok) {
-    throw new Error("获取文章列表失败");
-  }
-  return response.json();
+  return requestJson<Article[]>(
+    "/api/articles",
+    {
+      cache: "no-store",
+      headers: { "cache-control": "no-cache" },
+    },
+    "获取文章列表失败"
+  );
 }
 
-/**
- * 获取单篇文章
- */
-export async function getArticle(id: string): Promise<Article | null> {
-  const response = await fetch(`/api/articles/${id}`, {
-    cache: "no-store",
-    headers: { "cache-control": "no-cache" },
-  });
-  if (response.status === 404) {
-    return null;
-  }
-  if (!response.ok) {
-    throw new Error("获取文章失败");
-  }
-  return response.json();
-}
-
-/**
- * 保存文章（创建或更新）
- */
 export async function saveArticle(
   article: Partial<Omit<Article, "createdAt" | "updatedAt">> & { text: string }
 ): Promise<Article> {
-  if (article.id) {
-    // 更新
-    const response = await fetch(`/api/articles/${article.id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(article),
-    });
-    if (!response.ok) {
-      throw new Error("更新文章失败");
-    }
-    return response.json();
-  } else {
-    // 创建
-    const response = await fetch("/api/articles", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(article),
-    });
-    if (!response.ok) {
-      throw new Error("创建文章失败");
-    }
-    return response.json();
-  }
+  const isUpdate = Boolean(article.id);
+  return requestJsonBody<Article>(
+    isUpdate ? `/api/articles/${article.id}` : "/api/articles",
+    isUpdate ? "PUT" : "POST",
+    article,
+    isUpdate ? "更新文章失败" : "创建文章失败"
+  );
 }
 
-/**
- * 删除文章
- */
 export async function deleteArticle(id: string): Promise<void> {
-  const response = await fetch(`/api/articles/${id}`, {
-    method: "DELETE",
-  });
-  if (!response.ok) {
-    throw new Error("删除文章失败");
-  }
+  await requestVoid(`/api/articles/${id}`, { method: "DELETE" }, "删除文章失败");
 }
 
-/**
- * 上传音频到云端
- */
 export async function uploadAudio(
   articleId: string,
   segmentId: string,
@@ -139,30 +78,20 @@ export async function uploadAudio(
   );
 
   try {
-    const response = await fetch(`/api/articles/${articleId}/audio`, {
-      method: "POST",
-      body: formData,
-      signal: controller.signal,
-    });
+    const response = await request(
+      `/api/articles/${articleId}/audio`,
+      {
+        method: "POST",
+        body: formData,
+        signal: controller.signal,
+      },
+      "上传音频失败"
+    );
 
-    if (!response.ok) {
-      const contentType = response.headers.get("content-type") || "";
-      let serverMessage: string | undefined;
-
-      if (contentType.includes("application/json")) {
-        const payload = (await response.json().catch(() => null)) as { error?: string } | null;
-        serverMessage = payload?.error;
-      } else {
-        serverMessage = await response.text().catch(() => undefined);
-      }
-
-      throw new UploadAudioError(serverMessage || "上传音频失败", response.status);
-    }
-
-    const data = (await response.json().catch(() => null)) as { url?: string } | null;
-    const url = data?.url;
+    const data = (await response.json()) as { url?: string };
+    const url = data.url;
     if (!url) {
-      throw new UploadAudioError("上传成功但未返回 URL");
+      throw new Error("上传成功但未返回 URL");
     }
     return url;
   } finally {
@@ -170,9 +99,6 @@ export async function uploadAudio(
   }
 }
 
-/**
- * 创建新文章对象（仅用于本地构造，需调用 saveArticle 保存）
- */
 export function createArticle(
   text: string,
   title?: string

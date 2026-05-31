@@ -3,16 +3,17 @@ import type {
   EdgeTTSVoice,
   GeminiTTSModel,
   ReaderSettings,
+  TTSProvider,
 } from "./types";
 
-export type EdgeTtsGenerationParams = {
+type EdgeTtsGenerationParams = {
   provider: "edge";
   voice: EdgeTTSVoice;
   rate: number;
   pitch: number;
 };
 
-export type AzureTtsGenerationParams = {
+type AzureTtsGenerationParams = {
   provider: "azure";
   apiKey: string;
   region: string;
@@ -22,7 +23,7 @@ export type AzureTtsGenerationParams = {
   pauseMs: number;
 };
 
-export type ElevenLabsTtsGenerationParams = {
+type ElevenLabsTtsGenerationParams = {
   provider: "elevenlabs";
   apiKey: string;
   voiceId: string;
@@ -40,12 +41,11 @@ export type ElevenLabsTtsGenerationParams = {
   optimizeStreamingLatency?: number | null;
 };
 
-export type GeminiTtsGenerationParams = {
+type GeminiTtsGenerationParams = {
   provider: "gemini";
   apiKey: string;
   model: GeminiTTSModel;
   voiceName: string;
-  languageCode?: string;
   stylePrompt?: string;
   multiSpeaker?: boolean;
   speaker1Name?: string;
@@ -60,55 +60,13 @@ export type TtsGenerationParams =
   | ElevenLabsTtsGenerationParams
   | GeminiTtsGenerationParams;
 
-export function buildTtsGenerationParams(
-  settings: ReaderSettings
-): TtsGenerationParams {
-  if (settings.ttsProvider === "edge") {
-    return {
-      provider: "edge",
-      voice: settings.edgeVoice,
-      rate: settings.edgeRate,
-      pitch: settings.edgePitch,
-    };
-  }
+type ProviderParams<TProvider extends TTSProvider> = Extract<
+  TtsGenerationParams,
+  { provider: TProvider }
+>;
 
-  if (settings.ttsProvider === "elevenlabs") {
-    return {
-      provider: "elevenlabs",
-      apiKey: settings.elevenApiKey,
-      voiceId: settings.elevenVoiceId,
-      modelId: settings.elevenModelId,
-      languageCode: settings.elevenLanguageCode,
-      outputFormat: settings.elevenOutputFormat,
-      stability: settings.elevenStability,
-      similarityBoost: settings.elevenSimilarityBoost,
-      style: settings.elevenStyle,
-      useSpeakerBoost: settings.elevenUseSpeakerBoost,
-      speed: settings.elevenSpeed,
-      seed: settings.elevenSeed,
-      applyTextNormalization: settings.elevenApplyTextNormalization,
-      enableLogging: settings.elevenEnableLogging,
-      optimizeStreamingLatency: settings.elevenOptimizeStreamingLatency,
-    };
-  }
-
-  if (settings.ttsProvider === "gemini") {
-    return {
-      provider: "gemini",
-      apiKey: settings.geminiApiKey,
-      model: settings.geminiModel,
-      voiceName: settings.geminiVoiceName,
-      languageCode: settings.geminiLanguageCode,
-      stylePrompt: settings.geminiStylePrompt,
-      multiSpeaker: settings.geminiUseMultiSpeaker,
-      speaker1Name: settings.geminiSpeaker1Name,
-      speaker1VoiceName: settings.geminiSpeaker1VoiceName,
-      speaker2Name: settings.geminiSpeaker2Name,
-      speaker2VoiceName: settings.geminiSpeaker2VoiceName,
-    };
-  }
-
-  return {
+const TTS_PARAM_BUILDERS = {
+  azure: (settings) => ({
     provider: "azure",
     apiKey: settings.azureApiKey,
     region: settings.azureRegion,
@@ -116,5 +74,50 @@ export function buildTtsGenerationParams(
     rate: settings.ttsRate,
     volume: settings.ttsVolume,
     pauseMs: settings.ttsPauseMs,
-  };
+  }),
+  edge: (settings) => ({
+    provider: "edge",
+    voice: settings.edgeVoice,
+    rate: settings.edgeRate,
+    pitch: settings.edgePitch,
+  }),
+  elevenlabs: (settings) => ({
+    provider: "elevenlabs",
+    apiKey: settings.elevenApiKey,
+    voiceId: settings.elevenVoiceId,
+    modelId: settings.elevenModelId,
+    languageCode: settings.elevenLanguageCode,
+    outputFormat: settings.elevenOutputFormat,
+    stability: settings.elevenStability,
+    similarityBoost: settings.elevenSimilarityBoost,
+    style: settings.elevenStyle,
+    useSpeakerBoost: settings.elevenUseSpeakerBoost,
+    speed: settings.elevenSpeed,
+    seed: settings.elevenSeed,
+    applyTextNormalization: settings.elevenApplyTextNormalization,
+    enableLogging: settings.elevenEnableLogging,
+    optimizeStreamingLatency: settings.elevenOptimizeStreamingLatency,
+  }),
+  gemini: (settings) => ({
+    provider: "gemini",
+    apiKey: settings.geminiApiKey,
+    model: settings.geminiModel,
+    voiceName: settings.geminiVoiceName,
+    stylePrompt: settings.geminiStylePrompt,
+    multiSpeaker: settings.geminiUseMultiSpeaker,
+    speaker1Name: settings.geminiSpeaker1Name,
+    speaker1VoiceName: settings.geminiSpeaker1VoiceName,
+    speaker2Name: settings.geminiSpeaker2Name,
+    speaker2VoiceName: settings.geminiSpeaker2VoiceName,
+  }),
+} satisfies {
+  [TProvider in TTSProvider]: (
+    settings: ReaderSettings
+  ) => ProviderParams<TProvider>;
+};
+
+export function buildTtsGenerationParams(
+  settings: ReaderSettings
+): TtsGenerationParams {
+  return TTS_PARAM_BUILDERS[settings.ttsProvider](settings);
 }

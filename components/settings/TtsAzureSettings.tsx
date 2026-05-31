@@ -1,17 +1,15 @@
 "use client";
 
-import { useState } from "react";
-import { useSettings } from "@/contexts/SettingsContext";
+import { useSettingFieldUpdater, useSettings } from "@/contexts/SettingsContext";
 import { useI18n } from "@/contexts/I18nContext";
-import type { AzureTTSVoice } from "@/lib/settings";
-import { SecretTextField, RangeField } from "@/components/ui";
+import { LinkHint, NumberField, SecretTextField, RangeField, SelectField } from "@/components/ui";
 import { azureVoiceOptions, translateOptions } from "./options";
-import styles from "./settingsStyles.module.css";
+import { FieldGrid, SettingsDetails } from "./SettingsLayout";
 
 export function TtsAzureSettings() {
-  const { settings, updateSettings } = useSettings();
+  const { settings, updateSetting } = useSettings();
+  const updateField = useSettingFieldUpdater();
   const { t } = useI18n();
-  const [showApiKey, setShowApiKey] = useState(false);
 
   return (
     <>
@@ -19,85 +17,55 @@ export function TtsAzureSettings() {
         label="Azure API Key"
         value={settings.azureApiKey}
         placeholder={t("settings.tts.azurePlaceholder")}
-        visible={showApiKey}
-        onToggleVisible={() => setShowApiKey((prev) => !prev)}
-        onChange={(value) => updateSettings({ azureApiKey: value })}
+        onChange={updateField("azureApiKey")}
         hint={
-          <>
-            {t("settings.tts.azureHintBefore")}
-            <a
-              href="https://portal.azure.com/#create/Microsoft.CognitiveServicesSpeechServices"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Azure Portal
-            </a>
-            {t("settings.tts.azureHintAfter")}
-          </>
+          <LinkHint
+            before={t("settings.tts.azureHintBefore")}
+            href="https://portal.azure.com/#create/Microsoft.CognitiveServicesSpeechServices"
+            after={t("settings.tts.azureHintAfter")}
+          >
+            Azure Portal
+          </LinkHint>
         }
       />
 
-      <div className={styles.fieldColumn}>
-        <label className={styles.fieldLabel}>{t("settings.tts.voice")}</label>
-        <select
-          className={styles.select}
-          value={settings.azureVoice}
-          onChange={(e) =>
-            updateSettings({ azureVoice: e.target.value as AzureTTSVoice })
-          }
-        >
-          {translateOptions(azureVoiceOptions, t).map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
-      </div>
+      <SelectField
+        label={t("settings.tts.voice")}
+        value={settings.azureVoice}
+        options={translateOptions(azureVoiceOptions, t)}
+        onChange={updateField("azureVoice")}
+      />
 
-      <details className={styles.details}>
-        <summary className={styles.detailsSummary}>{t("settings.tts.advanced")}</summary>
-        <div className={styles.detailsBody}>
-          <div className={styles.grid2}>
-            <RangeField
-              label={t("settings.tts.rate")}
-              value={settings.ttsRate}
-              min={0.6}
-              max={1.6}
-              step={0.05}
-              onChange={(value) => updateSettings({ ttsRate: value })}
-            />
-            <RangeField
-              label={t("settings.tts.volume")}
-              value={settings.ttsVolume}
-              min={0}
-              max={1}
-              step={0.05}
-              onChange={(value) => updateSettings({ ttsVolume: value })}
-            />
-          </div>
+      <SettingsDetails title={t("settings.tts.advanced")}>
+        <FieldGrid>
+          <RangeField
+            label={t("settings.tts.rate")}
+            value={settings.ttsRate}
+            min={0.6}
+            max={1.6}
+            step={0.05}
+            onChange={updateField("ttsRate")}
+          />
+          <RangeField
+            label={t("settings.tts.volume")}
+            value={settings.ttsVolume}
+            min={0}
+            max={1}
+            step={0.05}
+            onChange={updateField("ttsVolume")}
+          />
+        </FieldGrid>
 
-          <div className={styles.fieldColumn}>
-            <label className={styles.fieldLabel}>{t("settings.tts.pause")}</label>
-            <input
-              type="number"
-              min={0}
-              className={styles.apiKeyInput}
-              value={settings.ttsPauseMs}
-              onChange={(e) => {
-                const parsed = parseInt(e.target.value, 10);
-                updateSettings({
-                  ttsPauseMs: Number.isNaN(parsed)
-                    ? 400
-                    : Math.max(0, Math.min(2000, parsed)),
-                });
-              }}
-            />
-            <p className={styles.apiKeyHint}>
-              {t("settings.tts.pauseHint")}
-            </p>
-          </div>
-        </div>
-      </details>
+        <NumberField
+          label={t("settings.tts.pause")}
+          value={settings.ttsPauseMs}
+          min={0}
+          max={2000}
+          fallback={400}
+          hint={t("settings.tts.pauseHint")}
+          onChange={(value) => updateSetting("ttsPauseMs", value ?? 400)}
+        />
+      </SettingsDetails>
     </>
   );
 }

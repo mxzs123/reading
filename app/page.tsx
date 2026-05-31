@@ -14,13 +14,14 @@ import {
   X,
 } from "lucide-react";
 import { SettingsPanel } from "@/components/SettingsPanel";
-import { DictionaryPanel, type DictionaryData } from "@/components/DictionaryPanel";
+import { DictionaryPanel } from "@/components/DictionaryPanel";
 import { AiExplainPanel } from "@/components/AiExplainPanel";
 import ArticleManager from "@/components/ArticleManager";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { useAiExplain } from "@/hooks/useAiExplain";
 import { useDictionary } from "@/hooks/useDictionary";
 import { buildAiExplainTarget } from "@/lib/aiExplain";
+import type { DictionaryData } from "@/lib/dictionary";
 import { buildTtsGenerationParams } from "@/lib/settings";
 import type { Article } from "@/lib/storage";
 import type { WordAskTarget } from "@/lib/wordInteraction";
@@ -31,12 +32,30 @@ import { useSettings } from "@/contexts/SettingsContext";
 import { useI18n } from "@/contexts/I18nContext";
 import styles from "./page.module.css";
 
-type PanelAnchor = {
+type FloatingAnchor = {
   top: number;
   left: number;
   width: number;
   height: number;
 };
+
+function runAudioHotkey(mode: "resume" | "toggle"): boolean {
+  const { activeSegmentId, isPlaying, segments, playSegment, togglePlayPause } =
+    useAudioStore.getState();
+
+  if (activeSegmentId) {
+    if (mode === "toggle" || !isPlaying) {
+      togglePlayPause();
+    }
+    return true;
+  }
+
+  const firstReady = segments.find((seg) => seg.status === "ready" && seg.audioUrl);
+  if (!firstReady) return false;
+
+  playSegment(firstReady.id);
+  return true;
+}
 
 export default function Home() {
   const { t } = useI18n();
@@ -54,47 +73,54 @@ export default function Home() {
   const [readingPulse, setReadingPulse] = useState(false);
   const readingPulseTimeoutRef = useRef<number | null>(null);
 
-  // 音频 store
   const { settings } = useSettings();
   const generateAll = useAudioStore((s) => s.generateAll);
-  const readyCount = useAudioStore((s) => s.readyCount);
-  const generatingCount = useAudioStore((s) => s.generatingCount);
-  const total = useAudioStore((s) => s.total);
+  const segments = useAudioStore((s) => s.segments);
   const loadAudioUrls = useAudioStore((s) => s.loadAudioUrls);
   const loadSegmentWordTimings = useAudioStore((s) => s.loadSegmentWordTimings);
   const setConcurrencyLimit = useAudioStore((s) => s.setConcurrencyLimit);
   const ttsParams = useMemo(() => buildTtsGenerationParams(settings), [settings]);
+  const audioStats = useMemo(
+    () =>
+      segments.reduce(
+        (stats, segment) => {
+          if (segment.status === "generating") stats.generatingCount += 1;
+          if (segment.status === "ready") stats.readyCount += 1;
+          return stats;
+        },
+        { generatingCount: 0, readyCount: 0, total: segments.length }
+      ),
+    [segments]
+  );
 
   const pendingAudioUrlsRef = useRef<string[] | null>(null);
   const pendingSegmentWordTimingsRef = useRef<Article["segmentWordTimings"] | null>(null);
   const wasArticlePlayingRef = useRef(false);
 
-  // 词典状态
-  const [dictionaryAnchor, setDictionaryAnchor] = useState<PanelAnchor | null>(null);
   const [dictionaryData, setDictionaryData] = useState<DictionaryData | undefined>();
   const [dictionaryLoading, setDictionaryLoading] = useState(false);
   const [dictionaryError, setDictionaryError] = useState<string | undefined>();
   const [dictionaryOpen, setDictionaryOpen] = useState(false);
-  const dictionaryAnchorCleanupTimeoutRef = useRef<number | null>(null);
-  const [aiAnchor, setAiAnchor] = useState<PanelAnchor | null>(null);
+  const [aiAnchor, setAiAnchor] = useState<FloatingAnchor | null>(null);
 
   const [currentArticleId, setCurrentArticleId] = useState<string | null>(null);
 
-  // Refs
   const closeDictionaryRef = useRef<() => void>(() => {});
   const isMobile = useMediaQuery("(max-width: 768px)");
-  const settingsOpen = userSettingsOpen;
-  const inputSectionRef = useRef<HTMLElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const outputSectionRef = useRef<HTMLElement | null>(null);
+  const handleDictionaryError = useCallback(() => {
+    setDictionaryData(undefined);
+    setDictionaryError(t("dictionary.lookupError"));
+  }, [t]);
 
-  // 词典 hook
-  const dictionary = useDictionary({
+  const {
+    abortCurrentLookup,
+    lookup: lookupDictionary,
+    prefetch: prefetchDictionary,
+  } = useDictionary({
     onData: setDictionaryData,
-    onError: () => {
-      setDictionaryData(undefined);
-      setDictionaryError(t("dictionary.lookupError"));
-    },
+    onError: handleDictionaryError,
     onLoadingChange: setDictionaryLoading,
   });
   const {
@@ -107,19 +133,30 @@ export default function Home() {
     target: aiTarget,
   } = useAiExplain();
 
+  const clearDictionarySelection = useCallback(() => {
+    setDictionaryOpen(false);
+    setSelectedWordValue("");
+    setDictionaryData(undefined);
+    setDictionaryLoading(false);
+    setDictionaryError(undefined);
+  }, [setSelectedWordValue]);
+
+  const clearInspectorSelection = useCallback(() => {
+    clearDictionarySelection();
+    closeAiExplain();
+    setAiAnchor(null);
+  }, [clearDictionarySelection, closeAiExplain]);
+
   const handleWordClick = useCallback(
-    (word: string, rect: DOMRect) => {
+    (word: string) => {
       closeAiExplain();
       setAiAnchor(null);
 
-      const result = dictionary.lookup(word);
+      const result = lookupDictionary(word);
       if (!result) return;
 
       if (!isMobile) setToolSidebarOpen(true);
       setSelectedWordValue(result.trimmed);
-      setDictionaryAnchor(
-        isMobile ? null : { top: rect.top, left: rect.left, width: rect.width, height: rect.height }
-      );
       setDictionaryOpen(true);
       setDictionaryError(undefined);
 
@@ -129,17 +166,13 @@ export default function Home() {
         setDictionaryData(undefined);
       }
     },
-    [closeAiExplain, isMobile, dictionary, setSelectedWordValue]
+    [closeAiExplain, isMobile, lookupDictionary, setSelectedWordValue]
   );
 
   const handleWordLongPress = useCallback(
     (target: WordAskTarget) => {
-      dictionary.abortCurrentLookup();
-      setDictionaryOpen(false);
-      setDictionaryData(undefined);
-      setDictionaryError(undefined);
-      setSelectedWordValue("");
-      setDictionaryAnchor(null);
+      abortCurrentLookup();
+      clearDictionarySelection();
 
       if (!isMobile) {
         setToolSidebarOpen(true);
@@ -167,10 +200,10 @@ export default function Home() {
       });
     },
     [
-      dictionary,
+      abortCurrentLookup,
+      clearDictionarySelection,
       explainWithAi,
       isMobile,
-      setSelectedWordValue,
       settings.aiContextChars,
       settings.deepseekApiKey,
       settings.deepseekMaxTokens,
@@ -180,17 +213,8 @@ export default function Home() {
   );
 
   const handleCloseDictionary = useCallback(() => {
-    dictionary.abortCurrentLookup();
-    setDictionaryOpen(false);
-    setSelectedWordValue("");
-
-    if (dictionaryAnchorCleanupTimeoutRef.current) {
-      window.clearTimeout(dictionaryAnchorCleanupTimeoutRef.current);
-    }
-    dictionaryAnchorCleanupTimeoutRef.current = window.setTimeout(() => {
-      setDictionaryAnchor(null);
-      dictionaryAnchorCleanupTimeoutRef.current = null;
-    }, 300);
+    abortCurrentLookup();
+    clearDictionarySelection();
 
     if (typeof document !== "undefined") {
       const active = document.activeElement as HTMLElement | null;
@@ -198,7 +222,7 @@ export default function Home() {
         active.blur();
       }
     }
-  }, [dictionary, setSelectedWordValue]);
+  }, [abortCurrentLookup, clearDictionarySelection]);
 
   const handleCloseAiExplain = useCallback(() => {
     closeAiExplain();
@@ -230,13 +254,8 @@ export default function Home() {
     handleResumeArticleAudio();
   }, [handleCloseDictionary, handleResumeArticleAudio]);
 
-  // Cleanup timeouts
   useEffect(() => {
     return () => {
-      if (dictionaryAnchorCleanupTimeoutRef.current) {
-        window.clearTimeout(dictionaryAnchorCleanupTimeoutRef.current);
-        dictionaryAnchorCleanupTimeoutRef.current = null;
-      }
       if (readingPulseTimeoutRef.current) {
         window.clearTimeout(readingPulseTimeoutRef.current);
         readingPulseTimeoutRef.current = null;
@@ -248,7 +267,6 @@ export default function Home() {
     setConcurrencyLimit(settings.ttsConcurrency);
   }, [settings.ttsConcurrency, setConcurrencyLimit]);
 
-  // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.repeat) return;
@@ -268,22 +286,10 @@ export default function Home() {
       if (dictionaryVisible) {
         event.preventDefault();
         event.stopPropagation();
-        (event as unknown as { stopImmediatePropagation?: () => void }).stopImmediatePropagation?.();
+        event.stopImmediatePropagation();
 
         closeDictionaryRef.current();
-
-        const { activeSegmentId, isPlaying, segments, playSegment, togglePlayPause } = useAudioStore.getState();
-        if (activeSegmentId) {
-          if (!isPlaying) {
-            togglePlayPause();
-          }
-        } else {
-          const firstReady = segments.find((seg) => seg.status === "ready" && seg.audioUrl);
-          if (firstReady) {
-            playSegment(firstReady.id);
-          }
-        }
-
+        runAudioHotkey("resume");
         window.dispatchEvent(new CustomEvent("mini-player-hotkey"));
         return;
       }
@@ -292,20 +298,10 @@ export default function Home() {
         return;
       }
 
-      const { activeSegmentId, segments, playSegment, togglePlayPause } = useAudioStore.getState();
-      if (activeSegmentId) {
+      if (runAudioHotkey("toggle")) {
         event.preventDefault();
-        togglePlayPause();
         window.dispatchEvent(new CustomEvent("mini-player-hotkey"));
-        return;
       }
-
-      const firstReady = segments.find((seg) => seg.status === "ready" && seg.audioUrl);
-      if (!firstReady) return;
-
-      event.preventDefault();
-      playSegment(firstReady.id);
-      window.dispatchEvent(new CustomEvent("mini-player-hotkey"));
     };
 
     window.addEventListener("keydown", handleKeyDown, { capture: true });
@@ -327,20 +323,16 @@ export default function Home() {
     }, 340);
   }, []);
 
-  const placeholder = useMemo(
-    () => [t("source.placeholder")].join("\n"),
-    [t]
-  );
+  const placeholder = t("source.placeholder");
   const trimmedSource = sourceText.trim();
   const sourceStats = useMemo(() => {
     if (!trimmedSource) {
-      return { chars: 0, words: 0, paragraphs: 0 };
+      return { chars: 0, words: 0 };
     }
 
     return {
       chars: sourceText.length,
       words: trimmedSource.split(/\s+/).filter(Boolean).length,
-      paragraphs: trimmedSource.split(/\n{2,}/).filter((item) => item.trim()).length || 1,
     };
   }, [sourceText, trimmedSource]);
   const sourcePreview = useMemo(() => {
@@ -349,41 +341,32 @@ export default function Home() {
     return cleaned.length > 48 ? `${cleaned.slice(0, 48)}…` : cleaned;
   }, [trimmedSource, t]);
   const resetWorkspace = useCallback(() => {
-    dictionary.abortCurrentLookup();
+    abortCurrentLookup();
     setSourceText("");
     setCurrentArticleId(null);
     setInputCollapsed(false);
-    setDictionaryOpen(false);
-    closeAiExplain();
-    setSelectedWordValue("");
-    setDictionaryAnchor(null);
-    setAiAnchor(null);
-    setDictionaryData(undefined);
-    setDictionaryLoading(false);
-    setDictionaryError(undefined);
+    clearInspectorSelection();
     pendingAudioUrlsRef.current = null;
     pendingSegmentWordTimingsRef.current = null;
     setTimeout(() => textareaRef.current?.focus(), 0);
-  }, [closeAiExplain, dictionary, setSelectedWordValue]);
+  }, [abortCurrentLookup, clearInspectorSelection]);
 
   const confirmAndCollapse = useCallback(() => {
     if (!trimmedSource) return;
     setInputCollapsed(true);
     triggerReadingPulse();
-    setTimeout(() => {
-      outputSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-    }, 0);
-  }, [trimmedSource, triggerReadingPulse]);
+    if (isMobile) {
+      setTimeout(() => {
+        outputSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 0);
+    }
+  }, [isMobile, trimmedSource, triggerReadingPulse]);
 
   const handleArticleLoad = useCallback((article: Article) => {
     setSourceText(article.text);
     setCurrentArticleId(article.id);
     setInputCollapsed(true);
-    setDictionaryOpen(false);
-    closeAiExplain();
-    setSelectedWordValue("");
-    setDictionaryAnchor(null);
-    setAiAnchor(null);
+    clearInspectorSelection();
     triggerReadingPulse();
 
     pendingAudioUrlsRef.current =
@@ -393,28 +376,30 @@ export default function Home() {
         ? article.segmentWordTimings
         : null;
 
-    setTimeout(() => {
-      outputSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-    }, 0);
-  }, [closeAiExplain, setSelectedWordValue, triggerReadingPulse]);
+    if (isMobile) {
+      setTimeout(() => {
+        outputSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 0);
+    }
+  }, [clearInspectorSelection, isMobile, triggerReadingPulse]);
 
   const handleArticleSaved = useCallback((article: Article) => {
     setCurrentArticleId(article.id);
   }, []);
 
   useEffect(() => {
-    if (pendingAudioUrlsRef.current && total > 0) {
+    if (pendingAudioUrlsRef.current && audioStats.total > 0) {
       loadAudioUrls(pendingAudioUrlsRef.current);
       pendingAudioUrlsRef.current = null;
     }
-  }, [total, loadAudioUrls]);
+  }, [audioStats.total, loadAudioUrls]);
 
   useEffect(() => {
-    if (pendingSegmentWordTimingsRef.current && total > 0) {
+    if (pendingSegmentWordTimingsRef.current && audioStats.total > 0) {
       loadSegmentWordTimings(pendingSegmentWordTimingsRef.current);
       pendingSegmentWordTimingsRef.current = null;
     }
-  }, [total, loadSegmentWordTimings]);
+  }, [audioStats.total, loadSegmentWordTimings]);
 
   return (
     <div className={styles.page}>
@@ -424,9 +409,7 @@ export default function Home() {
         data-right-collapsed={toolSidebarOpen ? "false" : "true"}
       >
         <ArticleManager
-          variant="sidebar"
           isOpen={articleSidebarOpen}
-          onClose={() => setArticleSidebarOpen(false)}
           onToggleCollapse={() => setArticleSidebarOpen((prev) => !prev)}
           currentText={sourceText}
           currentArticleId={currentArticleId}
@@ -437,7 +420,6 @@ export default function Home() {
 
         <main className={styles.main}>
           <section
-            ref={inputSectionRef}
             className={styles.inputSection}
             data-collapsed={inputCollapsed ? "true" : "false"}
           >
@@ -505,7 +487,7 @@ export default function Home() {
                 onWordLongPress={handleWordLongPress}
                 wordLongPressEnabled={!isMobile && settings.aiExplainEnabled}
                 wordLongPressMs={settings.aiLongPressMs}
-                onWordPrefetch={dictionary.prefetch}
+                onWordPrefetch={prefetchDictionary}
                 onStopArticleAudio={handleStopArticleAudio}
                 onWordAudioEnd={handleWordAudioEnd}
               />
@@ -618,45 +600,47 @@ export default function Home() {
                 )}
               </section>
 
-              <section className={styles.toolSection}>
-                <div className={styles.toolSectionHeader}>
-                  <h3>
-                    <Volume2 aria-hidden="true" className={styles.sectionIcon} />
-                    <span>{t("audio.readAloud")}</span>
-                  </h3>
-                  <span className={styles.toolStatus}>
-                    {settings.readingMode === "audio" ? t("audio.audioMode") : t("audio.pureMode")}
-                  </span>
-                </div>
-                {settings.readingMode === "audio" && trimmedSource && total > 0 ? (
-                  <div className={styles.toolStack}>
-                    <span className={styles.progressText}>
-                      {t("audio.ready", { ready: readyCount, total })}
+              <div className={styles.toolBottomDock}>
+                <section className={`${styles.toolSection} ${styles.audioSection}`}>
+                  <div className={styles.toolSectionHeader}>
+                    <h3>
+                      <Volume2 aria-hidden="true" className={styles.sectionIcon} />
+                      <span>{t("audio.readAloud")}</span>
+                    </h3>
+                    <span className={styles.toolStatus}>
+                      {settings.readingMode === "audio" ? t("audio.audioMode") : t("audio.pureMode")}
                     </span>
-                    <button
-                      type="button"
-                      className={styles.primaryAction}
-                      onClick={() => generateAll(ttsParams)}
-                      disabled={generatingCount > 0}
-                    >
-                      <Volume2 aria-hidden="true" className={styles.buttonIcon} />
-                      <span>{generatingCount > 0 ? t("audio.generating") : t("audio.generate")}</span>
-                    </button>
                   </div>
-                ) : (
-                  <p className={styles.toolMuted}>{t("audio.manageHint")}</p>
-                )}
-              </section>
+                  {settings.readingMode === "audio" && trimmedSource && audioStats.total > 0 ? (
+                    <div className={styles.toolStack}>
+                      <span className={styles.progressText}>
+                        {t("audio.ready", { ready: audioStats.readyCount, total: audioStats.total })}
+                      </span>
+                      <button
+                        type="button"
+                        className={styles.primaryAction}
+                        onClick={() => generateAll(ttsParams)}
+                        disabled={audioStats.generatingCount > 0}
+                      >
+                        <Volume2 aria-hidden="true" className={styles.buttonIcon} />
+                        <span>{audioStats.generatingCount > 0 ? t("audio.generating") : t("audio.generate")}</span>
+                      </button>
+                    </div>
+                  ) : (
+                    <p className={styles.toolMuted}>{t("audio.manageHint")}</p>
+                  )}
+                </section>
 
-              <div className={styles.toolFooter}>
-                <button
-                  type="button"
-                  className={styles.clearButton}
-                  onClick={() => setUserSettingsOpen(true)}
-                >
-                  <Settings aria-hidden="true" className={styles.buttonIcon} />
-                  <span>{t("common.settings")}</span>
-                </button>
+                <div className={styles.toolFooter}>
+                  <button
+                    type="button"
+                    className={styles.clearButton}
+                    onClick={() => setUserSettingsOpen(true)}
+                  >
+                    <Settings aria-hidden="true" className={styles.buttonIcon} />
+                    <span>{t("common.settings")}</span>
+                  </button>
+                </div>
               </div>
             </>
           ) : (
@@ -677,7 +661,7 @@ export default function Home() {
         </aside>
 
         <SettingsPanel
-          isOpen={settingsOpen}
+          isOpen={userSettingsOpen}
           onClose={() => setUserSettingsOpen(false)}
           onArticlesCleared={() => {
             setSourceText("");
@@ -688,16 +672,14 @@ export default function Home() {
 
       {isMobile ? (
         <DictionaryPanel
-        isOpen={dictionaryOpen}
-        word={selectedWord}
-        data={dictionaryData}
-        loading={dictionaryLoading}
-        error={dictionaryError}
-        anchor={dictionaryAnchor}
-        isMobile={isMobile}
-        onClose={handleCloseDictionary}
-        onStopArticleAudio={handleStopArticleAudio}
-        onWordAudioEnd={handleWordAudioEnd}
+          isOpen={dictionaryOpen}
+          word={selectedWord}
+          data={dictionaryData}
+          loading={dictionaryLoading}
+          error={dictionaryError}
+          onClose={handleCloseDictionary}
+          onStopArticleAudio={handleStopArticleAudio}
+          onWordAudioEnd={handleWordAudioEnd}
         />
       ) : null}
 

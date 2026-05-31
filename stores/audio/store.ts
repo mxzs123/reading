@@ -4,12 +4,10 @@ import { createPlaybackController } from "./playback";
 import {
   applySegmentWordTimings,
   buildInitialSegments,
-  countReadySegments,
   mergeStoredAudioUrls,
   revokeSegmentAudioUrls,
 } from "./segments";
 import { createAudioUploader } from "./uploader";
-import { DEFAULT_TTS_CONCURRENCY } from "./constants";
 import type { AudioStore } from "./types";
 
 export const useAudioStore = create<AudioStore>((set, get) => {
@@ -25,10 +23,6 @@ export const useAudioStore = create<AudioStore>((set, get) => {
     duration: 0,
     activeWordIndex: null,
     sequenceMode: false,
-    readyCount: 0,
-    generatingCount: 0,
-    total: 0,
-    concurrencyLimit: DEFAULT_TTS_CONCURRENCY,
 
     generateAll: generator.generateAll,
     generateSegment: generator.generateSegment,
@@ -56,27 +50,19 @@ export const useAudioStore = create<AudioStore>((set, get) => {
         duration: 0,
         activeWordIndex: null,
         sequenceMode: false,
-        readyCount: 0,
-        generatingCount: 0,
-        total: paragraphs.length,
       });
     },
 
     loadAudioUrls: (audioUrls) => {
-      if (!audioUrls || audioUrls.length === 0) return;
+      if (audioUrls.length === 0) return;
 
       set((state) => {
         const segments = mergeStoredAudioUrls(state.segments, audioUrls);
-        return {
-          segments,
-          readyCount: countReadySegments(segments),
-        };
+        return { segments };
       });
     },
 
     loadSegmentWordTimings: (segmentWordTimings) => {
-      if (!segmentWordTimings) return;
-
       set((state) => ({
         segments: applySegmentWordTimings(state.segments, segmentWordTimings),
       }));

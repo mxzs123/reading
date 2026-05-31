@@ -25,32 +25,40 @@ import {
   getAllArticles,
   saveArticle,
 } from "@/lib/storage";
+import { getArticleStats, getArticleTitle, hasArticleWordTimings } from "@/lib/articles";
 import { useAudioStore } from "@/stores/audioStore";
+import { MAX_UPLOAD_RETRIES } from "@/stores/audio/constants";
 import { useI18n } from "@/contexts/I18nContext";
 import styles from "./ArticleManager.module.css";
 
 interface ArticleManagerProps {
   isOpen: boolean;
-  onClose: () => void;
+  onToggleCollapse: () => void;
   currentText: string;
   currentArticleId?: string | null;
   onArticleLoad: (article: Article) => void;
   onArticleSaved: (article: Article) => void;
   onNewArticle: () => void;
-  variant?: "drawer" | "sidebar";
-  onToggleCollapse?: () => void;
+}
+
+type UploadDisplayStatus = "pending" | "uploading" | "success" | "failed";
+type UploadDisplaySegment = {
+  cloudUrl?: string;
+  uploadStatus?: UploadDisplayStatus;
+};
+
+function getSegmentUploadStatus(segment: UploadDisplaySegment): UploadDisplayStatus {
+  return segment.cloudUrl ? "success" : segment.uploadStatus ?? "pending";
 }
 
 export default function ArticleManager({
   isOpen,
-  onClose,
+  onToggleCollapse,
   currentText,
   currentArticleId,
   onArticleLoad,
   onArticleSaved,
   onNewArticle,
-  variant = "drawer",
-  onToggleCollapse,
 }: ArticleManagerProps) {
   const { locale, t } = useI18n();
   const [articles, setArticles] = useState<Article[]>([]);
@@ -90,12 +98,6 @@ export default function ArticleManager({
     loadArticles();
   }, [loadArticles]);
 
-  useEffect(() => {
-    if (isOpen) {
-      loadArticles();
-    }
-  }, [isOpen, loadArticles]);
-
   const uploadCandidates = useMemo(
     () => segments.filter((s) => s.status === "ready" && s.audioBlob),
     [segments]
@@ -109,7 +111,7 @@ export default function ArticleManager({
     let failed = 0;
 
     uploadCandidates.forEach((seg) => {
-      const effectiveStatus = seg.cloudUrl ? "success" : seg.uploadStatus;
+      const effectiveStatus = getSegmentUploadStatus(seg);
       if (effectiveStatus === "success") success += 1;
       else if (effectiveStatus === "uploading") uploading += 1;
       else if (effectiveStatus === "failed") failed += 1;
@@ -143,7 +145,7 @@ export default function ArticleManager({
     [filteredArticles, isSearching]
   );
 
-  const getUploadStatusLabel = (status: string) => {
+  const getUploadStatusLabel = (status: UploadDisplayStatus) => {
     switch (status) {
       case "pending":
         return t("upload.status.pending");
@@ -153,24 +155,7 @@ export default function ArticleManager({
         return t("upload.status.success");
       case "failed":
         return t("upload.status.failed");
-      default:
-        return t("upload.status.pending");
     }
-  };
-
-  const getPreview = (text: string): string => {
-    const cleaned = text.replace(/\s+/g, " ").trim();
-    return cleaned.length > 60 ? `${cleaned.slice(0, 60)}...` : cleaned;
-  };
-
-  const getArticleTitle = (article: Article): string => article.title || getPreview(article.text);
-
-  const getArticleStats = (article: Article) => {
-    const trimmed = article.text.trim();
-    return {
-      words: trimmed ? trimmed.split(/\s+/).filter(Boolean).length : 0,
-      paragraphs: trimmed ? trimmed.split(/\n{2,}/).filter((item) => item.trim()).length || 1 : 0,
-    };
   };
 
   const formatDate = (timestamp: number): string => {
@@ -181,12 +166,6 @@ export default function ArticleManager({
       hour: "2-digit",
       minute: "2-digit",
     });
-  };
-
-  const hasSyncHighlight = (article: Article): boolean => {
-    const data = article.segmentWordTimings;
-    if (!data || typeof data !== "object" || Array.isArray(data)) return false;
-    return Object.keys(data).length > 0;
   };
 
   const handleSave = useCallback(async () => {
@@ -282,11 +261,8 @@ export default function ArticleManager({
     (article: Article) => {
       setOpenActionArticleId(null);
       onArticleLoad(article);
-      if (variant === "drawer") {
-        onClose();
-      }
     },
-    [onArticleLoad, onClose, variant]
+    [onArticleLoad]
   );
 
   const handleDelete = useCallback(
@@ -347,7 +323,12 @@ export default function ArticleManager({
   };
 
   const canRetry = Boolean(uploadArticleId) && uploadStats.failed > 0 && !isSaving && !isUploadingAudio;
-  const isSidebar = variant === "sidebar";
+  const uploadStatusClassNames: Record<UploadDisplayStatus, string> = {
+    failed: styles.statusFailed,
+    pending: styles.statusPending,
+    success: styles.statusSuccess,
+    uploading: styles.statusUploading,
+  };
 
   const renderItem = (article: Article) => {
     const stats = getArticleStats(article);
@@ -387,7 +368,7 @@ export default function ArticleManager({
                 {hasAudio ? (
                   <Volume2 aria-hidden="true" className={styles.statusIcon} aria-label={t("article.hasAudio")} />
                 ) : null}
-                {hasSyncHighlight(article) ? (
+                {hasArticleWordTimings(article) ? (
                   <Waypoints aria-hidden="true" className={styles.statusIcon} aria-label={t("article.syncHighlight")} />
                 ) : null}
               </div>
@@ -436,17 +417,15 @@ export default function ArticleManager({
   };
 
   return (
-    <>
-      {variant === "drawer" && isOpen ? <div className={styles.backdrop} onClick={onClose} /> : null}
       <aside
-        className={`${styles.panel} ${styles[variant]} ${isOpen ? styles.panelOpen : ""}`}
+        className={styles.panel}
         data-collapsed={isOpen ? "false" : "true"}
         aria-label={t("article.library")}
       >
-        {isSidebar && !isOpen ? (
+        {!isOpen ? (
           <button
             className={styles.collapsedButton}
-            onClick={onToggleCollapse ?? onClose}
+            onClick={onToggleCollapse}
             aria-label={t("article.expand")}
             title={t("article.expand")}
           >
@@ -467,11 +446,11 @@ export default function ArticleManager({
           </h2>
           <button
             className={`${styles.closeBtn} ${styles.iconButton}`}
-            onClick={onToggleCollapse ?? onClose}
-            aria-label={isSidebar ? t("article.collapse") : t("article.close")}
-            title={isSidebar ? t("article.collapse") : t("article.close")}
+            onClick={onToggleCollapse}
+            aria-label={t("article.collapse")}
+            title={t("article.collapse")}
           >
-            {isSidebar ? <PanelLeftClose aria-hidden="true" /> : <X aria-hidden="true" />}
+            <PanelLeftClose aria-hidden="true" />
           </button>
         </div>
 
@@ -493,12 +472,7 @@ export default function ArticleManager({
           <button
             type="button"
             className={styles.newButton}
-            onClick={() => {
-              onNewArticle();
-              if (variant === "drawer") {
-                onClose();
-              }
-            }}
+            onClick={onNewArticle}
           >
             <Plus aria-hidden="true" className={styles.buttonIcon} />
             <span>{t("common.new")}</span>
@@ -573,9 +547,9 @@ export default function ArticleManager({
 
               <div className={styles.uploadList}>
                 {uploadCandidates.map((seg) => {
-                  const effectiveStatus = seg.cloudUrl ? "success" : seg.uploadStatus || "pending";
+                  const effectiveStatus = getSegmentUploadStatus(seg);
                   const statusLabel = getUploadStatusLabel(effectiveStatus);
-                  const attemptText = seg.uploadAttempts ? ` (${seg.uploadAttempts}/3)` : "";
+                  const attemptText = seg.uploadAttempts ? ` (${seg.uploadAttempts}/${MAX_UPLOAD_RETRIES})` : "";
 
                   return (
                     <div key={seg.id} className={styles.uploadItem}>
@@ -583,15 +557,7 @@ export default function ArticleManager({
                         <span className={styles.segmentId}>{seg.id}</span>
                         <div className={styles.uploadRight}>
                           <span
-                            className={`${styles.statusBadge} ${
-                              effectiveStatus === "success"
-                                ? styles.statusSuccess
-                                : effectiveStatus === "failed"
-                                  ? styles.statusFailed
-                                  : effectiveStatus === "uploading"
-                                    ? styles.statusUploading
-                                    : styles.statusPending
-                            }`}
+                            className={`${styles.statusBadge} ${uploadStatusClassNames[effectiveStatus]}`}
                           >
                             {statusLabel}
                             {effectiveStatus === "uploading" ? attemptText : ""}
@@ -690,10 +656,7 @@ export default function ArticleManager({
                 <button
                   type="button"
                   className={styles.emptyAction}
-                  onClick={() => {
-                    onNewArticle();
-                    if (variant === "drawer") onClose();
-                  }}
+                  onClick={onNewArticle}
                 >
                   <Plus aria-hidden="true" className={styles.buttonIcon} />
                   <span>{t("common.new")}</span>
@@ -705,6 +668,5 @@ export default function ArticleManager({
           </>
         ) : null}
       </aside>
-    </>
   );
 }

@@ -1,6 +1,10 @@
 import type { WordTiming } from "@/lib/storage";
-import { UploadAudioError } from "@/lib/storage";
-import { SYNC_START_EPSILON_SEC, SYNC_END_EPSILON_SEC } from "./constants";
+import { HttpRequestError } from "@/lib/clientRequest";
+import {
+  SYNC_END_EPSILON_SEC,
+  SYNC_START_EPSILON_SEC,
+  UPLOAD_RETRY_STATUS_CODES,
+} from "./constants";
 
 export function sleep(ms: number): Promise<void> {
   return new Promise<void>((resolve) => setTimeout(resolve, ms));
@@ -40,9 +44,9 @@ export function findWordIndexAtTime(wordTimings: WordTiming[], time: number): nu
 }
 
 export function getUploadErrorInfo(error: unknown): { message: string; status?: number; retryable: boolean } {
-  if (error instanceof UploadAudioError) {
+  if (error instanceof HttpRequestError) {
     const status = error.status;
-    const retryable = status ? [408, 425, 429, 500, 502, 503, 504].includes(status) : true;
+    const retryable = UPLOAD_RETRY_STATUS_CODES.has(status);
     return { message: error.message || "上传音频失败", status, retryable };
   }
 

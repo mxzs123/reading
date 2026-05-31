@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useRef } from "react";
-import type { DictionaryData } from "@/components/DictionaryPanel";
+import { requestJson } from "@/lib/clientRequest";
+import type { DictionaryData } from "@/lib/dictionary";
 
 function normalizeDictionaryWord(word: string): { trimmed: string; normalized: string } | null {
   const trimmed = word.trim();
@@ -11,7 +12,7 @@ function normalizeDictionaryWord(word: string): { trimmed: string; normalized: s
 
 export interface UseDictionaryOptions {
   onData?: (data: DictionaryData) => void;
-  onError?: (error: string) => void;
+  onError?: () => void;
   onLoadingChange?: (loading: boolean) => void;
 }
 
@@ -19,7 +20,6 @@ export interface UseDictionaryReturn {
   lookup: (word: string) => { trimmed: string; cached: DictionaryData | null } | null;
   prefetch: (word: string) => void;
   abortCurrentLookup: () => void;
-  clearCache: () => void;
 }
 
 export function useDictionary(options: UseDictionaryOptions = {}): UseDictionaryReturn {
@@ -31,16 +31,11 @@ export function useDictionary(options: UseDictionaryOptions = {}): UseDictionary
 
   const requestDictionary = useCallback(
     async (word: string, signal?: AbortSignal): Promise<DictionaryData> => {
-      const response = await fetch(`/api/dictionary?word=${encodeURIComponent(word)}`, {
-        signal,
-      });
-      if (!response.ok) {
-        throw new Error("查询失败");
-      }
-      const data = (await response.json()) as DictionaryData & { error?: string };
-      if (data.error) {
-        throw new Error(data.error);
-      }
+      const data = await requestJson<DictionaryData>(
+        `/api/dictionary?word=${encodeURIComponent(word)}`,
+        { signal },
+        "查询失败"
+      );
       return {
         phonetics: data.phonetics,
         meanings: data.meanings ?? [],
@@ -106,7 +101,7 @@ export function useDictionary(options: UseDictionaryOptions = {}): UseDictionary
         .catch((error: Error) => {
           if (controller.signal.aborted) return;
           console.warn("词典查询错误", error);
-          onError?.("查询失败，请稍后再试");
+          onError?.();
         })
         .finally(() => {
           if (!controller.signal.aborted) {
@@ -123,16 +118,10 @@ export function useDictionary(options: UseDictionaryOptions = {}): UseDictionary
     abortRef.current?.abort();
   }, []);
 
-  const clearCache = useCallback(() => {
-    cacheRef.current.clear();
-  }, []);
-
-  // Warmup on mount
   useEffect(() => {
     prefetch("warmup");
   }, [prefetch]);
 
-  // Cleanup on unmount
   useEffect(() => {
     const controllers = prefetchControllersRef.current;
     return () => {
@@ -146,6 +135,5 @@ export function useDictionary(options: UseDictionaryOptions = {}): UseDictionary
     lookup,
     prefetch,
     abortCurrentLookup,
-    clearCache,
   };
 }

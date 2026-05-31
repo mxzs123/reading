@@ -12,7 +12,7 @@ export type ArticleUpdate = Partial<
   Pick<Article, "title" | "text" | "audioUrls" | "segmentWordTimings">
 >;
 
-export interface ArticleStore {
+interface ArticleStore {
   listArticles(): Promise<Article[]>;
   createArticle(input: ArticleInput): Promise<Article>;
   saveArticle(article: Article): Promise<Article>;
@@ -29,7 +29,7 @@ export interface ArticleStore {
   ): Promise<void>;
 }
 
-export interface SettingsStore {
+interface SettingsStore {
   getSettings(): Promise<Partial<ReaderSettings> | null>;
   updateSettings(settings: Partial<ReaderSettings>): Promise<void>;
 }

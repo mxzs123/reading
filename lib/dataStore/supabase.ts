@@ -6,6 +6,7 @@ import type {
   DataStore,
 } from "./types";
 import { withArticleAudio } from "./articleAudio";
+import { createArticleFromInput } from "./articleHelpers";
 
 type SupabaseArticleRow = {
   id: string;
@@ -22,6 +23,10 @@ type SupabaseSettingsRow = {
   value: Partial<ReaderSettings>;
 };
 
+type SupabaseRequestInit = Omit<RequestInit, "body"> & {
+  json?: unknown;
+};
+
 const ARTICLES_TABLE = "reader_articles";
 const SETTINGS_TABLE = "reader_settings";
 const SETTINGS_ID = "global";
@@ -35,10 +40,6 @@ function getSupabaseConfig() {
   }
 
   return { url, key };
-}
-
-function createId(): string {
-  return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 }
 
 function toArticle(row: SupabaseArticleRow): Article {
@@ -88,18 +89,20 @@ function toArticleAudioPatch(
 
 async function requestSupabase<T>(
   path: string,
-  init: RequestInit = {}
+  init: SupabaseRequestInit = {}
 ): Promise<T> {
   const { url, key } = getSupabaseConfig();
+  const { json, headers, ...requestInit } = init;
+  const requestHeaders = new Headers(headers);
+  requestHeaders.set("apikey", key);
+  requestHeaders.set("Authorization", `Bearer ${key}`);
+  requestHeaders.set("Content-Type", "application/json");
+
   const response = await fetch(`${url}/rest/v1/${path}`, {
-    ...init,
-    headers: {
-      apikey: key,
-      Authorization: `Bearer ${key}`,
-      "Content-Type": "application/json",
-      ...(init.headers ?? {}),
-    },
+    ...requestInit,
+    headers: requestHeaders,
     cache: "no-store",
+    body: json === undefined ? undefined : JSON.stringify(json),
   });
 
   if (!response.ok) {
@@ -126,21 +129,14 @@ export function createSupabaseDataStore(): DataStore {
       },
 
       async createArticle(input: ArticleInput) {
-        const now = Date.now();
-        const row = {
-          id: createId(),
-          title: input.title || `文章 ${new Date(now).toLocaleDateString()}`,
-          text: input.text,
-          created_at_ms: now,
-          updated_at_ms: now,
-        };
+        const row = toArticleRow(createArticleFromInput(input));
 
         const rows = await requestSupabase<SupabaseArticleRow[]>(
           ARTICLES_TABLE,
           {
             method: "POST",
             headers: { Prefer: "return=representation" },
-            body: JSON.stringify(row),
+            json: row,
           }
         );
         return toArticle(rows[0]);
@@ -154,7 +150,7 @@ export function createSupabaseDataStore(): DataStore {
             headers: {
               Prefer: "resolution=merge-duplicates,return=representation",
             },
-            body: JSON.stringify(toArticleRow(article)),
+            json: toArticleRow(article),
           }
         );
         return toArticle(rows[0]);
@@ -178,7 +174,7 @@ export function createSupabaseDataStore(): DataStore {
           {
             method: "PATCH",
             headers: { Prefer: "return=representation" },
-            body: JSON.stringify(row),
+            json: row,
           }
         );
         return rows[0] ? toArticle(rows[0]) : null;
@@ -221,7 +217,7 @@ export function createSupabaseDataStore(): DataStore {
           {
             method: "PATCH",
             headers: { Prefer: "return=minimal" },
-            body: JSON.stringify(toArticleAudioPatch(updated)),
+            json: toArticleAudioPatch(updated),
           }
         );
       },
@@ -243,11 +239,11 @@ export function createSupabaseDataStore(): DataStore {
             headers: {
               Prefer: "resolution=merge-duplicates,return=minimal",
             },
-            body: JSON.stringify({
+            json: {
               id: SETTINGS_ID,
               value: settings,
               updated_at_ms: Date.now(),
-            }),
+            },
           }
         );
       },

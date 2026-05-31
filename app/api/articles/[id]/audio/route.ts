@@ -1,82 +1,58 @@
 import { NextRequest } from "next/server";
 import { getDataStore } from "@/lib/dataStore";
+import { errorResponse, readFormDataRequest, runApiStep } from "@/lib/http";
 import { uploadToR2 } from "@/lib/r2";
 import type { WordTiming } from "@/lib/storage";
+import { parseWordTimingsJson } from "@/lib/wordTimings";
 
 type RouteContext = { params: Promise<{ id: string }> };
+const WORD_TIMINGS_ERROR = "wordTimings 格式错误";
 
-// POST /api/articles/[id]/audio - 上传段落音频
 export async function POST(request: NextRequest, context: RouteContext): Promise<Response> {
   const { id } = await context.params;
-  let segmentId: string | null = null;
-  let wordTimings: WordTiming[] | undefined;
+  const form = await readFormDataRequest(request, "解析上传数据失败");
+  if (!form.ok) return form.response;
 
-  let formData: FormData;
-  try {
-    formData = await request.formData();
-  } catch (error) {
-    console.error("解析音频上传表单失败", { articleId: id, error });
-    return Response.json({ error: "解析上传数据失败" }, { status: 400 });
-  }
-
-  const file = formData.get("audio") as Blob | null;
-  segmentId = formData.get("segmentId") as string | null;
-  const wordTimingsRaw = formData.get("wordTimings");
+  const file = form.formData.get("audio") as Blob | null;
+  const segmentId = form.formData.get("segmentId") as string | null;
+  const wordTimingsRaw = form.formData.get("wordTimings");
 
   if (!file) {
-    return Response.json({ error: "缺少音频文件" }, { status: 400 });
+    return errorResponse("缺少音频文件", 400);
   }
 
   if (!segmentId) {
-    return Response.json({ error: "缺少段落 ID" }, { status: 400 });
+    return errorResponse("缺少段落 ID", 400);
   }
 
-  if (typeof wordTimingsRaw === "string") {
-    if (wordTimingsRaw.trim()) {
-      try {
-        const parsed = JSON.parse(wordTimingsRaw) as unknown;
-        if (!Array.isArray(parsed)) {
-          return Response.json({ error: "wordTimings 格式错误" }, { status: 400 });
-        }
-        for (const item of parsed) {
-          if (!item || typeof item !== "object") {
-            return Response.json({ error: "wordTimings 格式错误" }, { status: 400 });
-          }
-          const start = (item as { start?: unknown }).start;
-          const end = (item as { end?: unknown }).end;
-          if (typeof start !== "number" || typeof end !== "number" || !Number.isFinite(start) || !Number.isFinite(end)) {
-            return Response.json({ error: "wordTimings 格式错误" }, { status: 400 });
-          }
-        }
-        wordTimings = parsed as WordTiming[];
-      } catch {
-        return Response.json({ error: "wordTimings 格式错误" }, { status: 400 });
-      }
-    }
+  let wordTimings: WordTiming[] | undefined;
+  try {
+    wordTimings = parseWordTimingsJson(wordTimingsRaw);
+  } catch {
+    return errorResponse(WORD_TIMINGS_ERROR, 400);
   }
 
   const dataStore = getDataStore();
   const exists = await dataStore.articles.articleExists(id);
   if (!exists) {
-    return Response.json({ error: "文章不存在" }, { status: 404 });
+    return errorResponse("文章不存在", 404);
   }
 
   const key = `audio/${id}/${segmentId}.wav`;
 
-  let url: string;
-  try {
-    url = await uploadToR2(key, file, file.type || "audio/mpeg");
-  } catch (error) {
-    console.error("上传到 R2 失败", { articleId: id, segmentId, error });
-    return Response.json({ error: "上传到存储失败，请稍后重试" }, { status: 502 });
-  }
+  const upload = await runApiStep(
+    () => uploadToR2(key, file, file.type || "audio/mpeg"),
+    "上传到存储失败，请稍后重试",
+    502
+  );
+  if (!upload.ok) return upload.response;
 
-  try {
-    await dataStore.articles.upsertArticleAudio(id, segmentId, url, wordTimings);
-  } catch (error) {
-    console.error("更新文章音频索引失败", { articleId: id, segmentId, error });
-    return Response.json({ error: "保存音频地址失败，请稍后重试" }, { status: 500 });
-  }
+  const save = await runApiStep(
+    () => dataStore.articles.upsertArticleAudio(id, segmentId, upload.value, wordTimings),
+    "保存音频地址失败，请稍后重试",
+    500
+  );
+  if (!save.ok) return save.response;
 
-  return Response.json({ url });
+  return Response.json({ url: upload.value });
 }

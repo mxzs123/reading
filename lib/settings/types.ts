@@ -1,7 +1,7 @@
 export type Theme = "sepia" | "white" | "dark" | "oled";
 export type TextAlign = "left" | "right" | "center" | "justify";
 export type ReadingMode = "pure" | "audio";
-export type AzureRegion = "eastus2";
+type AzureRegion = "eastus2";
 export type AzureTTSVoice =
   | "en-US-Ava:DragonHDLatestNeural"
   | "en-US-JennyNeural"
@@ -14,7 +14,7 @@ export type EdgeTTSVoice =
   | "en-US-GuyNeural"
   | "en-GB-SoniaNeural";
 
-export const ALLOWED_GEMINI_TTS_MODELS = [
+const ALLOWED_GEMINI_TTS_MODELS = [
   "gemini-2.5-flash-preview-tts",
   "gemini-2.5-pro-preview-tts",
 ] as const;
@@ -34,7 +34,7 @@ export type TTSProvider = "edge" | "azure" | "elevenlabs" | "gemini";
 export type ApplyTextNormalization = "auto" | "on" | "off";
 export type DeepSeekModel = "deepseek-v4-flash" | "deepseek-v4-pro";
 
-export const ALLOWED_DEEPSEEK_MODELS = [
+const ALLOWED_DEEPSEEK_MODELS = [
   "deepseek-v4-flash",
   "deepseek-v4-pro",
 ] as const;
@@ -68,14 +68,6 @@ export type ElevenOutputFormat =
   | "opus_48000_96"
   | "opus_48000_128"
   | "opus_48000_192";
-
-export interface ElevenVoiceSettings {
-  stability: number;
-  similarityBoost: number;
-  style: number;
-  useSpeakerBoost: boolean;
-  speed: number;
-}
 
 export type PageWidthMode = "px" | "vw" | "ch";
 export type BoldRatio = "off" | "low" | "medium" | "high" | "custom";
@@ -130,7 +122,6 @@ export interface ReaderSettings {
   geminiApiKey: string;
   geminiModel: GeminiTTSModel;
   geminiVoiceName: string;
-  geminiLanguageCode: string;
   geminiStylePrompt: string;
   geminiUseMultiSpeaker: boolean;
   geminiSpeaker1Name: string;
@@ -150,29 +141,3 @@ export interface ReaderSettings {
   ttsPauseMs: number;
   readingMode: ReadingMode;
 }
-
-export type ReaderAppearanceSettings = Pick<
-  ReaderSettings,
-  "theme" | "boldRatio" | "customBoldRatio" | "bionicWeight"
->;
-
-export type ReaderTypographySettings = Pick<
-  ReaderSettings,
-  | "fontFamily"
-  | "fontSize"
-  | "lineHeight"
-  | "letterSpacing"
-  | "paragraphSpacing"
-  | "bodyFontWeight"
-  | "textIndent"
-  | "textAlign"
->;
-
-export type ReaderLayoutSettings = Pick<
-  ReaderSettings,
-  | "pageWidthMode"
-  | "pageWidth"
-  | "pageWidthVw"
-  | "pageWidthCh"
-  | "readingPadding"
->;

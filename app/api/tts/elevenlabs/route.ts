@@ -1,9 +1,27 @@
 import { NextRequest } from "next/server";
+import {
+  DEFAULT_SETTINGS,
+  type ApplyTextNormalization,
+} from "@/lib/settings";
+import {
+  TTS_AUDIO_MISSING_ERROR,
+  TTS_GENERATION_ERROR,
+  errorResponse,
+  jsonRequestInit,
+  readJsonRequest,
+  readResponseErrorMessage,
+  withApiError,
+} from "@/lib/http";
+import { ENGLISH_WORD_REGEX } from "@/lib/englishWords";
+import { audioJsonResponse } from "@/lib/ttsServer";
+import {
+  inferTtsMimeType,
+  parseRequiredString,
+  parseTtsText,
+} from "@/lib/ttsRoute";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
-
-type ApplyTextNormalization = "auto" | "on" | "off";
 
 interface ElevenLabsRequest {
   text: string;
@@ -37,42 +55,42 @@ type ElevenLabsWithTimestampsResponse = {
   normalized_alignment?: ElevenLabsAlignment | null;
 };
 
-const WORD_REGEX = /[A-Za-z]+(?:['-][A-Za-z]+)*/g;
-
 export async function POST(request: NextRequest): Promise<Response> {
-  let body: ElevenLabsRequest;
+  const json = await readJsonRequest<ElevenLabsRequest>(request);
+  if (!json.ok) return json.response;
 
-  try {
-    body = await request.json();
-  } catch {
-    return Response.json({ error: "请求格式错误" }, { status: 400 });
-  }
+  const text = parseTtsText(json.body.text, {
+    requiredError: "缺少必要参数: text/apiKey/voiceId",
+    lengthError: "文本过长，请分段生成（最大 5000 字符）",
+    maxLength: 5000,
+  });
+  const apiKey = parseRequiredString(
+    json.body.apiKey,
+    "缺少必要参数: text/apiKey/voiceId"
+  );
+  const voiceId = parseRequiredString(
+    json.body.voiceId,
+    "缺少必要参数: text/apiKey/voiceId"
+  );
+
+  if (!text.ok) return errorResponse(text.error, 400);
+  if (!apiKey.ok) return errorResponse(apiKey.error, 400);
+  if (!voiceId.ok) return errorResponse(voiceId.error, 400);
 
   const {
-    text,
-    apiKey,
-    voiceId,
-    modelId = "eleven_flash_v2_5",
+    modelId = DEFAULT_SETTINGS.elevenModelId,
     languageCode,
-    outputFormat = "mp3_44100_128",
+    outputFormat = DEFAULT_SETTINGS.elevenOutputFormat,
     stability,
     similarityBoost,
     style,
     useSpeakerBoost,
     speed,
-    seed = null,
-    applyTextNormalization = "auto",
-    enableLogging = true,
-    optimizeStreamingLatency = null,
-  } = body;
-
-  if (!text || !apiKey || !voiceId) {
-    return Response.json({ error: "缺少必要参数: text/apiKey/voiceId" }, { status: 400 });
-  }
-
-  if (text.length > 5000) {
-    return Response.json({ error: "文本过长，请分段生成（最大 5000 字符）" }, { status: 400 });
-  }
+    seed = DEFAULT_SETTINGS.elevenSeed,
+    applyTextNormalization = DEFAULT_SETTINGS.elevenApplyTextNormalization,
+    enableLogging = DEFAULT_SETTINGS.elevenEnableLogging,
+    optimizeStreamingLatency = DEFAULT_SETTINGS.elevenOptimizeStreamingLatency,
+  } = json.body;
 
   const query = new URLSearchParams();
   if (outputFormat) query.set("output_format", outputFormat);
@@ -87,13 +105,17 @@ export async function POST(request: NextRequest): Promise<Response> {
 
   const voiceSettings: Record<string, number | boolean> = {};
   if (typeof stability === "number") voiceSettings.stability = stability;
-  if (typeof similarityBoost === "number") voiceSettings.similarity_boost = similarityBoost;
+  if (typeof similarityBoost === "number") {
+    voiceSettings.similarity_boost = similarityBoost;
+  }
   if (typeof style === "number") voiceSettings.style = style;
   if (typeof speed === "number") voiceSettings.speed = speed;
-  if (typeof useSpeakerBoost === "boolean") voiceSettings.use_speaker_boost = useSpeakerBoost;
+  if (typeof useSpeakerBoost === "boolean") {
+    voiceSettings.use_speaker_boost = useSpeakerBoost;
+  }
 
   const payload: Record<string, unknown> = {
-    text,
+    text: text.value,
     model_id: modelId,
     language_code: languageCode || null,
     seed: seed ?? null,
@@ -105,72 +127,57 @@ export async function POST(request: NextRequest): Promise<Response> {
   }
 
   const endpoint = `https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(
-    voiceId
+    voiceId.value
   )}/with-timestamps${query.toString() ? `?${query.toString()}` : ""}`;
 
-  try {
-    const response = await fetch(endpoint, {
-      method: "POST",
-      headers: {
-        "xi-api-key": apiKey,
-        Accept: "application/json",
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(payload),
-    });
+  return withApiError(async () => {
+    const response = await fetch(
+      endpoint,
+      jsonRequestInit(payload, {
+        method: "POST",
+        headers: {
+          "xi-api-key": apiKey.value,
+          Accept: "application/json",
+        },
+      })
+    );
 
     if (!response.ok) {
-      const contentType = response.headers.get("content-type") || "";
-      const errorText = contentType.includes("application/json")
-        ? JSON.stringify(await response.json().catch(() => ({})))
-        : await response.text().catch(() => "");
+      const errorText = await readResponseErrorMessage(response);
 
       if (response.status === 401 || response.status === 403) {
-        return Response.json({ error: "ElevenLabs API Key 无效或无权限" }, { status: response.status });
+        return errorResponse("ElevenLabs API Key 无效或无权限", response.status);
       }
 
       if (response.status === 422) {
-        return Response.json({ error: "请求参数无效，请检查模型、音色或格式设置" }, { status: 422 });
+        return errorResponse("请求参数无效，请检查模型、音色或格式设置", 422);
       }
 
-      return Response.json(
-        { error: errorText.slice(0, 300) || "ElevenLabs TTS 请求失败" },
-        { status: response.status }
+      return errorResponse(
+        errorText || "ElevenLabs TTS 请求失败",
+        response.status
       );
     }
 
-    const data = (await response.json().catch(() => null)) as ElevenLabsWithTimestampsResponse | null;
-    const audioBase64 = data?.audio_base64;
+    const data = (await response.json()) as ElevenLabsWithTimestampsResponse;
+    const audioBase64 = data.audio_base64;
     if (!audioBase64) {
-      return Response.json({ error: "未收到音频数据" }, { status: 502 });
+      return errorResponse(TTS_AUDIO_MISSING_ERROR, 502);
     }
 
     const alignment = data?.alignment ?? data?.normalized_alignment ?? null;
-    const wordTimings = buildWordTimings(text, alignment);
+    const wordTimings = buildWordTimings(text.value, alignment);
 
-    return Response.json({
-      audio: audioBase64,
-      mimeType: inferMimeType(outputFormat),
+    return audioJsonResponse(audioBase64, inferTtsMimeType(outputFormat), {
       wordTimings,
     });
-  } catch (error) {
-    console.error("ElevenLabs TTS 生成失败", error);
-    return Response.json({ error: "音频生成失败，请稍后重试" }, { status: 500 });
-  }
+  }, TTS_GENERATION_ERROR);
 }
 
-function inferMimeType(outputFormat?: string): string {
-  if (!outputFormat) return "audio/mpeg";
-
-  if (outputFormat.startsWith("mp3_")) return "audio/mpeg";
-  if (outputFormat.startsWith("opus_")) return "audio/ogg";
-  if (outputFormat.startsWith("pcm_")) return "audio/wav";
-  if (outputFormat.startsWith("ulaw_") || outputFormat.startsWith("alaw_")) return "audio/wav";
-
-  return "audio/mpeg";
-}
-
-function buildWordTimings(text: string, alignment: ElevenLabsAlignment | null): WordTiming[] | undefined {
+function buildWordTimings(
+  text: string,
+  alignment: ElevenLabsAlignment | null
+): WordTiming[] | undefined {
   if (!alignment) return undefined;
 
   const starts = alignment.character_start_times_seconds;
@@ -184,7 +191,7 @@ function buildWordTimings(text: string, alignment: ElevenLabsAlignment | null): 
 
   const timings: WordTiming[] = [];
 
-  for (const match of text.matchAll(WORD_REGEX)) {
+  for (const match of text.matchAll(ENGLISH_WORD_REGEX)) {
     const index = match.index;
     if (index === undefined) continue;
 
@@ -206,7 +213,11 @@ function buildWordTimings(text: string, alignment: ElevenLabsAlignment | null): 
       }
     }
 
-    if (!Number.isFinite(wordStart) || !Number.isFinite(wordEnd) || wordEnd < wordStart) {
+    if (
+      !Number.isFinite(wordStart) ||
+      !Number.isFinite(wordEnd) ||
+      wordEnd < wordStart
+    ) {
       continue;
     }
 
@@ -215,4 +226,3 @@ function buildWordTimings(text: string, alignment: ElevenLabsAlignment | null): 
 
   return timings.length ? timings : undefined;
 }
-

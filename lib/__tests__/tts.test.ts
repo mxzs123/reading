@@ -4,7 +4,23 @@ import {
   getTtsConfigError,
   normalizeWordTimings,
 } from "@/lib/tts";
-import type { TtsGenerationParams } from "@/lib/settings";
+import {
+  clampRounded,
+  escapeXml,
+  formatSignedUnit,
+  splitTextByByteLength,
+} from "@/lib/ttsServer";
+import {
+  buildPromptedText,
+  inferTtsMimeType,
+  parseRequiredString,
+  parseTtsText,
+} from "@/lib/ttsRoute";
+import {
+  buildTtsGenerationParams,
+  DEFAULT_SETTINGS,
+  type TtsGenerationParams,
+} from "@/lib/settings";
 
 describe("tts client helpers", () => {
   it("builds Edge requests", () => {
@@ -72,6 +88,37 @@ describe("tts client helpers", () => {
     });
   });
 
+  it("builds provider params from settings", () => {
+    expect(
+      buildTtsGenerationParams({
+        ...DEFAULT_SETTINGS,
+        ttsProvider: "gemini",
+        geminiApiKey: "gemini-key",
+        geminiVoiceName: "Puck",
+        geminiUseMultiSpeaker: true,
+      })
+    ).toMatchObject({
+      provider: "gemini",
+      apiKey: "gemini-key",
+      voiceName: "Puck",
+      multiSpeaker: true,
+    });
+
+    expect(
+      buildTtsGenerationParams({
+        ...DEFAULT_SETTINGS,
+        ttsProvider: "edge",
+        edgeVoice: "en-US-AvaMultilingualNeural",
+        edgePitch: 10,
+      })
+    ).toEqual({
+      provider: "edge",
+      voice: "en-US-AvaMultilingualNeural",
+      rate: DEFAULT_SETTINGS.edgeRate,
+      pitch: 10,
+    });
+  });
+
   it("returns provider configuration errors", () => {
     expect(
       getTtsConfigError({
@@ -104,5 +151,59 @@ describe("tts client helpers", () => {
       { start: 0, end: 0.3 },
       { start: 1, end: 1.4 },
     ]);
+  });
+
+  it("formats SSML helper values", () => {
+    expect(escapeXml(`Tom & "Jerry" <cat>`)).toBe(
+      "Tom &amp; &quot;Jerry&quot; &lt;cat&gt;"
+    );
+    expect(clampRounded(82.4, -50, 80)).toBe(80);
+    expect(formatSignedUnit(12, "%")).toBe("+12%");
+    expect(formatSignedUnit(-4, "Hz")).toBe("-4Hz");
+  });
+
+  it("splits text by byte length", () => {
+    expect(splitTextByByteLength("one two three", 8)).toEqual([
+      "one two",
+      "three",
+    ]);
+  });
+
+  it("parses required TTS request strings", () => {
+    expect(parseRequiredString(" key ", "missing", { trimValue: true })).toEqual(
+      { ok: true, value: "key" }
+    );
+    expect(
+      parseTtsText("   ", {
+        requiredError: "missing text",
+        lengthError: "too long",
+        maxLength: 10,
+        trimForEmpty: true,
+      })
+    ).toEqual({ ok: false, error: "missing text" });
+    expect(
+      parseTtsText("hello world", {
+        requiredError: "missing text",
+        lengthError: "too long",
+        maxLength: 5,
+      })
+    ).toEqual({ ok: false, error: "too long" });
+  });
+
+  it("maps TTS output formats to mime types", () => {
+    expect(inferTtsMimeType("mp3_44100_128")).toBe("audio/mpeg");
+    expect(inferTtsMimeType("opus_48000_128")).toBe("audio/ogg");
+    expect(inferTtsMimeType("pcm_24000")).toBe("audio/wav");
+    expect(inferTtsMimeType("unknown")).toBe("audio/mpeg");
+  });
+
+  it("builds prompted Gemini text", () => {
+    expect(buildPromptedText(" Hello ", "Say softly:")).toBe(
+      "Say softly: Hello"
+    );
+    expect(buildPromptedText("Hello", "Read {{text}} slowly")).toBe(
+      "Read Hello slowly"
+    );
+    expect(buildPromptedText("Hello", "Whisper")).toBe("Whisper\n\nHello");
   });
 });

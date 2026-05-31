@@ -35,11 +35,9 @@ export function ReadingArea({
   const initSegments = useAudioStore((s) => s.initSegments);
   const lastParagraphKeyRef = useRef<string | null>(null);
 
-  // 构建段落
   const paragraphs = useMemo(() => buildParagraphs(text), [text]);
   const paragraphKey = useMemo(() => buildParagraphKey(paragraphs), [paragraphs]);
 
-  // 当文本变化时重新初始化 segments
   useEffect(() => {
     if (lastParagraphKeyRef.current === paragraphKey) return;
     lastParagraphKeyRef.current = paragraphKey;
@@ -61,7 +59,7 @@ export function ReadingArea({
   }
 
   return (
-    <div className={styles.container}>
+    <article className={styles.container}>
       {segments.map((seg) => (
         <Paragraph
           key={seg.id}
@@ -76,6 +74,6 @@ export function ReadingArea({
           onWordAudioEnd={onWordAudioEnd}
         />
       ))}
-    </div>
+    </article>
   );
 }

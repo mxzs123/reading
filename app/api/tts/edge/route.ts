@@ -2,6 +2,17 @@ import { createHash, randomUUID } from "node:crypto";
 import { Buffer } from "node:buffer";
 import { NextRequest } from "next/server";
 import WebSocket from "ws";
+import { errorResponse, readJsonRequest, withApiError } from "@/lib/http";
+import { DEFAULT_SETTINGS } from "@/lib/settings";
+import { parseTtsText } from "@/lib/ttsRoute";
+import {
+  audioJsonResponse,
+  clampRounded,
+  escapeXml,
+  formatSignedUnit,
+  replaceIncompatibleXmlCharacters,
+  splitTextByByteLength,
+} from "@/lib/ttsServer";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -28,50 +39,40 @@ interface EdgeTtsRequest {
 }
 
 export async function POST(request: NextRequest): Promise<Response> {
-  let body: EdgeTtsRequest;
+  const json = await readJsonRequest<EdgeTtsRequest>(request);
+  if (!json.ok) return json.response;
 
-  try {
-    body = await request.json();
-  } catch {
-    return Response.json({ error: "请求格式错误" }, { status: 400 });
-  }
+  const text = parseTtsText(json.body.text, {
+    requiredError: "缺少必要参数: text",
+    lengthError: "文本过长，请分段生成（最大 6000 字符）",
+    maxLength: 6000,
+    trimForEmpty: true,
+  });
+  if (!text.ok) return errorResponse(text.error, 400);
 
   const {
-    text,
-    voice = "en-US-EmmaMultilingualNeural",
-    rate = 1,
-    pitch = 0,
-  } = body;
+    voice = DEFAULT_SETTINGS.edgeVoice,
+    rate = DEFAULT_SETTINGS.edgeRate,
+    pitch = DEFAULT_SETTINGS.edgePitch,
+  } = json.body;
 
-  if (!text?.trim()) {
-    return Response.json({ error: "缺少必要参数: text" }, { status: 400 });
-  }
-
-  if (text.length > 6000) {
-    return Response.json(
-      { error: "文本过长，请分段生成（最大 6000 字符）" },
-      { status: 400 }
-    );
-  }
-
-  try {
+  return withApiError(async () => {
     const options = {
       voice,
-      rate: numberToRate(rate),
-      pitch: numberToPitch(pitch),
+      rate: formatSignedUnit(clampRounded((rate - 1) * 100, -50, 80), "%"),
+      pitch: formatSignedUnit(clampRounded(pitch, -50, 50), "Hz"),
     };
     const audioBuffers: Buffer[] = [];
 
-    for (const chunk of splitText(removeIncompatibleCharacters(text), MAX_CHUNK_BYTES)) {
+    for (const chunk of splitTextByByteLength(
+      replaceIncompatibleXmlCharacters(text.value),
+      MAX_CHUNK_BYTES
+    )) {
       audioBuffers.push(await synthesizeEdgeChunk(chunk, options));
     }
 
-    const audio = Buffer.concat(audioBuffers).toString("base64");
-    return Response.json({ audio, mimeType: "audio/mpeg" });
-  } catch (error) {
-    console.error("Edge TTS 生成失败", error);
-    return Response.json({ error: "Edge TTS 生成失败，请稍后重试" }, { status: 500 });
-  }
+    return audioJsonResponse(Buffer.concat(audioBuffers), "audio/mpeg");
+  }, "Edge TTS 生成失败，请稍后重试");
 }
 
 function synthesizeEdgeChunk(
@@ -241,47 +242,4 @@ function dateToString(): string {
 
 function connectId(): string {
   return randomUUID().replaceAll("-", "");
-}
-
-function numberToRate(rate: number): string {
-  const percent = Math.max(-50, Math.min(80, Math.round((rate - 1) * 100)));
-  return `${percent >= 0 ? "+" : ""}${percent}%`;
-}
-
-function numberToPitch(pitch: number): string {
-  const value = Math.max(-50, Math.min(50, Math.round(pitch)));
-  return `${value >= 0 ? "+" : ""}${value}Hz`;
-}
-
-function splitText(text: string, byteLength: number): string[] {
-  const chunks: string[] = [];
-  let current = "";
-
-  for (const part of text.trim().split(/(\s+)/)) {
-    if (!part) continue;
-
-    const next = current + part;
-    if (current && Buffer.byteLength(next, "utf8") > byteLength) {
-      chunks.push(current.trim());
-      current = part.trimStart();
-    } else {
-      current = next;
-    }
-  }
-
-  if (current.trim()) chunks.push(current.trim());
-  return chunks;
-}
-
-function removeIncompatibleCharacters(text: string): string {
-  return text.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, " ");
-}
-
-function escapeXml(text: string): string {
-  return text
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&apos;");
 }

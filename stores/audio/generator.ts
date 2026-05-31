@@ -1,9 +1,9 @@
 import { generateTtsAudio } from "@/lib/tts";
-import type { TtsGenerationParams } from "@/lib/settings";
-import { DEFAULT_TTS_CONCURRENCY, MAX_CONCURRENCY } from "./constants";
+import { DEFAULT_SETTINGS, type TtsGenerationParams } from "@/lib/settings";
+import { MAX_CONCURRENCY } from "./constants";
 import { createGenerationQueue } from "./generationQueue";
-import { countReadySegments } from "./segments";
-import type { AudioStoreGet, AudioStoreSet, SegmentStatus } from "./types";
+import { updateSegment } from "./segments";
+import type { AudioStoreGet, AudioStoreSet } from "./types";
 
 interface AudioGeneratorOptions {
   get: AudioStoreGet;
@@ -17,7 +17,7 @@ interface AudioGenerationTask {
 }
 
 export function createAudioGenerator({ get, set }: AudioGeneratorOptions) {
-  let concurrencyLimitInternal = DEFAULT_TTS_CONCURRENCY;
+  let concurrencyLimitInternal = DEFAULT_SETTINGS.ttsConcurrency;
   let generationRunId = 0;
 
   const runGenerationTask = async (task: AudioGenerationTask, signal: AbortSignal) => {
@@ -28,10 +28,10 @@ export function createAudioGenerator({ get, set }: AudioGeneratorOptions) {
     if (!segment) return;
 
     set((state) => ({
-      segments: state.segments.map((s) =>
-        s.id === id ? { ...s, status: "generating" as SegmentStatus, error: undefined } : s
-      ),
-      generatingCount: state.generatingCount + 1,
+      segments: updateSegment(state.segments, id, {
+        status: "generating",
+        error: undefined,
+      }),
     }));
 
     try {
@@ -40,40 +40,23 @@ export function createAudioGenerator({ get, set }: AudioGeneratorOptions) {
 
       const url = URL.createObjectURL(audio.blob);
 
-      set((state) => {
-        const nextSegments = state.segments.map((s) =>
-          s.id === id
-            ? {
-                ...s,
-                status: "ready" as SegmentStatus,
-                audioUrl: url,
-                audioBlob: audio.blob,
-                wordTimings: audio.wordTimings,
-                error: undefined,
-              }
-            : s
-        );
-
-        return {
-          segments: nextSegments,
-          generatingCount: Math.max(0, state.generatingCount - 1),
-          readyCount: countReadySegments(nextSegments),
-        };
-      });
+      set((state) => ({
+        segments: updateSegment(state.segments, id, {
+          status: "ready",
+          audioUrl: url,
+          audioBlob: audio.blob,
+          wordTimings: audio.wordTimings,
+          error: undefined,
+        }),
+      }));
     } catch (err) {
       if (signal.aborted || runId !== generationRunId) return;
 
       set((state) => ({
-        segments: state.segments.map((s) =>
-          s.id === id
-            ? {
-                ...s,
-                status: "error" as SegmentStatus,
-                error: err instanceof Error ? err.message : "生成失败",
-              }
-            : s
-        ),
-        generatingCount: Math.max(0, state.generatingCount - 1),
+        segments: updateSegment(state.segments, id, {
+          status: "error",
+          error: err instanceof Error ? err.message : "生成失败",
+        }),
       }));
     }
   };
@@ -116,7 +99,6 @@ export function createAudioGenerator({ get, set }: AudioGeneratorOptions) {
     setConcurrencyLimit: (limit: number) => {
       const next = Math.max(1, Math.min(limit, MAX_CONCURRENCY));
       concurrencyLimitInternal = next;
-      set({ concurrencyLimit: next });
       queue.pump();
     },
   };

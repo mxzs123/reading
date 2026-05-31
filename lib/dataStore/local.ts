@@ -8,6 +8,11 @@ import type {
   DataStore,
 } from "./types";
 import { withArticleAudio } from "./articleAudio";
+import {
+  applyArticlePatch,
+  createArticleFromInput,
+  sortArticlesByUpdatedAt,
+} from "./articleHelpers";
 
 interface LocalStoreFile {
   articles: Record<string, Article>;
@@ -17,10 +22,6 @@ interface LocalStoreFile {
 const LOCAL_DATA_DIR =
   process.env.LOCAL_DATA_DIR || path.join(process.cwd(), ".local-data");
 const LOCAL_STORE_PATH = path.join(LOCAL_DATA_DIR, "reader-store.json");
-
-function createId(): string {
-  return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-}
 
 function createInitialStore(): LocalStoreFile {
   return { articles: {}, settings: null };
@@ -48,21 +49,12 @@ export function createLocalDataStore(): DataStore {
     articles: {
       async listArticles() {
         const store = await readStore();
-        return Object.values(store.articles).sort(
-          (a, b) => b.updatedAt - a.updatedAt
-        );
+        return sortArticlesByUpdatedAt(Object.values(store.articles));
       },
 
       async createArticle(input: ArticleInput) {
         const store = await readStore();
-        const now = Date.now();
-        const article: Article = {
-          id: createId(),
-          title: input.title || `文章 ${new Date(now).toLocaleDateString()}`,
-          text: input.text,
-          createdAt: now,
-          updatedAt: now,
-        };
+        const article = createArticleFromInput(input);
 
         store.articles[article.id] = article;
         await writeStore(store);
@@ -86,12 +78,7 @@ export function createLocalDataStore(): DataStore {
         const article = store.articles[id];
         if (!article) return null;
 
-        const updated: Article = {
-          ...article,
-          ...patch,
-          id,
-          updatedAt: Date.now(),
-        };
+        const updated = applyArticlePatch(article, id, patch);
 
         store.articles[id] = updated;
         await writeStore(store);

@@ -180,6 +180,20 @@
   color: var(--color-text);
 }
 
+.select {
+  width: 100%;
+  padding: 0.7rem 1rem;
+  border-radius: var(--radius-control, 6px);
+  border: 0;
+  background: var(--input-surface);
+  font-size: 0.95rem;
+}
+
+.select:focus {
+  outline: none;
+  background: var(--control-active-surface);
+}
+
 .apiKeyWrapper {
   display: flex;
   gap: 0.5rem;

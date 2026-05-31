@@ -1,19 +1,26 @@
 "use client";
 
 import { useMemo, type ReactNode } from "react";
-import { useSettings } from "@/contexts/SettingsContext";
+import { useSettingFieldUpdater, useSettings } from "@/contexts/SettingsContext";
 import { useI18n } from "@/contexts/I18nContext";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { SegmentedControl, RangeField } from "@/components/ui";
 import { translateOptions, widthModeOptions } from "./options";
-import styles from "./settingsStyles.module.css";
+import {
+  FieldGrid,
+  FieldRow,
+  SettingsFieldLabel,
+  SettingsHint,
+  SettingsSection,
+} from "./SettingsLayout";
 
 interface LayoutTabProps {
   viewportWidth: number;
 }
 
 export function LayoutTab({ viewportWidth }: LayoutTabProps) {
-  const { settings, updateSettings, hydrated } = useSettings();
+  const { settings, hydrated } = useSettings();
+  const updateField = useSettingFieldUpdater();
   const { t } = useI18n();
   const isMobile = useMediaQuery("(max-width: 768px)");
 
@@ -71,7 +78,7 @@ export function LayoutTab({ viewportWidth }: LayoutTabProps) {
         min={60}
         max={96}
         step={1}
-        onChange={(value) => updateSettings({ pageWidthVw: value })}
+        onChange={updateField("pageWidthVw")}
       />
     );
   } else if (widthMode === "ch") {
@@ -83,7 +90,7 @@ export function LayoutTab({ viewportWidth }: LayoutTabProps) {
         min={40}
         max={120}
         step={1}
-        onChange={(value) => updateSettings({ pageWidthCh: value })}
+        onChange={updateField("pageWidthCh")}
       />
     );
   } else {
@@ -100,24 +107,23 @@ export function LayoutTab({ viewportWidth }: LayoutTabProps) {
         min={pageWidthMin}
         max={pageWidthMax}
         step={isMobile ? 2 : 10}
-        onChange={(value) => updateSettings({ pageWidth: value })}
+        onChange={updateField("pageWidth")}
       />
     );
   }
 
   return (
-    <section className={styles.section}>
-      <div className={styles.sectionHeader}>{t("settings.layout.section")}</div>
-      <div className={styles.fieldRow}>
-        <span className={styles.fieldLabel}>{t("settings.layout.widthMode")}</span>
+    <SettingsSection title={t("settings.layout.section")}>
+      <FieldRow>
+        <SettingsFieldLabel>{t("settings.layout.widthMode")}</SettingsFieldLabel>
         <SegmentedControl
           value={widthMode}
           options={translateOptions(widthModeOptions, t)}
-          onChange={(value) => updateSettings({ pageWidthMode: value })}
+          onChange={updateField("pageWidthMode")}
         />
-      </div>
+      </FieldRow>
 
-      <div className={styles.grid2}>
+      <FieldGrid>
         {pageWidthControl}
         <RangeField
           label={t("settings.layout.margin")}
@@ -126,14 +132,14 @@ export function LayoutTab({ viewportWidth }: LayoutTabProps) {
           min={8}
           max={120}
           step={2}
-          onChange={(value) => updateSettings({ readingPadding: value })}
+          onChange={updateField("readingPadding")}
         />
-      </div>
-      <p className={styles.apiKeyHint}>
+      </FieldGrid>
+      <SettingsHint>
         {approxCharsPerLine
           ? t("settings.layout.approx", { count: approxCharsPerLine })
           : t("settings.layout.narrowHint")}
-      </p>
-    </section>
+      </SettingsHint>
+    </SettingsSection>
   );
 }
