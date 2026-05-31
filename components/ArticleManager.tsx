@@ -25,6 +25,7 @@ import {
   saveArticle,
 } from "@/lib/storage";
 import { useAudioStore } from "@/stores/audioStore";
+import { useI18n } from "@/contexts/I18nContext";
 import styles from "./ArticleManager.module.css";
 
 interface ArticleManagerProps {
@@ -50,6 +51,7 @@ export default function ArticleManager({
   variant = "drawer",
   onToggleCollapse,
 }: ArticleManagerProps) {
+  const { locale, t } = useI18n();
   const [articles, setArticles] = useState<Article[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -77,11 +79,11 @@ export default function ArticleManager({
       const list = await getAllArticles();
       setArticles(list);
     } catch (err) {
-      console.error("加载文章列表失败", err);
+      console.error(t("article.loadError"), err);
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     loadArticles();
@@ -143,15 +145,15 @@ export default function ArticleManager({
   const getUploadStatusLabel = (status: string) => {
     switch (status) {
       case "pending":
-        return "等待中";
+        return t("upload.status.pending");
       case "uploading":
-        return "上传中";
+        return t("upload.status.uploading");
       case "success":
-        return "成功";
+        return t("upload.status.success");
       case "failed":
-        return "失败";
+        return t("upload.status.failed");
       default:
-        return "等待中";
+        return t("upload.status.pending");
     }
   };
 
@@ -172,7 +174,7 @@ export default function ArticleManager({
 
   const formatDate = (timestamp: number): string => {
     const date = new Date(timestamp);
-    return date.toLocaleDateString("zh-CN", {
+    return date.toLocaleDateString(locale, {
       month: "short",
       day: "numeric",
       hour: "2-digit",
@@ -219,8 +221,8 @@ export default function ArticleManager({
       if (result.total > 0) {
         setUploadMessage(
           result.failed > 0
-            ? `有 ${result.failed} 段音频上传失败，可在同步状态里重试。`
-            : "音频已同步。"
+            ? t("upload.failedSegments", { count: result.failed })
+            : t("upload.synced")
         );
       }
       setIsUploadingAudio(false);
@@ -229,13 +231,13 @@ export default function ArticleManager({
       setShowSaveInput(false);
       setSaveTitle("");
     } catch (err) {
-      console.error("保存文章失败", err);
-      setSaveError("保存失败，请稍后再试");
+      console.error(t("article.saveError"), err);
+      setSaveError(t("article.saveError"));
     } finally {
       setIsSaving(false);
       setIsUploadingAudio(false);
     }
-  }, [currentText, currentArticleId, saveTitle, loadArticles, onArticleSaved, uploadAllAudio]);
+  }, [currentText, currentArticleId, saveTitle, loadArticles, onArticleSaved, t, uploadAllAudio]);
 
   const handleRetryFailedUploads = useCallback(async () => {
     if (!uploadArticleId) return;
@@ -246,15 +248,17 @@ export default function ArticleManager({
     try {
       const result = await uploadAllAudio(uploadArticleId);
       setUploadMessage(
-        result.failed > 0 ? `仍有 ${result.failed} 段音频上传失败。` : "失败段落已重试成功。"
+        result.failed > 0
+          ? t("upload.stillFailed", { count: result.failed })
+          : t("upload.failedRetrySuccess")
       );
     } catch (err) {
-      console.error("重试上传失败段落失败", err);
-      setUploadMessage("重试失败，请稍后再试");
+      console.error(t("upload.retryFailed"), err);
+      setUploadMessage(t("upload.retryFailed"));
     } finally {
       setIsUploadingAudio(false);
     }
-  }, [uploadAllAudio, uploadArticleId, uploadStats.failed]);
+  }, [t, uploadAllAudio, uploadArticleId, uploadStats.failed]);
 
   const handleRetrySegment = useCallback(
     async (segmentId: string) => {
@@ -264,13 +268,13 @@ export default function ArticleManager({
       try {
         await uploadSegmentAudio(uploadArticleId, segmentId);
       } catch (err) {
-        console.error("重试上传段落失败", err);
-        setUploadMessage("重试失败，请稍后再试");
+        console.error(t("upload.retryFailed"), err);
+        setUploadMessage(t("upload.retryFailed"));
       } finally {
         setIsUploadingAudio(false);
       }
     },
-    [uploadArticleId, uploadSegmentAudio]
+    [t, uploadArticleId, uploadSegmentAudio]
   );
 
   const handleLoad = useCallback(
@@ -287,7 +291,7 @@ export default function ArticleManager({
   const handleDelete = useCallback(
     async (id: string, e: MouseEvent) => {
       e.stopPropagation();
-      if (!confirm("确定要删除这篇文章吗？")) return;
+      if (!confirm(t("article.deleteConfirm"))) return;
 
       try {
         setOpenActionArticleId(null);
@@ -297,10 +301,10 @@ export default function ArticleManager({
           onNewArticle();
         }
       } catch (err) {
-        console.error("删除文章失败", err);
+        console.error(t("article.deleteError"), err);
       }
     },
-    [currentArticleId, loadArticles, onNewArticle]
+    [currentArticleId, loadArticles, onNewArticle, t]
   );
 
   const handleStartRename = (article: Article, e: MouseEvent) => {
@@ -327,13 +331,13 @@ export default function ArticleManager({
         setRenamingId(null);
         setRenameValue("");
       } catch (err) {
-        console.error("重命名文章失败", err);
-        setSaveError("重命名失败，请稍后再试");
+        console.error(t("article.renameError"), err);
+        setSaveError(t("article.renameError"));
       } finally {
         setIsSaving(false);
       }
     },
-    [currentArticleId, loadArticles, onArticleSaved, renameValue]
+    [currentArticleId, loadArticles, onArticleSaved, renameValue, t]
   );
 
   const handleToggleArticleActions = (articleId: string, e: MouseEvent) => {
@@ -372,7 +376,7 @@ export default function ArticleManager({
                 autoFocus
               />
               <button className={styles.compactButton} onClick={() => handleRename(article)}>
-                确认
+                {t("common.confirm")}
               </button>
             </div>
           ) : (
@@ -380,18 +384,18 @@ export default function ArticleManager({
               <div className={styles.itemTitle}>{getArticleTitle(article)}</div>
               <div className={styles.itemStatus}>
                 {hasAudio ? (
-                  <Volume2 aria-hidden="true" className={styles.statusIcon} aria-label="含音频" />
+                  <Volume2 aria-hidden="true" className={styles.statusIcon} aria-label={t("article.hasAudio")} />
                 ) : null}
                 {hasSyncHighlight(article) ? (
-                  <Waypoints aria-hidden="true" className={styles.statusIcon} aria-label="同步高亮" />
+                  <Waypoints aria-hidden="true" className={styles.statusIcon} aria-label={t("article.syncHighlight")} />
                 ) : null}
               </div>
             </div>
           )}
           <div className={styles.itemMeta}>
             <span>{formatDate(article.updatedAt)}</span>
-            <span>{stats.words} 词</span>
-            <span>{stats.paragraphs} 段</span>
+            <span>{t("article.wordCount", { count: stats.words })}</span>
+            <span>{t("article.paragraphCount", { count: stats.paragraphs })}</span>
           </div>
         </div>
 
@@ -399,7 +403,7 @@ export default function ArticleManager({
           <button
             type="button"
             className={styles.moreButton}
-            aria-label={`${getArticleTitle(article)} 操作`}
+            aria-label={t("article.actions", { title: getArticleTitle(article) })}
             aria-expanded={openActionArticleId === article.id}
             onClick={(event) => handleToggleArticleActions(article.id, event)}
           >
@@ -413,7 +417,7 @@ export default function ArticleManager({
                 onClick={(event) => handleStartRename(article, event)}
               >
                 <Edit3 aria-hidden="true" className={styles.buttonIcon} />
-                <span>重命名</span>
+                <span>{t("common.rename")}</span>
               </button>
               <button
                 type="button"
@@ -421,7 +425,7 @@ export default function ArticleManager({
                 onClick={(event) => handleDelete(article.id, event)}
               >
                 <Trash2 aria-hidden="true" className={styles.buttonIcon} />
-                <span>删除</span>
+                <span>{t("common.delete")}</span>
               </button>
             </div>
           ) : null}
@@ -436,14 +440,14 @@ export default function ArticleManager({
       <aside
         className={`${styles.panel} ${styles[variant]} ${isOpen ? styles.panelOpen : ""}`}
         data-collapsed={isOpen ? "false" : "true"}
-        aria-label="文章库"
+        aria-label={t("article.library")}
       >
         {isSidebar && !isOpen ? (
           <button
             className={styles.collapsedButton}
             onClick={onToggleCollapse ?? onClose}
-            aria-label="展开文章"
-            title="展开文章"
+            aria-label={t("article.expand")}
+            title={t("article.expand")}
           >
             <BookOpen aria-hidden="true" />
           </button>
@@ -454,13 +458,13 @@ export default function ArticleManager({
         <div className={styles.header}>
           <h2 className={styles.title}>
             <BookOpen aria-hidden="true" className={styles.titleIcon} />
-            <span>文章</span>
+            <span>{t("article.title")}</span>
           </h2>
           <button
             className={`${styles.closeBtn} ${styles.iconButton}`}
             onClick={onToggleCollapse ?? onClose}
-            aria-label={isSidebar ? "收起文章" : "关闭文章"}
-            title={isSidebar ? "收起文章" : "关闭文章"}
+            aria-label={isSidebar ? t("article.collapse") : t("article.close")}
+            title={isSidebar ? t("article.collapse") : t("article.close")}
           >
             {isSidebar ? <PanelLeftClose aria-hidden="true" /> : <X aria-hidden="true" />}
           </button>
@@ -479,7 +483,7 @@ export default function ArticleManager({
             disabled={!currentText.trim() || isSaving}
           >
             <Save aria-hidden="true" className={styles.buttonIcon} />
-            <span>{isSaving ? "保存中..." : "保存"}</span>
+            <span>{isSaving ? t("common.saving") : t("common.save")}</span>
           </button>
           <button
             type="button"
@@ -492,7 +496,7 @@ export default function ArticleManager({
             }}
           >
             <Plus aria-hidden="true" className={styles.buttonIcon} />
-            <span>新建</span>
+            <span>{t("common.new")}</span>
           </button>
 
           {showSaveInput ? (
@@ -500,7 +504,7 @@ export default function ArticleManager({
               <input
                 type="text"
                 className={styles.titleInput}
-                placeholder="文章标题"
+                placeholder={t("article.titlePlaceholder")}
                 value={saveTitle}
                 onChange={(e) => setSaveTitle(e.target.value)}
                 onKeyDown={(e) => {
@@ -515,7 +519,7 @@ export default function ArticleManager({
               <div className={styles.saveRowActions}>
                 <button className={styles.compactButton} onClick={handleSave} disabled={isSaving}>
                   <Check aria-hidden="true" className={styles.buttonIcon} />
-                  <span>保存</span>
+                  <span>{t("common.save")}</span>
                 </button>
                 <button
                   className={styles.compactGhostButton}
@@ -525,7 +529,7 @@ export default function ArticleManager({
                   }}
                 >
                   <X aria-hidden="true" className={styles.buttonIcon} />
-                  <span>取消</span>
+                  <span>{t("common.cancel")}</span>
                 </button>
               </div>
             </div>
@@ -537,10 +541,10 @@ export default function ArticleManager({
           {showUploadPanel && uploadCandidates.length > 0 ? (
             <div className={styles.uploadPanel}>
               <div className={styles.uploadHeaderRow}>
-                <h3 className={styles.uploadTitle}>同步状态</h3>
+                <h3 className={styles.uploadTitle}>{t("upload.syncStatus")}</h3>
                 <span className={styles.uploadSummary}>
                   {uploadStats.done}/{uploadStats.total}
-                  {uploadStats.failed > 0 ? ` · 失败 ${uploadStats.failed}` : ""}
+                  {uploadStats.failed > 0 ? t("upload.failedCount", { count: uploadStats.failed }) : ""}
                 </span>
               </div>
 
@@ -558,7 +562,7 @@ export default function ArticleManager({
                   disabled={!canRetry}
                 >
                   <Volume2 aria-hidden="true" className={styles.buttonIcon} />
-                  <span>重试失败段落</span>
+                  <span>{t("upload.retryFailedSegments")}</span>
                 </button>
               ) : null}
 
@@ -596,7 +600,7 @@ export default function ArticleManager({
                               onClick={() => handleRetrySegment(seg.id)}
                             >
                               <Volume2 aria-hidden="true" className={styles.buttonIcon} />
-                              <span>重试</span>
+                              <span>{t("common.retry")}</span>
                             </button>
                           ) : null}
                         </div>
@@ -618,7 +622,7 @@ export default function ArticleManager({
           <input
             type="search"
             className={styles.searchInput}
-            placeholder="搜索文章"
+            placeholder={t("article.search")}
             value={query}
             onChange={(event) => setQuery(event.target.value)}
           />
@@ -626,7 +630,7 @@ export default function ArticleManager({
 
         <div className={styles.listSection}>
           {isLoading ? (
-            <div className={styles.empty}>加载中...</div>
+            <div className={styles.empty}>{t("common.loading")}</div>
           ) : filteredArticles.length > 0 ? (
             <div className={styles.list}>
               {isSearching ? (
@@ -646,7 +650,7 @@ export default function ArticleManager({
                         ) : (
                           <ChevronDown aria-hidden="true" className={styles.groupChevron} />
                         )}
-                        <span>最近阅读</span>
+                        <span>{t("article.recent")}</span>
                         <span className={styles.groupCount}>{recentArticles.length}</span>
                       </button>
                       {!recentCollapsed ? recentArticles.map(renderItem) : null}
@@ -665,7 +669,7 @@ export default function ArticleManager({
                       ) : (
                         <ChevronDown aria-hidden="true" className={styles.groupChevron} />
                       )}
-                      <span>全部文章</span>
+                      <span>{t("article.all")}</span>
                       <span className={styles.groupCount}>{filteredArticles.length}</span>
                     </button>
                     {!allCollapsed ? filteredArticles.map(renderItem) : null}
@@ -676,7 +680,7 @@ export default function ArticleManager({
           ) : (
             <div className={styles.empty}>
               <BookOpen aria-hidden="true" className={styles.emptyIcon} />
-              <span>{query.trim() ? "无匹配文章" : "暂无文章"}</span>
+              <span>{query.trim() ? t("article.noMatch") : t("article.empty")}</span>
               {!query.trim() ? (
                 <button
                   type="button"
@@ -687,7 +691,7 @@ export default function ArticleManager({
                   }}
                 >
                   <Plus aria-hidden="true" className={styles.buttonIcon} />
-                  <span>新建</span>
+                  <span>{t("common.new")}</span>
                 </button>
               ) : null}
             </div>

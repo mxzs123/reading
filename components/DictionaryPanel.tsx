@@ -9,6 +9,7 @@ import {
 } from "react";
 import type React from "react";
 import { playWordSound } from "@/lib/wordAudio";
+import { useI18n } from "@/contexts/I18nContext";
 import styles from "./DictionaryPanel.module.css";
 
 export interface DictionaryMeaning {
@@ -58,6 +59,7 @@ export function DictionaryPanel({
   onStopArticleAudio,
   onWordAudioEnd,
 }: DictionaryPanelProps) {
+  const { t } = useI18n();
   const [dragY, setDragY] = useState(0);
   const draggingRef = useRef(false);
   const startYRef = useRef(0);
@@ -169,13 +171,13 @@ export function DictionaryPanel({
         )}
       <header className={styles.header}>
         <div>
-          <h3 className={styles.title}>{word || "词典"}</h3>
+          <h3 className={styles.title}>{word || t("dictionary.title")}</h3>
           {data?.phonetics && (
             <p className="muted-text">
-              {data.phonetics.uk && <span>英 /{data.phonetics.uk}/</span>}
+              {data.phonetics.uk && <span>{t("dictionary.uk")} /{data.phonetics.uk}/</span>}
               {data.phonetics.us && (
                 <span className={styles.phoneticDivider}>
-                  美 /{data.phonetics.us}/
+                  {t("dictionary.us")} /{data.phonetics.us}/
                 </span>
               )}
             </p>
@@ -185,8 +187,8 @@ export function DictionaryPanel({
           <button
             type="button"
             className={styles.iconButton}
-            aria-label="重播发音"
-            title="重播发音"
+            aria-label={t("dictionary.replay")}
+            title={t("dictionary.replay")}
             disabled={!word}
             onClick={() => word && playWordSound(word, onStopArticleAudio, undefined, onWordAudioEnd)}
           >
@@ -196,13 +198,13 @@ export function DictionaryPanel({
             </svg>
           </button>
           <button className={styles.close} onClick={onClose}>
-            关闭
+            {t("common.close")}
           </button>
         </div>
       </header>
 
       <div className={styles.content}>
-        {loading && <p className="muted-text">正在查询…</p>}
+        {loading && <p className="muted-text">{t("dictionary.loading")}</p>}
         {error && !loading && <p className={styles.error}>{error}</p>}
 
         {!loading && !error && data && data.meanings.length > 0 && (
@@ -219,12 +221,12 @@ export function DictionaryPanel({
         )}
 
         {!loading && !error && data && data.meanings.length === 0 && (
-          <p className="muted-text">暂未查询到释义，可尝试其他单词。</p>
+          <p className="muted-text">{t("dictionary.mobileEmpty")}</p>
         )}
 
         {!loading && !error && data && data.webTranslations.length > 0 && (
           <div className={styles.webSection}>
-            <h4>网络用法</h4>
+            <h4>{t("dictionary.webUsage")}</h4>
             <ul>
               {data.webTranslations.slice(0, 3).map((item) => (
                 <li key={item.key}>

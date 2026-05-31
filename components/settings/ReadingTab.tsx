@@ -1,8 +1,9 @@
 "use client";
 
 import { useSettings } from "@/contexts/SettingsContext";
+import { useI18n } from "@/contexts/I18nContext";
 import { SegmentedControl, RangeField } from "@/components/ui";
-import { boldOptions, readingModeOptions, themeOptions } from "./options";
+import { boldOptions, readingModeOptions, themeOptions, translateOptions } from "./options";
 import styles from "./settingsStyles.module.css";
 
 interface ReadingTabProps {
@@ -11,26 +12,27 @@ interface ReadingTabProps {
 
 export function ReadingTab({ onSwitchToTts }: ReadingTabProps) {
   const { settings, updateSettings } = useSettings();
+  const { t } = useI18n();
 
   return (
     <>
       <section className={styles.section}>
-        <div className={styles.sectionHeader}>阅读模式</div>
+        <div className={styles.sectionHeader}>{t("settings.reading.mode")}</div>
 
         <div className={styles.fieldRow}>
           <SegmentedControl
             value={settings.readingMode}
-            options={readingModeOptions}
+            options={translateOptions(readingModeOptions, t)}
             onChange={(value) => updateSettings({ readingMode: value })}
           />
           <p className={styles.apiKeyHint}>
-            纯净阅读：仅支持单词查词；音频播放：点击段落可生成并播放音频。
+            {t("settings.reading.modeHint")}
           </p>
 
           {settings.readingMode === "pure" ? (
             <div className={styles.callout}>
               <p className={styles.calloutText}>
-                纯净阅读不会生成段落音频；切换到「音频播放」后可配置朗读。
+                {t("settings.reading.pureCallout")}
               </p>
               <button
                 type="button"
@@ -40,7 +42,7 @@ export function ReadingTab({ onSwitchToTts }: ReadingTabProps) {
                   onSwitchToTts?.();
                 }}
               >
-                切换到音频播放
+                {t("settings.reading.switchToAudio")}
               </button>
             </div>
           ) : null}
@@ -48,26 +50,26 @@ export function ReadingTab({ onSwitchToTts }: ReadingTabProps) {
       </section>
 
       <section className={styles.section}>
-        <div className={styles.sectionHeader}>显示外观</div>
+        <div className={styles.sectionHeader}>{t("settings.reading.appearance")}</div>
 
         <div className={styles.fieldRow}>
           <SegmentedControl
             value={settings.theme}
-            options={themeOptions}
+            options={translateOptions(themeOptions, t)}
             onChange={(value) => updateSettings({ theme: value })}
           />
         </div>
 
         <div className={styles.fieldRow}>
-          <span className={styles.fieldLabel}>仿生强度</span>
+          <span className={styles.fieldLabel}>{t("settings.reading.bionicStrength")}</span>
           <SegmentedControl
             value={settings.boldRatio}
-            options={boldOptions}
+            options={translateOptions(boldOptions, t)}
             onChange={(value) => updateSettings({ boldRatio: value })}
           />
           {settings.boldRatio === "custom" ? (
             <RangeField
-              label="自定义比例"
+              label={t("settings.reading.customRatio")}
               value={settings.customBoldRatio}
               min={0}
               max={1}
@@ -76,7 +78,7 @@ export function ReadingTab({ onSwitchToTts }: ReadingTabProps) {
             />
           ) : null}
           <RangeField
-            label="仿生加粗权重"
+            label={t("settings.reading.bionicWeight")}
             value={settings.bionicWeight}
             min={500}
             max={800}

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { SwitchField } from "@/components/ui";
+import { useI18n } from "@/contexts/I18nContext";
 import styles from "./settingsStyles.module.css";
 
 type SyncDirection = "local-to-cloud" | "cloud-to-local";
@@ -13,6 +14,7 @@ interface SyncResult {
 }
 
 export function SyncTab() {
+  const { t } = useI18n();
   const [direction, setDirection] = useState<SyncDirection>("local-to-cloud");
   const [syncArticles, setSyncArticles] = useState(true);
   const [syncSettings, setSyncSettings] = useState(false);
@@ -34,20 +36,21 @@ export function SyncTab() {
         body: JSON.stringify({ direction, scopes }),
       });
 
-      const data = (await response.json()) as Partial<SyncResult> & {
-        error?: string;
-      };
+      const data = (await response.json()) as Partial<SyncResult>;
 
       if (!response.ok) {
-        setMessage(data.error || "同步失败");
+        setMessage(t("settings.sync.failed"));
         return;
       }
 
       setMessage(
-        `已同步 ${data.articles ?? 0} 篇文章，${data.settings ?? 0} 组设置`
+        t("settings.sync.success", {
+          articles: data.articles ?? 0,
+          settings: data.settings ?? 0,
+        })
       );
     } catch {
-      setMessage("同步失败");
+      setMessage(t("settings.sync.failed"));
     } finally {
       setSyncing(false);
     }
@@ -57,28 +60,28 @@ export function SyncTab() {
 
   return (
     <section className={styles.section}>
-      <div className={styles.sectionHeader}>数据同步</div>
+      <div className={styles.sectionHeader}>{t("settings.sync.section")}</div>
 
       <div className={styles.fieldColumn}>
-        <label className={styles.fieldLabel}>同步方向</label>
+        <label className={styles.fieldLabel}>{t("settings.sync.direction")}</label>
         <select
           className={styles.select}
           value={direction}
           onChange={(event) => setDirection(event.target.value as SyncDirection)}
         >
-          <option value="local-to-cloud">本地到云端</option>
-          <option value="cloud-to-local">云端到本地</option>
+          <option value="local-to-cloud">{t("settings.sync.localToCloud")}</option>
+          <option value="cloud-to-local">{t("settings.sync.cloudToLocal")}</option>
         </select>
       </div>
 
       <SwitchField
-        label="同步文章"
+        label={t("settings.sync.articles")}
         checked={syncArticles}
         onChange={setSyncArticles}
       />
 
       <SwitchField
-        label="同步设置"
+        label={t("settings.sync.settings")}
         checked={syncSettings}
         onChange={setSyncSettings}
       />
@@ -89,7 +92,7 @@ export function SyncTab() {
         disabled={!hasScope || syncing}
         onClick={handleSync}
       >
-        {syncing ? "同步中..." : "开始同步"}
+        {syncing ? t("settings.sync.syncing") : t("settings.sync.start")}
       </button>
 
       {message ? <p className={styles.apiKeyHint}>{message}</p> : null}

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef } from "react";
 import { FileText } from "lucide-react";
 import { useAudioStore } from "@/stores/audioStore";
+import { useI18n } from "@/contexts/I18nContext";
 import { buildParagraphs, buildParagraphKey } from "@/lib/paragraphs";
 import type { WordAskTarget } from "@/lib/wordInteraction";
 import { Paragraph } from "./Paragraph";
@@ -29,6 +30,7 @@ export function ReadingArea({
   onStopArticleAudio,
   onWordAudioEnd,
 }: ReadingAreaProps) {
+  const { t } = useI18n();
   const segments = useAudioStore((s) => s.segments);
   const initSegments = useAudioStore((s) => s.initSegments);
   const lastParagraphKeyRef = useRef<string | null>(null);
@@ -48,11 +50,11 @@ export function ReadingArea({
     return (
       <div className={styles.empty}>
         <FileText aria-hidden="true" className={styles.emptyIcon} />
-        <p className={styles.emptyText}>粘贴英文原文，或从左侧选择文章</p>
+        <p className={styles.emptyText}>{t("reading.empty")}</p>
         <p className={styles.emptyHint}>
           <kbd className={styles.kbd}>⌘</kbd>
           <kbd className={styles.kbd}>↵</kbd>
-          <span>生成阅读</span>
+          <span>{t("reading.generateHint")}</span>
         </p>
       </div>
     );

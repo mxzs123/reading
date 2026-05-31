@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, type CSSProperties } from "react";
 import type { AiExplainTarget } from "@/lib/aiExplain";
+import { useI18n } from "@/contexts/I18nContext";
 import styles from "./AiExplainPanel.module.css";
 
 interface AiExplainPanelProps {
@@ -28,6 +29,7 @@ export function AiExplainPanel({
   anchor,
   onClose,
 }: AiExplainPanelProps) {
+  const { t } = useI18n();
   const panelStyle = useMemo<CSSProperties | undefined>(() => {
     if (!anchor || typeof window === "undefined") return undefined;
 
@@ -77,20 +79,20 @@ export function AiExplainPanel({
       >
         <header className={styles.header}>
           <div className={styles.headingGroup}>
-            <p className={styles.kicker}>Ask AI</p>
-            <h3 className={styles.title}>{target?.text || "问模型"}</h3>
+            <p className={styles.kicker}>{t("ai.mobileKicker")}</p>
+            <h3 className={styles.title}>{target?.text || t("ai.panelTitle")}</h3>
           </div>
           <button className={styles.close} onClick={onClose}>
-            关闭
+            {t("common.close")}
           </button>
         </header>
 
         <div className={styles.content}>
           {loading && !displayAnswer ? (
-            <p className="muted-text">正在询问模型…</p>
+            <p className="muted-text">{t("ai.loading")}</p>
           ) : null}
 
-          {error ? <p className={styles.error}>{error}</p> : null}
+          {error ? <p className={styles.error}>{t("ai.error")}</p> : null}
 
           {displayAnswer ? (
             <div className={styles.answer}>{displayAnswer}</div>

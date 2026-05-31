@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useAudioStore } from "@/stores/audioStore";
 import { useSettings } from "@/contexts/SettingsContext";
+import { useI18n } from "@/contexts/I18nContext";
 import { formatTime } from "@/lib/paragraphs";
 import styles from "./MiniPlayer.module.css";
 
@@ -10,6 +11,7 @@ const SEEK_STEP_SECONDS = 3;
 
 export function MiniPlayer() {
   const { settings } = useSettings();
+  const { t } = useI18n();
   const activeSegmentId = useAudioStore((s) => s.activeSegmentId);
   const isPlaying = useAudioStore((s) => s.isPlaying);
   const currentTime = useAudioStore((s) => s.currentTime);
@@ -86,13 +88,13 @@ export function MiniPlayer() {
   if (!activeSegmentId || settings.readingMode === "pure") return null;
 
   return (
-    <div className={styles.player} role="complementary" aria-label="迷你播放器">
+    <div className={styles.player} role="complementary" aria-label={t("audio.miniPlayer")}>
       <div className={styles.controls}>
         <button
           type="button"
           className={`${styles.primaryButton} ${hotkeyPulse ? styles.hotkeyPulse : ""}`}
           onClick={togglePlayPause}
-          aria-label={isPlaying ? "暂停当前段落" : "播放当前段落"}
+          aria-label={isPlaying ? t("audio.pauseCurrent") : t("audio.playCurrent")}
           aria-pressed={isPlaying}
         >
           {isPlaying ? (
@@ -117,7 +119,7 @@ export function MiniPlayer() {
             value={Math.min(safeDuration, safeCurrent)}
             onChange={(e) => seek(Number(e.target.value))}
             className={styles.seekBar}
-            aria-label="播放进度"
+            aria-label={t("audio.progress")}
             aria-valuemin={0}
             aria-valuemax={safeDuration}
             aria-valuenow={safeCurrent}

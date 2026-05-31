@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useSettings } from "@/contexts/SettingsContext";
+import { useI18n } from "@/contexts/I18nContext";
+import { LOCALES, type Locale } from "@/lib/i18n";
 import { SegmentedControl, type SegmentedOption } from "@/components/ui";
 import {
   AiTab,
@@ -23,6 +25,7 @@ type SettingsTab = "reading" | "typography" | "layout" | "tts" | "ai" | "sync";
 
 export function SettingsPanel({ isOpen, onClose, onArticlesCleared }: SettingsPanelProps) {
   const { settings, resetSettings } = useSettings();
+  const { locale, localeLabels, setLocale, t } = useI18n();
   const [isClearing, setIsClearing] = useState(false);
   const [viewportWidth, setViewportWidth] = useState<number>(() =>
     typeof window !== "undefined" ? window.innerWidth || 0 : 0
@@ -40,18 +43,18 @@ export function SettingsPanel({ isOpen, onClose, onArticlesCleared }: SettingsPa
   const tabOptions = useMemo<ReadonlyArray<SegmentedOption<SettingsTab>>>(
     () => {
       const base: ReadonlyArray<SegmentedOption<SettingsTab>> = [
-        { value: "reading", label: "阅读" },
-        { value: "typography", label: "排版" },
-        { value: "layout", label: "布局" },
-        { value: "ai", label: "AI" },
-        { value: "sync", label: "同步" },
+        { value: "reading", label: t("settings.tab.reading") },
+        { value: "typography", label: t("settings.tab.typography") },
+        { value: "layout", label: t("settings.tab.layout") },
+        { value: "ai", label: t("settings.tab.ai") },
+        { value: "sync", label: t("settings.tab.sync") },
       ];
 
       return canConfigureTts
-        ? [...base, { value: "tts", label: "朗读" }]
+        ? [...base, { value: "tts", label: t("settings.tab.tts") }]
         : base;
     },
-    [canConfigureTts]
+    [canConfigureTts, t]
   );
 
   useEffect(() => {
@@ -61,7 +64,7 @@ export function SettingsPanel({ isOpen, onClose, onArticlesCleared }: SettingsPa
   }, [activeTab, canConfigureTts]);
 
   const handleClearAllArticles = async () => {
-    if (!confirm("确定要删除所有文章吗？此操作不可恢复！")) {
+    if (!confirm(t("settings.clearAllConfirm"))) {
       return;
     }
     setIsClearing(true);
@@ -69,13 +72,13 @@ export function SettingsPanel({ isOpen, onClose, onArticlesCleared }: SettingsPa
       const response = await fetch("/api/articles", { method: "DELETE" });
       if (response.ok) {
         const data = await response.json();
-        alert(`已删除 ${data.deleted} 篇文章`);
+        alert(t("settings.deletedArticles", { count: data.deleted }));
         onArticlesCleared?.();
       } else {
-        alert("删除失败，请重试");
+        alert(t("settings.deleteFailed"));
       }
     } catch {
-      alert("删除失败，请重试");
+      alert(t("settings.deleteFailed"));
     } finally {
       setIsClearing(false);
     }
@@ -95,11 +98,25 @@ export function SettingsPanel({ isOpen, onClose, onArticlesCleared }: SettingsPa
       >
         <header className={styles.header}>
           <div>
-            <h2 className={styles.title}>阅读设置</h2>
-            <p className="muted-text">定制您的专属阅读体验</p>
+            <h2 className={styles.title}>{t("settings.title")}</h2>
+            <p className="muted-text">{t("settings.subtitle")}</p>
           </div>
+          <label className={styles.languageSelectWrap}>
+            <span>{t("language.label")}</span>
+            <select
+              className={styles.languageSelect}
+              value={locale}
+              onChange={(event) => setLocale(event.target.value as Locale)}
+            >
+              {LOCALES.map((item) => (
+                <option key={item} value={item}>
+                  {localeLabels[item]}
+                </option>
+              ))}
+            </select>
+          </label>
           <button className={styles.closeBtn} onClick={onClose}>
-            关闭
+            {t("settings.close")}
           </button>
         </header>
 
@@ -142,14 +159,14 @@ export function SettingsPanel({ isOpen, onClose, onArticlesCleared }: SettingsPa
 
         <div className={styles.footer}>
           <button className={styles.resetButton} onClick={resetSettings}>
-            恢复默认设置
+            {t("settings.reset")}
           </button>
           <button
             className={styles.dangerButton}
             onClick={handleClearAllArticles}
             disabled={isClearing}
           >
-            {isClearing ? "删除中..." : "清除所有文章"}
+            {isClearing ? t("settings.clearing") : t("settings.clearAll")}
           </button>
         </div>
       </aside>

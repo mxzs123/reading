@@ -2,9 +2,10 @@
 
 import { useMemo, type ReactNode } from "react";
 import { useSettings } from "@/contexts/SettingsContext";
+import { useI18n } from "@/contexts/I18nContext";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { SegmentedControl, RangeField } from "@/components/ui";
-import { widthModeOptions } from "./options";
+import { translateOptions, widthModeOptions } from "./options";
 import styles from "./settingsStyles.module.css";
 
 interface LayoutTabProps {
@@ -13,6 +14,7 @@ interface LayoutTabProps {
 
 export function LayoutTab({ viewportWidth }: LayoutTabProps) {
   const { settings, updateSettings, hydrated } = useSettings();
+  const { t } = useI18n();
   const isMobile = useMediaQuery("(max-width: 768px)");
 
   const widthMode = settings.pageWidthMode ?? "px";
@@ -63,7 +65,7 @@ export function LayoutTab({ viewportWidth }: LayoutTabProps) {
   if (widthMode === "vw") {
     pageWidthControl = (
       <RangeField
-        label="内容宽度"
+        label={t("settings.layout.contentWidth")}
         value={settings.pageWidthVw}
         unit="vw"
         min={60}
@@ -75,7 +77,7 @@ export function LayoutTab({ viewportWidth }: LayoutTabProps) {
   } else if (widthMode === "ch") {
     pageWidthControl = (
       <RangeField
-        label="内容宽度"
+        label={t("settings.layout.contentWidth")}
         value={settings.pageWidthCh}
         unit="ch"
         min={40}
@@ -92,7 +94,7 @@ export function LayoutTab({ viewportWidth }: LayoutTabProps) {
 
     pageWidthControl = (
       <RangeField
-        label="内容宽度"
+        label={t("settings.layout.contentWidth")}
         value={settings.pageWidth}
         unit="px"
         min={pageWidthMin}
@@ -105,12 +107,12 @@ export function LayoutTab({ viewportWidth }: LayoutTabProps) {
 
   return (
     <section className={styles.section}>
-      <div className={styles.sectionHeader}>页面布局</div>
+      <div className={styles.sectionHeader}>{t("settings.layout.section")}</div>
       <div className={styles.fieldRow}>
-        <span className={styles.fieldLabel}>宽度模式</span>
+        <span className={styles.fieldLabel}>{t("settings.layout.widthMode")}</span>
         <SegmentedControl
           value={widthMode}
-          options={widthModeOptions}
+          options={translateOptions(widthModeOptions, t)}
           onChange={(value) => updateSettings({ pageWidthMode: value })}
         />
       </div>
@@ -118,7 +120,7 @@ export function LayoutTab({ viewportWidth }: LayoutTabProps) {
       <div className={styles.grid2}>
         {pageWidthControl}
         <RangeField
-          label="页边距"
+          label={t("settings.layout.margin")}
           value={settings.readingPadding}
           unit="px"
           min={8}
@@ -129,8 +131,8 @@ export function LayoutTab({ viewportWidth }: LayoutTabProps) {
       </div>
       <p className={styles.apiKeyHint}>
         {approxCharsPerLine
-          ? `估算约 ${approxCharsPerLine} 字/行；窄屏下会受屏宽限制。`
-          : "窄屏下会受屏宽限制。"}
+          ? t("settings.layout.approx", { count: approxCharsPerLine })
+          : t("settings.layout.narrowHint")}
       </p>
     </section>
   );

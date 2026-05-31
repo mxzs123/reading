@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useSettings } from "@/contexts/SettingsContext";
+import { useI18n } from "@/contexts/I18nContext";
 import type { ApplyTextNormalization, ElevenOutputFormat } from "@/lib/settings";
 import { SecretTextField, RangeField, SwitchField } from "@/components/ui";
 import {
@@ -9,11 +10,13 @@ import {
   elevenOutputFormatOptions,
   textNormalizationOptions,
   latencyOptions,
+  translateOptions,
 } from "./options";
 import styles from "./settingsStyles.module.css";
 
 export function TtsElevenSettings() {
   const { settings, updateSettings } = useSettings();
+  const { t } = useI18n();
   const [showApiKey, setShowApiKey] = useState(false);
 
   return (
@@ -27,15 +30,15 @@ export function TtsElevenSettings() {
         onChange={(value) => updateSettings({ elevenApiKey: value })}
         hint={
           <>
-            在{" "}
+            {t("settings.eleven.consoleHintBefore")}
             <a
               href="https://elevenlabs.io/app"
               target="_blank"
               rel="noopener noreferrer"
             >
-              ElevenLabs 控制台
-            </a>{" "}
-            获取 API Key。建议使用静态密钥。
+              {t("settings.eleven.consoleLink")}
+            </a>
+            {t("settings.eleven.consoleHintAfter")}
           </>
         }
       />
@@ -48,21 +51,20 @@ export function TtsElevenSettings() {
             className={styles.apiKeyInput}
             value={settings.elevenVoiceId}
             onChange={(e) => updateSettings({ elevenVoiceId: e.target.value })}
-            placeholder="如 Bella: EXAVITQu4vr4xnSDxMaL"
+            placeholder={t("settings.eleven.voicePlaceholder")}
           />
           <p className={styles.apiKeyHint}>
-            推荐女声：Bella (EXAVITQu4vr4xnSDxMaL)、Rachel (21m00Tcm4TlvDq8ikWAM)。
-            可在 ElevenLabs 控制台 Voice Library 按 Female / 高质量筛选更多。
+            {t("settings.eleven.voiceHint")}
           </p>
         </div>
         <div className={styles.fieldColumn}>
-          <label className={styles.fieldLabel}>模型</label>
+          <label className={styles.fieldLabel}>{t("settings.eleven.model")}</label>
           <select
             className={styles.select}
             value={settings.elevenModelId}
             onChange={(e) => updateSettings({ elevenModelId: e.target.value })}
           >
-            {elevenModelOptions.map((option) => (
+            {translateOptions(elevenModelOptions, t).map((option) => (
               <option key={option.value} value={option.value}>
                 {option.label}
               </option>
@@ -73,7 +75,7 @@ export function TtsElevenSettings() {
 
       <div className={styles.grid2}>
         <div className={styles.fieldColumn}>
-          <label className={styles.fieldLabel}>输出格式</label>
+          <label className={styles.fieldLabel}>{t("settings.eleven.format")}</label>
           <select
             className={styles.select}
             value={settings.elevenOutputFormat}
@@ -83,7 +85,7 @@ export function TtsElevenSettings() {
               })
             }
           >
-            {elevenOutputFormatOptions.map((option) => (
+            {translateOptions(elevenOutputFormatOptions, t).map((option) => (
               <option key={option.value} value={option.value}>
                 {option.label}
               </option>
@@ -91,7 +93,7 @@ export function TtsElevenSettings() {
           </select>
         </div>
         <div className={styles.fieldColumn}>
-          <label className={styles.fieldLabel}>语言代码 (ISO 639-1)</label>
+          <label className={styles.fieldLabel}>{t("settings.eleven.languageCode")}</label>
           <input
             type="text"
             className={styles.apiKeyInput}
@@ -104,7 +106,7 @@ export function TtsElevenSettings() {
 
       <div className={styles.grid2}>
         <RangeField
-          label="稳定性"
+          label={t("settings.eleven.stability")}
           value={settings.elevenStability}
           min={0}
           max={1}
@@ -112,7 +114,7 @@ export function TtsElevenSettings() {
           onChange={(value) => updateSettings({ elevenStability: value })}
         />
         <RangeField
-          label="相似度增强"
+          label={t("settings.eleven.similarity")}
           value={settings.elevenSimilarityBoost}
           min={0}
           max={1}
@@ -122,11 +124,11 @@ export function TtsElevenSettings() {
       </div>
 
       <details className={styles.details}>
-        <summary className={styles.detailsSummary}>高级参数</summary>
+        <summary className={styles.detailsSummary}>{t("settings.tts.advanced")}</summary>
         <div className={styles.detailsBody}>
           <div className={styles.grid2}>
             <RangeField
-              label="风格 (Style)"
+              label={t("settings.eleven.style")}
               value={settings.elevenStyle}
               min={0}
               max={1}
@@ -134,7 +136,7 @@ export function TtsElevenSettings() {
               onChange={(value) => updateSettings({ elevenStyle: value })}
             />
             <RangeField
-              label="语速 (Speed)"
+              label={t("settings.eleven.speed")}
               value={settings.elevenSpeed}
               min={0.5}
               max={2}
@@ -153,7 +155,7 @@ export function TtsElevenSettings() {
 
           <div className={styles.grid2}>
             <div className={styles.fieldColumn}>
-              <label className={styles.fieldLabel}>Seed (可选)</label>
+              <label className={styles.fieldLabel}>{t("settings.eleven.seed")}</label>
               <input
                 type="number"
                 className={styles.apiKeyInput}
@@ -168,11 +170,11 @@ export function TtsElevenSettings() {
                         : Math.max(0, parsed),
                   });
                 }}
-                placeholder="留空则随机"
+                placeholder={t("settings.eleven.seedPlaceholder")}
               />
             </div>
             <div className={styles.fieldColumn}>
-              <label className={styles.fieldLabel}>文本正则化</label>
+              <label className={styles.fieldLabel}>{t("settings.eleven.textNormalization")}</label>
               <select
                 className={styles.select}
                 value={settings.elevenApplyTextNormalization}
@@ -183,7 +185,7 @@ export function TtsElevenSettings() {
                   })
                 }
               >
-                {textNormalizationOptions.map((option) => (
+                {translateOptions(textNormalizationOptions, t).map((option) => (
                   <option key={option.value} value={option.value}>
                     {option.label}
                   </option>
@@ -194,7 +196,7 @@ export function TtsElevenSettings() {
 
           <div className={styles.grid2}>
             <SwitchField
-              label="启用日志 (enable_logging)"
+              label="enable_logging"
               checked={settings.elevenEnableLogging}
               onChange={(checked) =>
                 updateSettings({ elevenEnableLogging: checked })
@@ -202,7 +204,7 @@ export function TtsElevenSettings() {
             />
 
             <div className={styles.fieldColumn}>
-              <label className={styles.fieldLabel}>流式延迟优化</label>
+              <label className={styles.fieldLabel}>{t("settings.eleven.streamLatency")}</label>
               <select
                 className={styles.select}
                 value={settings.elevenOptimizeStreamingLatency ?? ""}
@@ -216,7 +218,7 @@ export function TtsElevenSettings() {
                   });
                 }}
               >
-                {latencyOptions.map((option) => (
+                {translateOptions(latencyOptions, t).map((option) => (
                   <option key={option.label} value={option.value}>
                     {option.label}
                   </option>

@@ -1,8 +1,9 @@
 "use client";
 
 import { useSettings } from "@/contexts/SettingsContext";
+import { useI18n } from "@/contexts/I18nContext";
 import { SegmentedControl, SwitchField } from "@/components/ui";
-import { ttsProviderOptions } from "./options";
+import { translateOptions, ttsProviderOptions } from "./options";
 import { TtsEdgeSettings } from "./TtsEdgeSettings";
 import { TtsAzureSettings } from "./TtsAzureSettings";
 import { TtsElevenSettings } from "./TtsElevenSettings";
@@ -11,16 +12,17 @@ import styles from "./settingsStyles.module.css";
 
 export function TtsTab() {
   const { settings, updateSettings } = useSettings();
+  const { t } = useI18n();
 
   return (
     <section className={styles.section}>
-      <div className={styles.sectionHeader}>语音朗读</div>
+      <div className={styles.sectionHeader}>{t("settings.tts.section")}</div>
 
       <div className={styles.fieldRow}>
-        <span className={styles.fieldLabel}>TTS 提供商</span>
+        <span className={styles.fieldLabel}>{t("settings.tts.provider")}</span>
         <SegmentedControl
           value={settings.ttsProvider}
-          options={ttsProviderOptions}
+          options={translateOptions(ttsProviderOptions, t)}
           onChange={(value) => updateSettings({ ttsProvider: value })}
         />
       </div>
@@ -36,14 +38,14 @@ export function TtsTab() {
       )}
 
       <SwitchField
-        label="自动播放下一段"
+        label={t("settings.tts.autoPlayNext")}
         checked={settings.autoPlayNext}
         onChange={(checked) => updateSettings({ autoPlayNext: checked })}
       />
 
       {settings.ttsProvider === "elevenlabs" ? (
         <SwitchField
-          label="单词同步高亮"
+          label={t("settings.tts.wordSync")}
           checked={settings.elevenWordSyncHighlight}
           onChange={(checked) =>
             updateSettings({ elevenWordSyncHighlight: checked })
@@ -52,7 +54,7 @@ export function TtsTab() {
       ) : null}
 
       <div className={styles.fieldColumn}>
-        <label className={styles.fieldLabel}>并发生成上限</label>
+        <label className={styles.fieldLabel}>{t("settings.tts.concurrency")}</label>
         <input
           type="number"
           min={1}
@@ -68,7 +70,7 @@ export function TtsTab() {
           }}
         />
         <p className={styles.apiKeyHint}>
-          每批请求会并行发送至多该数量的段落音频，完成后再继续下一批；并发越高越易触发配额限制。
+          {t("settings.tts.concurrencyHint")}
         </p>
       </div>
     </section>

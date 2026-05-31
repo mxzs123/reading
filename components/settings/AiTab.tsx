@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useSettings } from "@/contexts/SettingsContext";
+import { useI18n } from "@/contexts/I18nContext";
 import type { DeepSeekModel } from "@/lib/settings";
 import { RangeField, SecretTextField, SwitchField } from "@/components/ui";
 import { deepseekModelOptions } from "./options";
@@ -9,14 +10,15 @@ import styles from "./settingsStyles.module.css";
 
 export function AiTab() {
   const { settings, updateSettings } = useSettings();
+  const { t } = useI18n();
   const [showApiKey, setShowApiKey] = useState(false);
 
   return (
     <section className={styles.section}>
-      <div className={styles.sectionHeader}>问模型</div>
+      <div className={styles.sectionHeader}>{t("settings.ai.section")}</div>
 
       <SwitchField
-        label="长按单词问模型"
+        label={t("settings.ai.enable")}
         checked={settings.aiExplainEnabled}
         onChange={(checked) => updateSettings({ aiExplainEnabled: checked })}
       />
@@ -24,16 +26,16 @@ export function AiTab() {
       <SecretTextField
         label="DeepSeek API Key"
         value={settings.deepseekApiKey}
-        placeholder="输入 DeepSeek API Key"
+        placeholder={t("settings.ai.placeholder")}
         visible={showApiKey}
         onToggleVisible={() => setShowApiKey((prev) => !prev)}
         onChange={(value) => updateSettings({ deepseekApiKey: value })}
-        hint="Key 只保存在本机 localStorage。"
+        hint={t("settings.ai.deepseekHint")}
       />
 
       <div className={styles.grid2}>
         <div className={styles.fieldColumn}>
-          <label className={styles.fieldLabel}>模型</label>
+          <label className={styles.fieldLabel}>{t("settings.ai.model")}</label>
           <select
             className={styles.select}
             value={settings.deepseekModel}
@@ -50,7 +52,7 @@ export function AiTab() {
         </div>
 
         <div className={styles.fieldColumn}>
-          <label className={styles.fieldLabel}>最大输出 tokens</label>
+          <label className={styles.fieldLabel}>{t("settings.ai.maxTokens")}</label>
           <input
             type="number"
             min={200}
@@ -70,7 +72,7 @@ export function AiTab() {
       </div>
 
       <RangeField
-        label="长按触发时间"
+        label={t("settings.ai.longPress")}
         value={settings.aiLongPressMs}
         min={350}
         max={1200}
@@ -80,17 +82,17 @@ export function AiTab() {
       />
 
       <RangeField
-        label="上下文长度"
+        label={t("settings.ai.contextChars")}
         value={settings.aiContextChars}
         min={300}
         max={4000}
         step={100}
-        unit=" 字符"
+        unit={t("settings.ai.contextUnit")}
         onChange={(value) => updateSettings({ aiContextChars: value })}
       />
 
       <p className={styles.apiKeyHint}>
-        桌面端按住英文单词即可发送该词、当前段落和相邻上下文。
+        {t("settings.ai.desktopHint")}
       </p>
     </section>
   );

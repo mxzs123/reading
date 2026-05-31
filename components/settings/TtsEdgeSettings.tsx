@@ -1,18 +1,20 @@
 "use client";
 
 import { useSettings } from "@/contexts/SettingsContext";
+import { useI18n } from "@/contexts/I18nContext";
 import type { EdgeTTSVoice } from "@/lib/settings";
 import { RangeField } from "@/components/ui";
-import { edgeVoiceOptions } from "./options";
+import { edgeVoiceOptions, translateOptions } from "./options";
 import styles from "./settingsStyles.module.css";
 
 export function TtsEdgeSettings() {
   const { settings, updateSettings } = useSettings();
+  const { t } = useI18n();
 
   return (
     <>
       <div className={styles.fieldColumn}>
-        <label className={styles.fieldLabel}>朗读声音</label>
+        <label className={styles.fieldLabel}>{t("settings.tts.voice")}</label>
         <select
           className={styles.select}
           value={settings.edgeVoice}
@@ -20,23 +22,23 @@ export function TtsEdgeSettings() {
             updateSettings({ edgeVoice: e.target.value as EdgeTTSVoice })
           }
         >
-          {edgeVoiceOptions.map((option) => (
+          {translateOptions(edgeVoiceOptions, t).map((option) => (
             <option key={option.value} value={option.value}>
               {option.label}
             </option>
           ))}
         </select>
         <p className={styles.apiKeyHint}>
-          Edge Read Aloud 档位走浏览器朗读服务，无需 API Key，默认使用 Emma。
+          {t("settings.tts.edgeHint")}
         </p>
       </div>
 
       <details className={styles.details}>
-        <summary className={styles.detailsSummary}>高级参数</summary>
+        <summary className={styles.detailsSummary}>{t("settings.tts.advanced")}</summary>
         <div className={styles.detailsBody}>
           <div className={styles.grid2}>
             <RangeField
-              label="语速"
+              label={t("settings.tts.rate")}
               value={settings.edgeRate}
               min={0.6}
               max={1.8}
@@ -44,7 +46,7 @@ export function TtsEdgeSettings() {
               onChange={(value) => updateSettings({ edgeRate: value })}
             />
             <RangeField
-              label="音高"
+              label={t("settings.tts.pitch")}
               value={settings.edgePitch}
               min={-50}
               max={50}

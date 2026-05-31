@@ -27,6 +27,7 @@ import { ReadingArea } from "@/components/ReadingArea";
 import { MiniPlayer } from "@/components/MiniPlayer";
 import { useAudioStore } from "@/stores/audioStore";
 import { useSettings } from "@/contexts/SettingsContext";
+import { useI18n } from "@/contexts/I18nContext";
 import styles from "./page.module.css";
 
 type PanelAnchor = {
@@ -37,6 +38,7 @@ type PanelAnchor = {
 };
 
 export default function Home() {
+  const { t } = useI18n();
   const [sourceText, setSourceText] = useState("");
   const [userSettingsOpen, setUserSettingsOpen] = useState<boolean>(false);
   const [articleSidebarOpen, setArticleSidebarOpen] = useState<boolean>(true);
@@ -88,9 +90,9 @@ export default function Home() {
   // 词典 hook
   const dictionary = useDictionary({
     onData: setDictionaryData,
-    onError: (error) => {
+    onError: () => {
       setDictionaryData(undefined);
-      setDictionaryError(error);
+      setDictionaryError(t("dictionary.lookupError"));
     },
     onLoadingChange: setDictionaryLoading,
   });
@@ -325,11 +327,8 @@ export default function Home() {
   }, []);
 
   const placeholder = useMemo(
-    () =>
-      [
-        "粘贴英文原文",
-      ].join("\n"),
-    []
+    () => [t("source.placeholder")].join("\n"),
+    [t]
   );
   const trimmedSource = sourceText.trim();
   const sourceStats = useMemo(() => {
@@ -345,9 +344,9 @@ export default function Home() {
   }, [sourceText, trimmedSource]);
   const sourcePreview = useMemo(() => {
     const cleaned = trimmedSource.replace(/\s+/g, " ");
-    if (!cleaned) return "原文";
+    if (!cleaned) return t("source.defaultPreview");
     return cleaned.length > 48 ? `${cleaned.slice(0, 48)}…` : cleaned;
-  }, [trimmedSource]);
+  }, [trimmedSource, t]);
   const resetWorkspace = useCallback(() => {
     dictionary.abortCurrentLookup();
     setSourceText("");
@@ -446,7 +445,7 @@ export default function Home() {
                 <textarea
                   ref={textareaRef}
                   className={styles.textarea}
-                  aria-label="原文输入"
+                  aria-label={t("source.inputLabel")}
                   value={sourceText}
                   onChange={(event) => setSourceText(event.target.value)}
                   onKeyDown={(e) => {
@@ -460,7 +459,7 @@ export default function Home() {
                 />
                 <div className={styles.helperRow}>
                   <span className={styles.metaText}>
-                    {sourceStats.chars} 字符 · {sourceStats.words} 词
+                    {t("source.stats", { chars: sourceStats.chars, words: sourceStats.words })}
                   </span>
                   <div className={styles.actionGroup}>
                     <button
@@ -470,7 +469,7 @@ export default function Home() {
                       title="Ctrl/Cmd + Enter"
                     >
                       <Sparkles aria-hidden="true" className={styles.buttonIcon} />
-                      <span>生成</span>
+                      <span>{t("source.generate")}</span>
                     </button>
                   </div>
                 </div>
@@ -483,11 +482,11 @@ export default function Home() {
                   setInputCollapsed(false);
                   setTimeout(() => textareaRef.current?.focus(), 0);
                 }}
-                title="编辑原文"
+                title={t("source.edit")}
               >
                 <FileText aria-hidden="true" className={styles.sourceBarIcon} />
                 <span className={styles.sourceBarLabel}>{sourcePreview}</span>
-                <span className={styles.sourceBarMeta}>{sourceStats.words} 词</span>
+                <span className={styles.sourceBarMeta}>{t("source.words", { count: sourceStats.words })}</span>
                 <Edit3 aria-hidden="true" className={styles.sourceBarEdit} />
               </button>
             )}
@@ -521,8 +520,8 @@ export default function Home() {
                   type="button"
                   className={`${styles.clearButton} ${styles.iconButton}`}
                   onClick={() => setToolSidebarOpen(false)}
-                  aria-label="收起工具"
-                  title="收起工具"
+                  aria-label={t("audio.collapseTools")}
+                  title={t("audio.collapseTools")}
                 >
                   <PanelRightClose aria-hidden="true" />
                 </button>
@@ -536,15 +535,15 @@ export default function Home() {
                     ) : (
                       <Languages aria-hidden="true" className={styles.sectionIcon} />
                     )}
-                    <span>{aiOpen ? "AI 解释" : "词典"}</span>
+                    <span>{aiOpen ? t("ai.explainTitle") : t("dictionary.title")}</span>
                   </h3>
                   {aiOpen || selectedWord ? (
                     <button
                       type="button"
                       className={`${styles.toolTextButton} ${styles.iconButton}`}
                       onClick={aiOpen ? handleCloseAiExplain : handleCloseDictionary}
-                      aria-label="清除"
-                      title="清除"
+                      aria-label={t("dictionary.clear")}
+                      title={t("dictionary.clear")}
                     >
                       <X aria-hidden="true" />
                     </button>
@@ -559,9 +558,9 @@ export default function Home() {
                       </div>
                     ) : null}
                     {aiLoading && !aiAnswer.trim() ? (
-                      <p className={styles.toolMuted}>正在询问模型...</p>
+                      <p className={styles.toolMuted}>{t("ai.loading")}</p>
                     ) : null}
-                    {aiError ? <p className={styles.toolError}>{aiError}</p> : null}
+                    {aiError ? <p className={styles.toolError}>{t("ai.error")}</p> : null}
                     {aiAnswer.trim() ? (
                       <div className={styles.aiAnswer}>{aiAnswer.trim()}</div>
                     ) : null}
@@ -572,13 +571,13 @@ export default function Home() {
                       <strong>{selectedWord}</strong>
                       {dictionaryData?.phonetics ? (
                         <span>
-                          {dictionaryData.phonetics.uk ? `英 /${dictionaryData.phonetics.uk}/` : ""}
-                          {dictionaryData.phonetics.us ? ` 美 /${dictionaryData.phonetics.us}/` : ""}
+                          {dictionaryData.phonetics.uk ? `${t("dictionary.uk")} /${dictionaryData.phonetics.uk}/` : ""}
+                          {dictionaryData.phonetics.us ? ` ${t("dictionary.us")} /${dictionaryData.phonetics.us}/` : ""}
                         </span>
                       ) : null}
                     </div>
 
-                    {dictionaryLoading ? <p className={styles.toolMuted}>正在查询...</p> : null}
+                    {dictionaryLoading ? <p className={styles.toolMuted}>{t("dictionary.loading")}</p> : null}
                     {dictionaryError && !dictionaryLoading ? (
                       <p className={styles.toolError}>{dictionaryError}</p>
                     ) : null}
@@ -594,11 +593,11 @@ export default function Home() {
                             ))}
                           </ul>
                         ) : (
-                          <p className={styles.toolMuted}>可尝试选择其他单词。</p>
+                          <p className={styles.toolMuted}>{t("dictionary.empty")}</p>
                         )}
                         {dictionaryData.webTranslations.length > 0 ? (
                           <div className={styles.webMeanings}>
-                            <span>网络用法</span>
+                            <span>{t("dictionary.webUsage")}</span>
                             {dictionaryData.webTranslations.slice(0, 2).map((item) => (
                               <p key={item.key}>
                                 <strong>{item.key}</strong> {item.translations.slice(0, 2).join("；")}
@@ -610,7 +609,7 @@ export default function Home() {
                     ) : null}
                   </div>
                 ) : (
-                  <p className={styles.toolMuted}>点击单词查词，长按问 AI。</p>
+                  <p className={styles.toolMuted}>{t("dictionary.hint")}</p>
                 )}
               </section>
 
@@ -618,14 +617,14 @@ export default function Home() {
                 <div className={styles.toolSectionHeader}>
                   <h3>
                     <Volume2 aria-hidden="true" className={styles.sectionIcon} />
-                    <span>朗读</span>
+                    <span>{t("audio.readAloud")}</span>
                   </h3>
-                  <span>{settings.readingMode === "audio" ? "音频模式" : "纯净模式"}</span>
+                  <span>{settings.readingMode === "audio" ? t("audio.audioMode") : t("audio.pureMode")}</span>
                 </div>
                 {settings.readingMode === "audio" && trimmedSource && total > 0 ? (
                   <div className={styles.toolStack}>
                     <span className={styles.progressText}>
-                      已就绪 {readyCount}/{total}
+                      {t("audio.ready", { ready: readyCount, total })}
                     </span>
                     <button
                       type="button"
@@ -634,11 +633,11 @@ export default function Home() {
                       disabled={generatingCount > 0}
                     >
                       <Volume2 aria-hidden="true" className={styles.buttonIcon} />
-                      <span>{generatingCount > 0 ? "生成中..." : "生成音频"}</span>
+                      <span>{generatingCount > 0 ? t("audio.generating") : t("audio.generate")}</span>
                     </button>
                   </div>
                 ) : (
-                  <p className={styles.toolMuted}>生成后管理段落音频。</p>
+                  <p className={styles.toolMuted}>{t("audio.manageHint")}</p>
                 )}
               </section>
 
@@ -649,7 +648,7 @@ export default function Home() {
                   onClick={() => setUserSettingsOpen(true)}
                 >
                   <Settings aria-hidden="true" className={styles.buttonIcon} />
-                  <span>设置</span>
+                  <span>{t("common.settings")}</span>
                 </button>
               </div>
             </>
@@ -658,8 +657,8 @@ export default function Home() {
               type="button"
               className={styles.toolCollapsedButton}
               onClick={() => setToolSidebarOpen(true)}
-              aria-label="展开工具"
-              title="展开工具"
+              aria-label={t("audio.expandTools")}
+              title={t("audio.expandTools")}
             >
               <PanelRightOpen aria-hidden="true" />
             </button>

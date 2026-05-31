@@ -2,13 +2,15 @@
 
 import { useState } from "react";
 import { useSettings } from "@/contexts/SettingsContext";
+import { useI18n } from "@/contexts/I18nContext";
 import type { AzureTTSVoice } from "@/lib/settings";
 import { SecretTextField, RangeField } from "@/components/ui";
-import { azureVoiceOptions } from "./options";
+import { azureVoiceOptions, translateOptions } from "./options";
 import styles from "./settingsStyles.module.css";
 
 export function TtsAzureSettings() {
   const { settings, updateSettings } = useSettings();
+  const { t } = useI18n();
   const [showApiKey, setShowApiKey] = useState(false);
 
   return (
@@ -16,27 +18,27 @@ export function TtsAzureSettings() {
       <SecretTextField
         label="Azure API Key"
         value={settings.azureApiKey}
-        placeholder="输入您的 API Key"
+        placeholder={t("settings.tts.azurePlaceholder")}
         visible={showApiKey}
         onToggleVisible={() => setShowApiKey((prev) => !prev)}
         onChange={(value) => updateSettings({ azureApiKey: value })}
         hint={
           <>
-            从{" "}
+            {t("settings.tts.azureHintBefore")}
             <a
               href="https://portal.azure.com/#create/Microsoft.CognitiveServicesSpeechServices"
               target="_blank"
               rel="noopener noreferrer"
             >
               Azure Portal
-            </a>{" "}
-            创建语音服务获取 API Key
+            </a>
+            {t("settings.tts.azureHintAfter")}
           </>
         }
       />
 
       <div className={styles.fieldColumn}>
-        <label className={styles.fieldLabel}>朗读声音</label>
+        <label className={styles.fieldLabel}>{t("settings.tts.voice")}</label>
         <select
           className={styles.select}
           value={settings.azureVoice}
@@ -44,7 +46,7 @@ export function TtsAzureSettings() {
             updateSettings({ azureVoice: e.target.value as AzureTTSVoice })
           }
         >
-          {azureVoiceOptions.map((option) => (
+          {translateOptions(azureVoiceOptions, t).map((option) => (
             <option key={option.value} value={option.value}>
               {option.label}
             </option>
@@ -53,11 +55,11 @@ export function TtsAzureSettings() {
       </div>
 
       <details className={styles.details}>
-        <summary className={styles.detailsSummary}>高级参数</summary>
+        <summary className={styles.detailsSummary}>{t("settings.tts.advanced")}</summary>
         <div className={styles.detailsBody}>
           <div className={styles.grid2}>
             <RangeField
-              label="语速"
+              label={t("settings.tts.rate")}
               value={settings.ttsRate}
               min={0.6}
               max={1.6}
@@ -65,7 +67,7 @@ export function TtsAzureSettings() {
               onChange={(value) => updateSettings({ ttsRate: value })}
             />
             <RangeField
-              label="音量"
+              label={t("settings.tts.volume")}
               value={settings.ttsVolume}
               min={0}
               max={1}
@@ -75,7 +77,7 @@ export function TtsAzureSettings() {
           </div>
 
           <div className={styles.fieldColumn}>
-            <label className={styles.fieldLabel}>句间停顿 (毫秒)</label>
+            <label className={styles.fieldLabel}>{t("settings.tts.pause")}</label>
             <input
               type="number"
               min={0}
@@ -91,7 +93,7 @@ export function TtsAzureSettings() {
               }}
             />
             <p className={styles.apiKeyHint}>
-              控制段落或句子之间的停顿时长，可在长文本朗读时留出缓冲。
+              {t("settings.tts.pauseHint")}
             </p>
           </div>
         </div>
