@@ -14,15 +14,19 @@ npm run test -- --passWithNoTests  # Vitest；当前无测试文件必须带该 
 
 ## Architecture Overview
 
-- **app/page.tsx**：顶层页面，管理文章输入、设置、词典面板、音频生成以及词典缓存/预取逻辑。
-- **components/ReadingArea.tsx / Paragraph.tsx**：构建段落与单词 token，处理单词点击（发音+查词）、段落播放、词典预取回调。
+- **app/page.tsx**：顶层页面，管理文章输入、设置、词典面板、AI 解释面板、音频生成以及面板编排。
+- **components/ReadingArea.tsx / Paragraph.tsx**：构建段落与单词 token，处理单词点击（发音+查词）、单词长按问模型、段落播放、词典预取回调。
 - **stores/audioStore.ts**：Zustand 音频状态（段落列表、生成、播放、上传、MiniPlayer）；音频上传采用每批 6 个并行。
 - **lib/paragraphs.ts**：`tokenize`/`renderBionicWord` 负责仿生渲染。
+- **hooks/useDictionary.ts / hooks/useAiExplain.ts**：分别封装词典缓存/预取与 DeepSeek 流式解释状态，页面只负责调用与展示。
 - **lib/r2.ts**：Cloudflare R2 存储封装（`uploadToR2`/`deleteFromR2`/`deleteR2Folder`），使用 AWS S3 SDK。
 - **app/api/dictionary/route.ts**：Edge Runtime 调 Youdao JSON API，`normalizeYoudaoResponse` 解析音标/释义/网络翻译。
+- **app/api/ai/explain/route.ts**：Node Runtime 代理 DeepSeek Chat Completions，返回纯文本流。
 - **app/api/tts/route.ts**：Azure Speech TTS（SSML→MP3），受 `settings.azure*` 控制。
 - **app/api/tts/elevenlabs/route.ts**：ElevenLabs REST TTS，可配置模型、音色、输出格式等参数。
-- **app/api/articles/[id]/audio/route.ts**：音频上传 API，存储到 Cloudflare R2。
+- **app/api/articles/[id]/audio/route.ts**：音频上传 API，音频文件存储到 Cloudflare R2，URL/词级时间轴写入当前数据源。
+- **app/api/sync/route.ts**：按方向同步本地与 Supabase，可同步文章、设置或两者。
+- **lib/dataStore/**：文章和设置 repository；`DATA_STORE_MODE=local` 使用 `.local-data/reader-store.json`，`DATA_STORE_MODE=supabase` 使用 Supabase REST。
 
 > 更多 UI/交互细节见 `README.md` / `CLAUDE.md`，这里仅保留 Droid 执行必需信息。
 
@@ -32,10 +36,10 @@ npm run test -- --passWithNoTests  # Vitest；当前无测试文件必须带该 
 2. **样式**：页面级使用 CSS Modules (`*.module.css`)，不要引入全局样式或内联覆盖。
 3. **设置同步**：`SettingsContext` 自动持久化到 `localStorage`，更新需考虑 500ms 防抖。
 4. **词典缓存/预取**：
-   - `app/page.tsx` 维护 `dictionaryCacheRef` 与预取控制器；不要移除缓存命中逻辑。
+   - `hooks/useDictionary.ts` 维护词典缓存与预取控制器；保留缓存命中逻辑。
    - `Paragraph` 在 hover/focus 时 `onWordPrefetch`，减少点击时的冷等待。
    - 初始 `prefetchDictionary("warmup")` 负责 Edge 冷启动预热，谨慎修改。
-5. **并发控制**：所有词典/音频 `fetch` 必须配合 `AbortController`，点击新词或组件卸载时要及时 abort。
+5. **并发控制**：所有词典/AI/音频 `fetch` 必须配合 `AbortController`，点击新词、长按新词或组件卸载时要及时 abort。
 6. **音频生成**：调用 `generateSegment` / `generateAll` 前确保有 `settings.azureApiKey/azureRegion/azureVoice`，遵循现有签名。
 
 ## Testing & Validation
@@ -51,8 +55,9 @@ npm run test -- --passWithNoTests  # Vitest；当前无测试文件必须带该 
 - **Youdao Dictionary**：`/api/dictionary` 调公开 JSON API，需附浏览器 UA/Referer；仍按“单用户”假设限制请求频率，避免循环轰炸。
 - **Azure Speech**：依赖用户提供的 `azureApiKey/azureRegion/azureVoice`；不得写死密钥。
 - **ElevenLabs**：依赖用户提供的 `elevenApiKey/elevenVoiceId`；不得写死密钥。
+- **DeepSeek**：`/api/ai/explain` 使用本地设置里的 `deepseekApiKey/deepseekModel`；不得写死密钥，日志只记录状态码。
 - **Cloudflare R2**：音频存储使用 R2（S3 兼容 API）；环境变量：`R2_ACCOUNT_ID`、`R2_ACCESS_KEY_ID`、`R2_SECRET_ACCESS_KEY`、`R2_BUCKET_NAME`、`R2_PUBLIC_URL`。
-- **Vercel KV**：文章元数据存储在 Upstash Redis；环境变量：`KV_REST_API_URL`、`KV_REST_API_TOKEN`。
+- **数据源切换**：`DATA_STORE_MODE=local|supabase`。本地模式可配置 `LOCAL_DATA_DIR`；Supabase 模式需要 `SUPABASE_URL`、`SUPABASE_SERVICE_ROLE_KEY`，表结构见 `docs/supabase-schema.sql`。
 - **安全**：日志、注释、提交里不得输出任何 key；错误仅记录状态码/简要描述。
 
 ## Git Workflow

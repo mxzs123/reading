@@ -7,6 +7,12 @@ export type AzureTTSVoice =
   | "en-US-JennyNeural"
   | "en-US-GuyNeural"
   | "en-GB-SoniaNeural";
+export type EdgeTTSVoice =
+  | "en-US-EmmaMultilingualNeural"
+  | "en-US-AvaMultilingualNeural"
+  | "en-US-JennyNeural"
+  | "en-US-GuyNeural"
+  | "en-GB-SoniaNeural";
 
 export const ALLOWED_GEMINI_TTS_MODELS = [
   "gemini-2.5-flash-preview-tts",
@@ -24,8 +30,21 @@ export function isAllowedGeminiTtsModel(
   );
 }
 
-export type TTSProvider = "azure" | "elevenlabs" | "gemini";
+export type TTSProvider = "edge" | "azure" | "elevenlabs" | "gemini";
 export type ApplyTextNormalization = "auto" | "on" | "off";
+export type DeepSeekModel = "deepseek-v4-flash" | "deepseek-v4-pro";
+
+export const ALLOWED_DEEPSEEK_MODELS = [
+  "deepseek-v4-flash",
+  "deepseek-v4-pro",
+] as const;
+
+export function isAllowedDeepSeekModel(value: unknown): value is DeepSeekModel {
+  return (
+    typeof value === "string" &&
+    (ALLOWED_DEEPSEEK_MODELS as readonly string[]).includes(value)
+  );
+}
 
 export type ElevenOutputFormat =
   | "mp3_22050_32"
@@ -65,6 +84,7 @@ export const SENSITIVE_SETTINGS_FIELDS = [
   "azureApiKey",
   "elevenApiKey",
   "geminiApiKey",
+  "deepseekApiKey",
 ] as const;
 
 export interface ReaderSettings {
@@ -86,6 +106,9 @@ export interface ReaderSettings {
   textIndent: number;
   textAlign: TextAlign;
   ttsProvider: TTSProvider;
+  edgeVoice: EdgeTTSVoice;
+  edgeRate: number;
+  edgePitch: number;
   azureApiKey: string;
   azureRegion: AzureRegion;
   azureVoice: AzureTTSVoice;
@@ -114,6 +137,12 @@ export interface ReaderSettings {
   geminiSpeaker1VoiceName: string;
   geminiSpeaker2Name: string;
   geminiSpeaker2VoiceName: string;
+  aiExplainEnabled: boolean;
+  aiLongPressMs: number;
+  aiContextChars: number;
+  deepseekApiKey: string;
+  deepseekModel: DeepSeekModel;
+  deepseekMaxTokens: number;
   autoPlayNext: boolean;
   ttsConcurrency: number;
   ttsRate: number;

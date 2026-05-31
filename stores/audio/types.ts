@@ -1,5 +1,6 @@
 import type { WordTiming } from "@/lib/storage";
 import type { TtsGenerationParams } from "@/lib/settings";
+import type { StoreApi } from "zustand";
 
 export type SegmentStatus = "idle" | "generating" | "ready" | "error";
 
@@ -23,12 +24,6 @@ export interface UploadAllResult {
   total: number;
   success: number;
   failed: number;
-}
-
-export interface GenerationTask {
-  id: string;
-  params: TtsGenerationParams;
-  settle: () => void;
 }
 
 export interface AudioStore {
@@ -59,3 +54,6 @@ export interface AudioStore {
   loadSegmentWordTimings: (segmentWordTimings: Record<string, WordTiming[]>) => void;
   setConcurrencyLimit: (limit: number) => void;
 }
+
+export type AudioStoreGet = StoreApi<AudioStore>["getState"];
+export type AudioStoreSet = StoreApi<AudioStore>["setState"];

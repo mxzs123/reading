@@ -1,23 +1,46 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  Edit3,
+  FileText,
+  Languages,
+  PanelRightClose,
+  PanelRightOpen,
+  Settings,
+  Sparkles,
+  Volume2,
+  X,
+} from "lucide-react";
 import { SettingsPanel } from "@/components/SettingsPanel";
 import { DictionaryPanel, type DictionaryData } from "@/components/DictionaryPanel";
+import { AiExplainPanel } from "@/components/AiExplainPanel";
 import ArticleManager from "@/components/ArticleManager";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
+import { useAiExplain } from "@/hooks/useAiExplain";
 import { useDictionary } from "@/hooks/useDictionary";
+import { buildAiExplainTarget } from "@/lib/aiExplain";
 import { buildTtsGenerationParams } from "@/lib/settings";
 import type { Article } from "@/lib/storage";
+import type { WordAskTarget } from "@/lib/wordInteraction";
 import { ReadingArea } from "@/components/ReadingArea";
 import { MiniPlayer } from "@/components/MiniPlayer";
 import { useAudioStore } from "@/stores/audioStore";
 import { useSettings } from "@/contexts/SettingsContext";
 import styles from "./page.module.css";
 
+type PanelAnchor = {
+  top: number;
+  left: number;
+  width: number;
+  height: number;
+};
+
 export default function Home() {
   const [sourceText, setSourceText] = useState("");
   const [userSettingsOpen, setUserSettingsOpen] = useState<boolean>(false);
-  const [articlesOpen, setArticlesOpen] = useState<boolean>(false);
+  const [articleSidebarOpen, setArticleSidebarOpen] = useState<boolean>(true);
+  const [toolSidebarOpen, setToolSidebarOpen] = useState<boolean>(true);
   const [inputCollapsed, setInputCollapsed] = useState(false);
   const [selectedWord, setSelectedWord] = useState("");
   const selectedWordRef = useRef<string>("");
@@ -39,25 +62,19 @@ export default function Home() {
   const setConcurrencyLimit = useAudioStore((s) => s.setConcurrencyLimit);
   const ttsParams = useMemo(() => buildTtsGenerationParams(settings), [settings]);
 
-  // 待加载的音频 URLs
   const pendingAudioUrlsRef = useRef<string[] | null>(null);
   const pendingSegmentWordTimingsRef = useRef<Article["segmentWordTimings"] | null>(null);
   const wasArticlePlayingRef = useRef(false);
 
   // 词典状态
-  const [dictionaryAnchor, setDictionaryAnchor] = useState<{
-    top: number;
-    left: number;
-    width: number;
-    height: number;
-  } | null>(null);
+  const [dictionaryAnchor, setDictionaryAnchor] = useState<PanelAnchor | null>(null);
   const [dictionaryData, setDictionaryData] = useState<DictionaryData | undefined>();
   const [dictionaryLoading, setDictionaryLoading] = useState(false);
   const [dictionaryError, setDictionaryError] = useState<string | undefined>();
   const [dictionaryOpen, setDictionaryOpen] = useState(false);
   const dictionaryAnchorCleanupTimeoutRef = useRef<number | null>(null);
+  const [aiAnchor, setAiAnchor] = useState<PanelAnchor | null>(null);
 
-  // 文章状态
   const [currentArticleId, setCurrentArticleId] = useState<string | null>(null);
 
   // Refs
@@ -77,12 +94,25 @@ export default function Home() {
     },
     onLoadingChange: setDictionaryLoading,
   });
+  const {
+    answer: aiAnswer,
+    close: closeAiExplain,
+    error: aiError,
+    explain: explainWithAi,
+    isOpen: aiOpen,
+    loading: aiLoading,
+    target: aiTarget,
+  } = useAiExplain();
 
   const handleWordClick = useCallback(
     (word: string, rect: DOMRect) => {
+      closeAiExplain();
+      setAiAnchor(null);
+
       const result = dictionary.lookup(word);
       if (!result) return;
 
+      if (!isMobile) setToolSidebarOpen(true);
       setSelectedWordValue(result.trimmed);
       setDictionaryAnchor(
         isMobile ? null : { top: rect.top, left: rect.left, width: rect.width, height: rect.height }
@@ -96,7 +126,54 @@ export default function Home() {
         setDictionaryData(undefined);
       }
     },
-    [isMobile, dictionary, setSelectedWordValue]
+    [closeAiExplain, isMobile, dictionary, setSelectedWordValue]
+  );
+
+  const handleWordLongPress = useCallback(
+    (target: WordAskTarget) => {
+      dictionary.abortCurrentLookup();
+      setDictionaryOpen(false);
+      setDictionaryData(undefined);
+      setDictionaryError(undefined);
+      setSelectedWordValue("");
+      setDictionaryAnchor(null);
+
+      if (!isMobile) {
+        setToolSidebarOpen(true);
+        setAiAnchor(null);
+      } else {
+        setAiAnchor({
+          top: target.rect.top,
+          left: target.rect.left,
+          width: target.rect.width,
+          height: target.rect.height,
+        });
+      }
+
+      const aiTarget = buildAiExplainTarget(
+        sourceText,
+        target.paragraphText,
+        target.word,
+        settings.aiContextChars
+      );
+
+      void explainWithAi(aiTarget, {
+        apiKey: settings.deepseekApiKey,
+        model: settings.deepseekModel,
+        maxTokens: settings.deepseekMaxTokens,
+      });
+    },
+    [
+      dictionary,
+      explainWithAi,
+      isMobile,
+      setSelectedWordValue,
+      settings.aiContextChars,
+      settings.deepseekApiKey,
+      settings.deepseekMaxTokens,
+      settings.deepseekModel,
+      sourceText,
+    ]
   );
 
   const handleCloseDictionary = useCallback(() => {
@@ -119,6 +196,11 @@ export default function Home() {
       }
     }
   }, [dictionary, setSelectedWordValue]);
+
+  const handleCloseAiExplain = useCallback(() => {
+    closeAiExplain();
+    setAiAnchor(null);
+  }, [closeAiExplain]);
 
   useEffect(() => {
     closeDictionaryRef.current = handleCloseDictionary;
@@ -245,47 +327,76 @@ export default function Home() {
   const placeholder = useMemo(
     () =>
       [
-        "粘贴或输入英文文章，系统会自动生成仿生阅读版本…",
-        "快捷键：Command / Ctrl + Enter 可快速朗读所选单词。",
-        "提示：点击单词可播放发音并查看释义。",
+        "粘贴英文原文",
       ].join("\n"),
     []
   );
+  const trimmedSource = sourceText.trim();
+  const sourceStats = useMemo(() => {
+    if (!trimmedSource) {
+      return { chars: 0, words: 0, paragraphs: 0 };
+    }
+
+    return {
+      chars: sourceText.length,
+      words: trimmedSource.split(/\s+/).filter(Boolean).length,
+      paragraphs: trimmedSource.split(/\n{2,}/).filter((item) => item.trim()).length || 1,
+    };
+  }, [sourceText, trimmedSource]);
+  const sourcePreview = useMemo(() => {
+    const cleaned = trimmedSource.replace(/\s+/g, " ");
+    if (!cleaned) return "原文";
+    return cleaned.length > 48 ? `${cleaned.slice(0, 48)}…` : cleaned;
+  }, [trimmedSource]);
+  const resetWorkspace = useCallback(() => {
+    dictionary.abortCurrentLookup();
+    setSourceText("");
+    setCurrentArticleId(null);
+    setInputCollapsed(false);
+    setDictionaryOpen(false);
+    closeAiExplain();
+    setSelectedWordValue("");
+    setDictionaryAnchor(null);
+    setAiAnchor(null);
+    setDictionaryData(undefined);
+    setDictionaryLoading(false);
+    setDictionaryError(undefined);
+    pendingAudioUrlsRef.current = null;
+    pendingSegmentWordTimingsRef.current = null;
+    setTimeout(() => textareaRef.current?.focus(), 0);
+  }, [closeAiExplain, dictionary, setSelectedWordValue]);
 
   const confirmAndCollapse = useCallback(() => {
-    if (!sourceText.trim()) return;
+    if (!trimmedSource) return;
     setInputCollapsed(true);
     triggerReadingPulse();
     setTimeout(() => {
       outputSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     }, 0);
-  }, [sourceText, triggerReadingPulse]);
+  }, [trimmedSource, triggerReadingPulse]);
 
   const handleArticleLoad = useCallback((article: Article) => {
     setSourceText(article.text);
     setCurrentArticleId(article.id);
     setInputCollapsed(true);
     setDictionaryOpen(false);
+    closeAiExplain();
     setSelectedWordValue("");
     setDictionaryAnchor(null);
+    setAiAnchor(null);
     triggerReadingPulse();
 
-    if (article.audioUrls && article.audioUrls.length > 0) {
-      pendingAudioUrlsRef.current = article.audioUrls;
-    } else {
-      pendingAudioUrlsRef.current = null;
-    }
-
-    if (article.segmentWordTimings && Object.keys(article.segmentWordTimings).length > 0) {
-      pendingSegmentWordTimingsRef.current = article.segmentWordTimings;
-    } else {
-      pendingSegmentWordTimingsRef.current = null;
-    }
+    pendingAudioUrlsRef.current =
+      article.audioUrls && article.audioUrls.length > 0 ? article.audioUrls : null;
+    pendingSegmentWordTimingsRef.current =
+      article.segmentWordTimings && Object.keys(article.segmentWordTimings).length > 0
+        ? article.segmentWordTimings
+        : null;
 
     setTimeout(() => {
       outputSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     }, 0);
-  }, [setSelectedWordValue, triggerReadingPulse]);
+  }, [closeAiExplain, setSelectedWordValue, triggerReadingPulse]);
 
   const handleArticleSaved = useCallback((article: Article) => {
     setCurrentArticleId(article.id);
@@ -307,53 +418,35 @@ export default function Home() {
 
   return (
     <div className={styles.page}>
-      <header className={styles.header}>
-        <div>
-          <h1 className={styles.headline}>仿生阅读器 毛毛浩浩版 · Version 1.0.0</h1>
-          <p className="muted-text">
-            支持多端访问的仿生阅读器，集成发音与词典查询，随时随地快速专注阅读。
-          </p>
-        </div>
-        <div className={styles.headerActions}>
-          <button
-            className="primary-button"
-            onClick={() => setArticlesOpen((prev) => !prev)}
-          >
-            我的文章
-          </button>
-          <button
-            className="primary-button"
-            onClick={() => setUserSettingsOpen((prev) => !prev)}
-          >
-            {settingsOpen ? "收起设置" : "打开设置"}
-          </button>
-          {inputCollapsed && (
-            <button
-              className="primary-button"
-              onClick={() => {
-                setInputCollapsed(false);
-                setTimeout(() => textareaRef.current?.focus(), 0);
-                setTimeout(() => inputSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 0);
-              }}
-            >
-              编辑原文
-            </button>
-          )}
-        </div>
-      </header>
+      <div
+        className={styles.ideShell}
+        data-left-collapsed={articleSidebarOpen ? "false" : "true"}
+        data-right-collapsed={toolSidebarOpen ? "false" : "true"}
+      >
+        <ArticleManager
+          variant="sidebar"
+          isOpen={articleSidebarOpen}
+          onClose={() => setArticleSidebarOpen(false)}
+          onToggleCollapse={() => setArticleSidebarOpen((prev) => !prev)}
+          currentText={sourceText}
+          currentArticleId={currentArticleId}
+          onArticleLoad={handleArticleLoad}
+          onArticleSaved={handleArticleSaved}
+          onNewArticle={resetWorkspace}
+        />
 
-      <div className={styles.layout}>
         <main className={styles.main}>
-          <section ref={inputSectionRef} className={`${styles.inputSection} surface-card`}>
-            <div className={styles.sectionHeader}>
-              <h2>原文输入</h2>
-              <span className="muted-text">支持键鼠与触屏编辑</span>
-            </div>
+          <section
+            ref={inputSectionRef}
+            className={styles.inputSection}
+            data-collapsed={inputCollapsed ? "true" : "false"}
+          >
             {!inputCollapsed ? (
               <>
                 <textarea
                   ref={textareaRef}
                   className={styles.textarea}
+                  aria-label="原文输入"
                   value={sourceText}
                   onChange={(event) => setSourceText(event.target.value)}
                   onKeyDown={(e) => {
@@ -363,105 +456,55 @@ export default function Home() {
                     }
                   }}
                   placeholder={placeholder}
-                  rows={8}
+                  rows={4}
                 />
                 <div className={styles.helperRow}>
-                  <span className="muted-text">
-                    字数：{sourceText.trim().length ? sourceText.length : 0}
+                  <span className={styles.metaText}>
+                    {sourceStats.chars} 字符 · {sourceStats.words} 词
                   </span>
-                  <div style={{ display: "inline-flex", gap: "0.5rem" }}>
+                  <div className={styles.actionGroup}>
                     <button
                       type="button"
-                      className={styles.clearButton}
-                      onClick={() => {
-                        setSourceText("");
-                        setDictionaryOpen(false);
-                        setSelectedWordValue("");
-                        setDictionaryAnchor(null);
-                        setDictionaryData(undefined);
-                        setDictionaryLoading(false);
-                        setDictionaryError(undefined);
-                        textareaRef.current?.focus();
-                      }}
-                    >
-                      清空
-                    </button>
-                    <button
-                      type="button"
-                      className={styles.clearButton}
+                      className={styles.primaryAction}
                       onClick={confirmAndCollapse}
-                      title="确认生成并折叠输入（Ctrl/Cmd + Enter）"
+                      title="Ctrl/Cmd + Enter"
                     >
-                      确认生成
+                      <Sparkles aria-hidden="true" className={styles.buttonIcon} />
+                      <span>生成</span>
                     </button>
                   </div>
                 </div>
               </>
             ) : (
-              <div className={styles.collapsedNotice}>
-                <span>
-                  已载入 <strong>{sourceText.trim().length ? sourceText.length : 0}</strong> 字
-                </span>
-                <div className={styles.collapsedActions}>
-                  <button
-                    type="button"
-                    className={styles.clearButton}
-                    onClick={() => {
-                      setInputCollapsed(false);
-                      setTimeout(() => textareaRef.current?.focus(), 0);
-                    }}
-                  >
-                    重新编辑
-                  </button>
-                  <button
-                    type="button"
-                    className={styles.clearButton}
-                    onClick={() => {
-                      setInputCollapsed(false);
-                      setSourceText("");
-                      setTimeout(() => textareaRef.current?.focus(), 0);
-                    }}
-                  >
-                    替换文本
-                  </button>
-                </div>
-              </div>
+              <button
+                type="button"
+                className={styles.sourceBar}
+                onClick={() => {
+                  setInputCollapsed(false);
+                  setTimeout(() => textareaRef.current?.focus(), 0);
+                }}
+                title="编辑原文"
+              >
+                <FileText aria-hidden="true" className={styles.sourceBarIcon} />
+                <span className={styles.sourceBarLabel}>{sourcePreview}</span>
+                <span className={styles.sourceBarMeta}>{sourceStats.words} 词</span>
+                <Edit3 aria-hidden="true" className={styles.sourceBarEdit} />
+              </button>
             )}
           </section>
 
-          <section ref={outputSectionRef} className={`${styles.outputSection} surface-card`}>
-            <div className={styles.sectionHeader}>
-              <div className={styles.sectionHeaderLeft}>
-                <h2>仿生阅读</h2>
-                <span className="muted-text">点击单词发音查词，点击段落播放</span>
-              </div>
-              {settings.readingMode === "audio" && sourceText.trim() && total > 0 && (
-                <div className={styles.audioActions}>
-                  {generatingCount > 0 || readyCount > 0 ? (
-                    <span className={styles.progressText}>
-                      {readyCount}/{total}
-                    </span>
-                  ) : null}
-                  <button
-                    type="button"
-                    className={styles.clearButton}
-                    onClick={() => generateAll(ttsParams)}
-                    disabled={generatingCount > 0}
-                  >
-                    {generatingCount > 0 ? "生成中..." : "生成音频"}
-                  </button>
-                </div>
-              )}
-            </div>
-
+          <section ref={outputSectionRef} className={styles.outputSection}>
             <div
               className={`${styles.outputInner} ${
-                readingPulse && sourceText.trim() ? styles.readingPulse : ""
+                readingPulse && trimmedSource ? styles.readingPulse : ""
               }`}
             >
               <ReadingArea
                 text={sourceText}
                 onWordClick={handleWordClick}
+                onWordLongPress={handleWordLongPress}
+                wordLongPressEnabled={!isMobile && settings.aiExplainEnabled}
+                wordLongPressMs={settings.aiLongPressMs}
                 onWordPrefetch={dictionary.prefetch}
                 onStopArticleAudio={handleStopArticleAudio}
                 onWordAudioEnd={handleWordAudioEnd}
@@ -469,6 +512,159 @@ export default function Home() {
             </div>
           </section>
         </main>
+
+        <aside className={styles.toolSidebar} data-collapsed={toolSidebarOpen ? "false" : "true"}>
+          {toolSidebarOpen ? (
+            <>
+              <div className={styles.toolTopActions}>
+                <button
+                  type="button"
+                  className={`${styles.clearButton} ${styles.iconButton}`}
+                  onClick={() => setToolSidebarOpen(false)}
+                  aria-label="收起工具"
+                  title="收起工具"
+                >
+                  <PanelRightClose aria-hidden="true" />
+                </button>
+              </div>
+
+              <section className={`${styles.toolSection} ${styles.inspectorSection}`}>
+                <div className={styles.toolSectionHeader}>
+                  <h3>
+                    {aiOpen ? (
+                      <Sparkles aria-hidden="true" className={styles.sectionIcon} />
+                    ) : (
+                      <Languages aria-hidden="true" className={styles.sectionIcon} />
+                    )}
+                    <span>{aiOpen ? "AI 解释" : "词典"}</span>
+                  </h3>
+                  {aiOpen || selectedWord ? (
+                    <button
+                      type="button"
+                      className={`${styles.toolTextButton} ${styles.iconButton}`}
+                      onClick={aiOpen ? handleCloseAiExplain : handleCloseDictionary}
+                      aria-label="清除"
+                      title="清除"
+                    >
+                      <X aria-hidden="true" />
+                    </button>
+                  ) : null}
+                </div>
+
+                {aiOpen ? (
+                  <div className={styles.aiTool}>
+                    {aiTarget?.text ? (
+                      <div className={styles.dictionaryWord}>
+                        <strong>{aiTarget.text}</strong>
+                      </div>
+                    ) : null}
+                    {aiLoading && !aiAnswer.trim() ? (
+                      <p className={styles.toolMuted}>正在询问模型...</p>
+                    ) : null}
+                    {aiError ? <p className={styles.toolError}>{aiError}</p> : null}
+                    {aiAnswer.trim() ? (
+                      <div className={styles.aiAnswer}>{aiAnswer.trim()}</div>
+                    ) : null}
+                  </div>
+                ) : selectedWord ? (
+                  <div className={styles.dictionaryTool}>
+                    <div className={styles.dictionaryWord}>
+                      <strong>{selectedWord}</strong>
+                      {dictionaryData?.phonetics ? (
+                        <span>
+                          {dictionaryData.phonetics.uk ? `英 /${dictionaryData.phonetics.uk}/` : ""}
+                          {dictionaryData.phonetics.us ? ` 美 /${dictionaryData.phonetics.us}/` : ""}
+                        </span>
+                      ) : null}
+                    </div>
+
+                    {dictionaryLoading ? <p className={styles.toolMuted}>正在查询...</p> : null}
+                    {dictionaryError && !dictionaryLoading ? (
+                      <p className={styles.toolError}>{dictionaryError}</p>
+                    ) : null}
+                    {!dictionaryLoading && !dictionaryError && dictionaryData ? (
+                      <>
+                        {dictionaryData.meanings.length > 0 ? (
+                          <ul className={styles.meaningList}>
+                            {dictionaryData.meanings.slice(0, 5).map((meaning, index) => (
+                              <li key={`${meaning.translation}-${index}`}>
+                                {meaning.pos ? <span>{meaning.pos}</span> : null}
+                                <p>{meaning.translation}</p>
+                              </li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <p className={styles.toolMuted}>可尝试选择其他单词。</p>
+                        )}
+                        {dictionaryData.webTranslations.length > 0 ? (
+                          <div className={styles.webMeanings}>
+                            <span>网络用法</span>
+                            {dictionaryData.webTranslations.slice(0, 2).map((item) => (
+                              <p key={item.key}>
+                                <strong>{item.key}</strong> {item.translations.slice(0, 2).join("；")}
+                              </p>
+                            ))}
+                          </div>
+                        ) : null}
+                      </>
+                    ) : null}
+                  </div>
+                ) : (
+                  <p className={styles.toolMuted}>点击单词查词，长按问 AI。</p>
+                )}
+              </section>
+
+              <section className={styles.toolSection}>
+                <div className={styles.toolSectionHeader}>
+                  <h3>
+                    <Volume2 aria-hidden="true" className={styles.sectionIcon} />
+                    <span>朗读</span>
+                  </h3>
+                  <span>{settings.readingMode === "audio" ? "音频模式" : "纯净模式"}</span>
+                </div>
+                {settings.readingMode === "audio" && trimmedSource && total > 0 ? (
+                  <div className={styles.toolStack}>
+                    <span className={styles.progressText}>
+                      已就绪 {readyCount}/{total}
+                    </span>
+                    <button
+                      type="button"
+                      className={styles.primaryAction}
+                      onClick={() => generateAll(ttsParams)}
+                      disabled={generatingCount > 0}
+                    >
+                      <Volume2 aria-hidden="true" className={styles.buttonIcon} />
+                      <span>{generatingCount > 0 ? "生成中..." : "生成音频"}</span>
+                    </button>
+                  </div>
+                ) : (
+                  <p className={styles.toolMuted}>生成后管理段落音频。</p>
+                )}
+              </section>
+
+              <div className={styles.toolFooter}>
+                <button
+                  type="button"
+                  className={styles.clearButton}
+                  onClick={() => setUserSettingsOpen(true)}
+                >
+                  <Settings aria-hidden="true" className={styles.buttonIcon} />
+                  <span>设置</span>
+                </button>
+              </div>
+            </>
+          ) : (
+            <button
+              type="button"
+              className={styles.toolCollapsedButton}
+              onClick={() => setToolSidebarOpen(true)}
+              aria-label="展开工具"
+              title="展开工具"
+            >
+              <PanelRightOpen aria-hidden="true" />
+            </button>
+          )}
+        </aside>
 
         <SettingsPanel
           isOpen={settingsOpen}
@@ -480,7 +676,8 @@ export default function Home() {
         />
       </div>
 
-      <DictionaryPanel
+      {isMobile ? (
+        <DictionaryPanel
         isOpen={dictionaryOpen}
         word={selectedWord}
         data={dictionaryData}
@@ -491,16 +688,20 @@ export default function Home() {
         onClose={handleCloseDictionary}
         onStopArticleAudio={handleStopArticleAudio}
         onWordAudioEnd={handleWordAudioEnd}
-      />
+        />
+      ) : null}
 
-      <ArticleManager
-        isOpen={articlesOpen}
-        onClose={() => setArticlesOpen(false)}
-        currentText={sourceText}
-        currentArticleId={currentArticleId}
-        onArticleLoad={handleArticleLoad}
-        onArticleSaved={handleArticleSaved}
-      />
+      {isMobile ? (
+        <AiExplainPanel
+          isOpen={aiOpen}
+          target={aiTarget}
+          answer={aiAnswer}
+          loading={aiLoading}
+          error={aiError}
+          anchor={aiAnchor}
+          onClose={handleCloseAiExplain}
+        />
+      ) : null}
 
       <MiniPlayer />
     </div>

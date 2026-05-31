@@ -3,6 +3,7 @@
 import { useSettings } from "@/contexts/SettingsContext";
 import { SegmentedControl, SwitchField } from "@/components/ui";
 import { ttsProviderOptions } from "./options";
+import { TtsEdgeSettings } from "./TtsEdgeSettings";
 import { TtsAzureSettings } from "./TtsAzureSettings";
 import { TtsElevenSettings } from "./TtsElevenSettings";
 import { TtsGeminiSettings } from "./TtsGeminiSettings";
@@ -24,7 +25,9 @@ export function TtsTab() {
         />
       </div>
 
-      {settings.ttsProvider === "azure" ? (
+      {settings.ttsProvider === "edge" ? (
+        <TtsEdgeSettings />
+      ) : settings.ttsProvider === "azure" ? (
         <TtsAzureSettings />
       ) : settings.ttsProvider === "elevenlabs" ? (
         <TtsElevenSettings />

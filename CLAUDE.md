@@ -34,7 +34,7 @@ npm run lint         # 运行 ESLint 检查
 **音频播放** (`stores/audioStore.ts`)
 - 使用 Zustand 管理全局音频状态
 - 支持段落音频生成、播放、暂停、顺序播放
-- 音频通过 Gemini TTS API 生成，存储到 Vercel Blob
+- 音频通过 TTS API 生成，文件存储到 Cloudflare R2，文章 metadata 写入当前数据源
 
 **设置管理** (`lib/settings.ts` + `contexts/SettingsContext.tsx`)
 - 使用 React Context 进行全局状态管理
@@ -42,6 +42,11 @@ npm run lint         # 运行 ESLint 检查
 - `DEFAULT_SETTINGS` 包含字体大小、行高、段落间距、主题等
 - `applySettings()` 通过 CSS 变量 (`--font-size`, `--line-height` 等) 动态应用设置
 - 支持三种主题：`sepia` (默认), `white`, `dark`
+
+**数据存储** (`lib/dataStore/`)
+- `DATA_STORE_MODE=local` 使用 `.local-data/reader-store.json`
+- `DATA_STORE_MODE=supabase` 使用 Supabase REST
+- Supabase 表结构见 `docs/supabase-schema.sql`
 
 **单词发音** (`lib/wordAudio.ts`)
 - 使用有道词典 API 播放单词发音

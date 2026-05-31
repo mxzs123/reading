@@ -1,16 +1,6 @@
 import { NextRequest } from "next/server";
-import { kv } from "@vercel/kv";
+import { getDataStore } from "@/lib/dataStore";
 import { deleteR2Folder } from "@/lib/r2";
-
-interface ArticleMetadata {
-  id: string;
-  title: string;
-  text: string;
-  audioUrls?: string[];
-  segmentWordTimings?: Record<string, { start: number; end: number }[]>;
-  createdAt: number;
-  updatedAt: number;
-}
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -18,7 +8,7 @@ type RouteContext = { params: Promise<{ id: string }> };
 export async function GET(request: NextRequest, context: RouteContext): Promise<Response> {
   try {
     const { id } = await context.params;
-    const article = await kv.hgetall(`article:${id}`);
+    const article = await getDataStore().articles.getArticle(id);
 
     if (!article) {
       return Response.json({ error: "文章不存在" }, { status: 404 });
@@ -37,20 +27,10 @@ export async function PUT(request: NextRequest, context: RouteContext): Promise<
     const { id } = await context.params;
     const body = await request.json();
 
-    const existing = (await kv.hgetall(`article:${id}`)) as ArticleMetadata | null;
-    if (!existing) {
+    const updated = await getDataStore().articles.updateArticle(id, body);
+    if (!updated) {
       return Response.json({ error: "文章不存在" }, { status: 404 });
     }
-
-    const updated: ArticleMetadata = {
-      ...existing,
-      ...body,
-      id, // 确保 id 不被覆盖
-      updatedAt: Date.now(),
-    };
-
-    await kv.hset(`article:${id}`, updated as unknown as Record<string, unknown>);
-    await kv.zadd("articles:index", { score: updated.updatedAt, member: id });
 
     return Response.json(updated);
   } catch (error) {
@@ -72,9 +52,7 @@ export async function DELETE(request: NextRequest, context: RouteContext): Promi
       console.warn("删除音频文件失败");
     }
 
-    // 删除 KV 中的数据
-    await kv.del(`article:${id}`);
-    await kv.zrem("articles:index", id);
+    await getDataStore().articles.deleteArticle(id);
 
     return new Response(null, { status: 204 });
   } catch (error) {

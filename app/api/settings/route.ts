@@ -1,12 +1,10 @@
 import { NextRequest } from "next/server";
-import { kv } from "@vercel/kv";
+import { getDataStore } from "@/lib/dataStore";
 import {
   DEFAULT_SETTINGS,
   SENSITIVE_SETTINGS_FIELDS,
   type ReaderSettings,
 } from "@/lib/settings";
-
-const SETTINGS_KEY = "settings:global";
 
 // 不同步到云端的敏感字段
 const SENSITIVE_FIELDS = SENSITIVE_SETTINGS_FIELDS;
@@ -24,7 +22,7 @@ function removeSensitiveFields(settings: Partial<ReaderSettings>): SafeSettings 
 // GET /api/settings - 获取设置
 export async function GET() {
   try {
-    const settings = await kv.hgetall(SETTINGS_KEY);
+    const settings = await getDataStore().settings.getSettings();
 
     if (!settings || Object.keys(settings).length === 0) {
       // 返回默认设置（不含敏感字段）
@@ -46,7 +44,7 @@ export async function PUT(request: NextRequest) {
     // 移除敏感字段后保存
     const safeSettings = removeSensitiveFields(body);
 
-    await kv.hset(SETTINGS_KEY, safeSettings);
+    await getDataStore().settings.updateSettings(safeSettings);
 
     return Response.json({ success: true });
   } catch (error) {

@@ -1,8 +1,24 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type MouseEvent } from "react";
 import {
-  Article,
+  BookOpen,
+  Check,
+  ChevronDown,
+  ChevronRight,
+  Edit3,
+  MoreHorizontal,
+  PanelLeftClose,
+  Plus,
+  Save,
+  Search,
+  Trash2,
+  Volume2,
+  Waypoints,
+  X,
+} from "lucide-react";
+import {
+  type Article,
   createArticle,
   deleteArticle,
   getAllArticles,
@@ -18,6 +34,9 @@ interface ArticleManagerProps {
   currentArticleId?: string | null;
   onArticleLoad: (article: Article) => void;
   onArticleSaved: (article: Article) => void;
+  onNewArticle: () => void;
+  variant?: "drawer" | "sidebar";
+  onToggleCollapse?: () => void;
 }
 
 export default function ArticleManager({
@@ -27,6 +46,9 @@ export default function ArticleManager({
   currentArticleId,
   onArticleLoad,
   onArticleSaved,
+  onNewArticle,
+  variant = "drawer",
+  onToggleCollapse,
 }: ArticleManagerProps) {
   const [articles, setArticles] = useState<Article[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -38,8 +60,17 @@ export default function ArticleManager({
   const [uploadMessage, setUploadMessage] = useState<string | null>(null);
   const [lastSavedArticleId, setLastSavedArticleId] = useState<string | null>(null);
   const [showUploadPanel, setShowUploadPanel] = useState(false);
+  const [query, setQuery] = useState("");
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState("");
+  const [openActionArticleId, setOpenActionArticleId] = useState<string | null>(null);
+  const [recentCollapsed, setRecentCollapsed] = useState(false);
+  const [allCollapsed, setAllCollapsed] = useState(false);
 
-  // 加载文章列表
+  const segments = useAudioStore((s) => s.segments);
+  const uploadAllAudio = useAudioStore((s) => s.uploadAllAudio);
+  const uploadSegmentAudio = useAudioStore((s) => s.uploadSegmentAudio);
+
   const loadArticles = useCallback(async () => {
     setIsLoading(true);
     try {
@@ -52,7 +83,6 @@ export default function ArticleManager({
     }
   }, []);
 
-  // 首次加载组件时也拉取一遍，避免跨设备新增遗漏
   useEffect(() => {
     loadArticles();
   }, [loadArticles]);
@@ -62,10 +92,6 @@ export default function ArticleManager({
       loadArticles();
     }
   }, [isOpen, loadArticles]);
-
-  const segments = useAudioStore((s) => s.segments);
-  const uploadAllAudio = useAudioStore((s) => s.uploadAllAudio);
-  const uploadSegmentAudio = useAudioStore((s) => s.uploadSegmentAudio);
 
   const uploadCandidates = useMemo(
     () => segments.filter((s) => s.status === "ready" && s.audioBlob),
@@ -98,6 +124,21 @@ export default function ArticleManager({
   }, [uploadCandidates]);
 
   const uploadArticleId = currentArticleId || lastSavedArticleId;
+  const filteredArticles = useMemo(() => {
+    const normalizedQuery = query.trim().toLowerCase();
+    if (!normalizedQuery) return articles;
+
+    return articles.filter((article) => {
+      const haystack = `${article.title} ${article.text}`.toLowerCase();
+      return haystack.includes(normalizedQuery);
+    });
+  }, [articles, query]);
+
+  const isSearching = query.trim().length > 0;
+  const recentArticles = useMemo(
+    () => (isSearching ? [] : filteredArticles.slice(0, 5)),
+    [filteredArticles, isSearching]
+  );
 
   const getUploadStatusLabel = (status: string) => {
     switch (status) {
@@ -114,7 +155,37 @@ export default function ArticleManager({
     }
   };
 
-  // 保存当前文章
+  const getPreview = (text: string): string => {
+    const cleaned = text.replace(/\s+/g, " ").trim();
+    return cleaned.length > 60 ? `${cleaned.slice(0, 60)}...` : cleaned;
+  };
+
+  const getArticleTitle = (article: Article): string => article.title || getPreview(article.text);
+
+  const getArticleStats = (article: Article) => {
+    const trimmed = article.text.trim();
+    return {
+      words: trimmed ? trimmed.split(/\s+/).filter(Boolean).length : 0,
+      paragraphs: trimmed ? trimmed.split(/\n{2,}/).filter((item) => item.trim()).length || 1 : 0,
+    };
+  };
+
+  const formatDate = (timestamp: number): string => {
+    const date = new Date(timestamp);
+    return date.toLocaleDateString("zh-CN", {
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
+  const hasSyncHighlight = (article: Article): boolean => {
+    const data = article.segmentWordTimings;
+    if (!data || typeof data !== "object" || Array.isArray(data)) return false;
+    return Object.keys(data).length > 0;
+  };
+
   const handleSave = useCallback(async () => {
     if (!currentText.trim()) return;
 
@@ -126,34 +197,31 @@ export default function ArticleManager({
       let savedArticle: Article;
 
       if (currentArticleId) {
-        // 更新现有文章
         const updateData: { id: string; text: string; title?: string } = {
           id: currentArticleId,
           text: currentText,
         };
-        if (saveTitle) {
-          updateData.title = saveTitle;
+        if (saveTitle.trim()) {
+          updateData.title = saveTitle.trim();
         }
         savedArticle = await saveArticle(updateData);
       } else {
-        // 创建新文章
-        const newArticle = createArticle(currentText, saveTitle || undefined);
+        const newArticle = createArticle(currentText, saveTitle.trim() || undefined);
         savedArticle = await saveArticle(newArticle);
       }
 
       setLastSavedArticleId(savedArticle.id);
       onArticleSaved(savedArticle);
 
-      // 上传音频到云端
       setShowUploadPanel(true);
       setIsUploadingAudio(true);
       const result = await uploadAllAudio(savedArticle.id);
       if (result.total > 0) {
-        if (result.failed > 0) {
-          setUploadMessage(`有 ${result.failed} 段音频上传失败，可在下方重试。`);
-        } else {
-          setUploadMessage("音频已全部上传。");
-        }
+        setUploadMessage(
+          result.failed > 0
+            ? `有 ${result.failed} 段音频上传失败，可在同步状态里重试。`
+            : "音频已同步。"
+        );
       }
       setIsUploadingAudio(false);
 
@@ -177,11 +245,9 @@ export default function ArticleManager({
     setIsUploadingAudio(true);
     try {
       const result = await uploadAllAudio(uploadArticleId);
-      if (result.failed > 0) {
-        setUploadMessage(`仍有 ${result.failed} 段音频上传失败，可继续重试。`);
-      } else {
-        setUploadMessage("失败段落已全部重试成功。");
-      }
+      setUploadMessage(
+        result.failed > 0 ? `仍有 ${result.failed} 段音频上传失败。` : "失败段落已重试成功。"
+      );
     } catch (err) {
       console.error("重试上传失败段落失败", err);
       setUploadMessage("重试失败，请稍后再试");
@@ -207,96 +273,234 @@ export default function ArticleManager({
     [uploadArticleId, uploadSegmentAudio]
   );
 
-  // 加载文章
   const handleLoad = useCallback(
     (article: Article) => {
+      setOpenActionArticleId(null);
       onArticleLoad(article);
-      onClose();
+      if (variant === "drawer") {
+        onClose();
+      }
     },
-    [onArticleLoad, onClose]
+    [onArticleLoad, onClose, variant]
   );
 
-  // 删除文章
   const handleDelete = useCallback(
-    async (id: string, e: React.MouseEvent) => {
+    async (id: string, e: MouseEvent) => {
       e.stopPropagation();
       if (!confirm("确定要删除这篇文章吗？")) return;
 
       try {
+        setOpenActionArticleId(null);
         await deleteArticle(id);
         await loadArticles();
+        if (id === currentArticleId) {
+          onNewArticle();
+        }
       } catch (err) {
         console.error("删除文章失败", err);
       }
     },
-    [loadArticles]
+    [currentArticleId, loadArticles, onNewArticle]
   );
 
-  const formatDate = (timestamp: number): string => {
-    const date = new Date(timestamp);
-    return date.toLocaleDateString("zh-CN", {
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
+  const handleStartRename = (article: Article, e: MouseEvent) => {
+    e.stopPropagation();
+    setOpenActionArticleId(null);
+    setRenamingId(article.id);
+    setRenameValue(getArticleTitle(article));
   };
 
-  const getPreview = (text: string): string => {
-    const cleaned = text.replace(/\s+/g, " ").trim();
-    return cleaned.length > 50 ? cleaned.slice(0, 50) + "..." : cleaned;
-  };
+  const handleRename = useCallback(
+    async (article: Article) => {
+      const title = renameValue.trim();
+      if (!title) return;
 
-  const hasSyncHighlight = (article: Article): boolean => {
-    const data = article.segmentWordTimings;
-    if (!data || typeof data !== "object" || Array.isArray(data)) return false;
-    return Object.keys(data).length > 0;
+      setSaveError(null);
+      setIsSaving(true);
+      try {
+        const updated = await saveArticle({ id: article.id, text: article.text, title });
+        await loadArticles();
+        if (article.id === currentArticleId) {
+          onArticleSaved(updated);
+        }
+        setOpenActionArticleId(null);
+        setRenamingId(null);
+        setRenameValue("");
+      } catch (err) {
+        console.error("重命名文章失败", err);
+        setSaveError("重命名失败，请稍后再试");
+      } finally {
+        setIsSaving(false);
+      }
+    },
+    [currentArticleId, loadArticles, onArticleSaved, renameValue]
+  );
+
+  const handleToggleArticleActions = (articleId: string, e: MouseEvent) => {
+    e.stopPropagation();
+    setOpenActionArticleId((current) => (current === articleId ? null : articleId));
   };
 
   const canRetry = Boolean(uploadArticleId) && uploadStats.failed > 0 && !isSaving && !isUploadingAudio;
+  const isSidebar = variant === "sidebar";
+
+  const renderItem = (article: Article) => {
+    const stats = getArticleStats(article);
+    const isActive = currentArticleId === article.id;
+    const hasAudio = (article.audioUrls?.length ?? 0) > 0;
+
+    return (
+      <article
+        key={article.id}
+        className={`${styles.item} ${isActive ? styles.itemActive : ""}`}
+        onClick={() => handleLoad(article)}
+      >
+        <div className={styles.itemInfo}>
+          {renamingId === article.id ? (
+            <div className={styles.renameRow} onClick={(e) => e.stopPropagation()}>
+              <input
+                className={styles.renameInput}
+                value={renameValue}
+                onChange={(event) => setRenameValue(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") handleRename(article);
+                  if (event.key === "Escape") {
+                    setRenamingId(null);
+                    setRenameValue("");
+                  }
+                }}
+                autoFocus
+              />
+              <button className={styles.compactButton} onClick={() => handleRename(article)}>
+                确认
+              </button>
+            </div>
+          ) : (
+            <div className={styles.itemTitleRow}>
+              <div className={styles.itemTitle}>{getArticleTitle(article)}</div>
+              <div className={styles.itemStatus}>
+                {hasAudio ? (
+                  <Volume2 aria-hidden="true" className={styles.statusIcon} aria-label="含音频" />
+                ) : null}
+                {hasSyncHighlight(article) ? (
+                  <Waypoints aria-hidden="true" className={styles.statusIcon} aria-label="同步高亮" />
+                ) : null}
+              </div>
+            </div>
+          )}
+          <div className={styles.itemMeta}>
+            <span>{formatDate(article.updatedAt)}</span>
+            <span>{stats.words} 词</span>
+            <span>{stats.paragraphs} 段</span>
+          </div>
+        </div>
+
+        <div className={styles.itemActions} onClick={(event) => event.stopPropagation()}>
+          <button
+            type="button"
+            className={styles.moreButton}
+            aria-label={`${getArticleTitle(article)} 操作`}
+            aria-expanded={openActionArticleId === article.id}
+            onClick={(event) => handleToggleArticleActions(article.id, event)}
+          >
+            <MoreHorizontal aria-hidden="true" />
+          </button>
+          {openActionArticleId === article.id ? (
+            <div className={styles.itemMenu}>
+              <button
+                type="button"
+                className={styles.menuButton}
+                onClick={(event) => handleStartRename(article, event)}
+              >
+                <Edit3 aria-hidden="true" className={styles.buttonIcon} />
+                <span>重命名</span>
+              </button>
+              <button
+                type="button"
+                className={styles.menuDangerButton}
+                onClick={(event) => handleDelete(article.id, event)}
+              >
+                <Trash2 aria-hidden="true" className={styles.buttonIcon} />
+                <span>删除</span>
+              </button>
+            </div>
+          ) : null}
+        </div>
+      </article>
+    );
+  };
 
   return (
     <>
-      {isOpen && <div className={styles.backdrop} onClick={onClose} />}
-      <aside className={`${styles.panel} surface-card ${isOpen ? styles.panelOpen : ""}`}>
+      {variant === "drawer" && isOpen ? <div className={styles.backdrop} onClick={onClose} /> : null}
+      <aside
+        className={`${styles.panel} ${styles[variant]} ${isOpen ? styles.panelOpen : ""}`}
+        data-collapsed={isOpen ? "false" : "true"}
+        aria-label="文章库"
+      >
+        {isSidebar && !isOpen ? (
+          <button
+            className={styles.collapsedButton}
+            onClick={onToggleCollapse ?? onClose}
+            aria-label="展开文章"
+            title="展开文章"
+          >
+            <BookOpen aria-hidden="true" />
+          </button>
+        ) : null}
+
+        {isOpen ? (
+          <>
         <div className={styles.header}>
-          <h2 className={styles.title}>我的文章</h2>
-          <button className={styles.closeBtn} onClick={onClose}>
-            关闭
+          <h2 className={styles.title}>
+            <BookOpen aria-hidden="true" className={styles.titleIcon} />
+            <span>文章</span>
+          </h2>
+          <button
+            className={`${styles.closeBtn} ${styles.iconButton}`}
+            onClick={onToggleCollapse ?? onClose}
+            aria-label={isSidebar ? "收起文章" : "关闭文章"}
+            title={isSidebar ? "收起文章" : "关闭文章"}
+          >
+            {isSidebar ? <PanelLeftClose aria-hidden="true" /> : <X aria-hidden="true" />}
           </button>
         </div>
 
         <div className={styles.saveSection}>
-          {!showSaveInput ? (
-            <button
-              className={styles.saveButton}
-              onClick={() => {
-                if (currentArticleId) {
-                  handleSave();
-                } else {
-                  setShowSaveInput(true);
-                }
-              }}
-              disabled={!currentText.trim() || isSaving}
-            >
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-              >
-                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
-                <polyline points="17 21 17 13 7 13 7 21" />
-                <polyline points="7 3 7 8 15 8" />
-              </svg>
-              {currentArticleId ? "更新当前文章" : "保存当前文章"}
-            </button>
-          ) : (
+          <button
+            className={styles.saveButton}
+            onClick={() => {
+              if (currentArticleId) {
+                handleSave();
+              } else {
+                setShowSaveInput(true);
+              }
+            }}
+            disabled={!currentText.trim() || isSaving}
+          >
+            <Save aria-hidden="true" className={styles.buttonIcon} />
+            <span>{isSaving ? "保存中..." : "保存"}</span>
+          </button>
+          <button
+            type="button"
+            className={styles.newButton}
+            onClick={() => {
+              onNewArticle();
+              if (variant === "drawer") {
+                onClose();
+              }
+            }}
+          >
+            <Plus aria-hidden="true" className={styles.buttonIcon} />
+            <span>新建</span>
+          </button>
+
+          {showSaveInput ? (
             <div className={styles.saveRow}>
               <input
                 type="text"
                 className={styles.titleInput}
-                placeholder="输入文章标题（可选）"
+                placeholder="文章标题"
                 value={saveTitle}
                 onChange={(e) => setSaveTitle(e.target.value)}
                 onKeyDown={(e) => {
@@ -308,24 +512,24 @@ export default function ArticleManager({
                 }}
                 autoFocus
               />
-              <button
-                className={styles.saveButton}
-                onClick={handleSave}
-                disabled={isSaving}
-              >
-                保存
-              </button>
-              <button
-                className={styles.cancelButton}
-                onClick={() => {
-                  setShowSaveInput(false);
-                  setSaveTitle("");
-                }}
-              >
-                取消
-              </button>
+              <div className={styles.saveRowActions}>
+                <button className={styles.compactButton} onClick={handleSave} disabled={isSaving}>
+                  <Check aria-hidden="true" className={styles.buttonIcon} />
+                  <span>保存</span>
+                </button>
+                <button
+                  className={styles.compactGhostButton}
+                  onClick={() => {
+                    setShowSaveInput(false);
+                    setSaveTitle("");
+                  }}
+                >
+                  <X aria-hidden="true" className={styles.buttonIcon} />
+                  <span>取消</span>
+                </button>
+              </div>
             </div>
-          )}
+          ) : null}
 
           {saveError ? <div className={styles.errorBanner}>{saveError}</div> : null}
           {uploadMessage ? <div className={styles.noticeBanner}>{uploadMessage}</div> : null}
@@ -333,7 +537,7 @@ export default function ArticleManager({
           {showUploadPanel && uploadCandidates.length > 0 ? (
             <div className={styles.uploadPanel}>
               <div className={styles.uploadHeaderRow}>
-                <h3 className={styles.uploadTitle}>音频上传</h3>
+                <h3 className={styles.uploadTitle}>同步状态</h3>
                 <span className={styles.uploadSummary}>
                   {uploadStats.done}/{uploadStats.total}
                   {uploadStats.failed > 0 ? ` · 失败 ${uploadStats.failed}` : ""}
@@ -346,16 +550,17 @@ export default function ArticleManager({
                 max={Math.max(1, uploadStats.total)}
               />
 
-              <div className={styles.uploadActions}>
+              {uploadStats.failed > 0 ? (
                 <button
                   type="button"
-                  className={styles.retryAllButton}
+                  className={styles.compactButton}
                   onClick={handleRetryFailedUploads}
                   disabled={!canRetry}
                 >
-                  重试失败段落
+                  <Volume2 aria-hidden="true" className={styles.buttonIcon} />
+                  <span>重试失败段落</span>
                 </button>
-              </div>
+              ) : null}
 
               <div className={styles.uploadList}>
                 {uploadCandidates.map((seg) => {
@@ -390,7 +595,8 @@ export default function ArticleManager({
                               disabled={isSaving || isUploadingAudio}
                               onClick={() => handleRetrySegment(seg.id)}
                             >
-                              重试
+                              <Volume2 aria-hidden="true" className={styles.buttonIcon} />
+                              <span>重试</span>
                             </button>
                           ) : null}
                         </div>
@@ -407,69 +613,88 @@ export default function ArticleManager({
           ) : null}
         </div>
 
-        <div className={styles.listSection}>
-        <div className={styles.listHeader}>
-          <h3 className={styles.listTitle}>已保存文章</h3>
-          <button
-            className={styles.refreshButton}
-            onClick={loadArticles}
-            disabled={isLoading}
-            title="刷新文章列表"
-          >
-            {isLoading ? "刷新中…" : "刷新"}
-          </button>
+        <div className={styles.searchRow}>
+          <Search aria-hidden="true" className={styles.searchIcon} />
+          <input
+            type="search"
+            className={styles.searchInput}
+            placeholder="搜索文章"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+          />
         </div>
+
+        <div className={styles.listSection}>
           {isLoading ? (
             <div className={styles.empty}>加载中...</div>
-          ) : articles.length > 0 ? (
+          ) : filteredArticles.length > 0 ? (
             <div className={styles.list}>
-              {articles.map((article) => (
-                <div
-                  key={article.id}
-                  className={`${styles.item} ${
-                    currentArticleId === article.id ? styles.itemActive : ""
-                  }`}
-                  onClick={() => handleLoad(article)}
-                >
-                  <div className={styles.itemInfo}>
-                    <div className={styles.itemTitle}>
-                      {article.title || getPreview(article.text)}
-                    </div>
-                    <div className={styles.itemMeta}>
-                      <span>{formatDate(article.updatedAt)}</span>
-                      {article.audioUrls && article.audioUrls.length > 0 && (
-                        <span className={styles.hasAudio}>有音频</span>
-                      )}
-                      {hasSyncHighlight(article) && (
-                        <span className={styles.hasSyncHighlight}>同步高亮</span>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className={styles.itemActions}>
-                    <button
-                      className={`${styles.iconButton} ${styles.deleteButton}`}
-                      onClick={(e) => handleDelete(article.id, e)}
-                      title="删除"
-                    >
-                      <svg
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
+              {isSearching ? (
+                filteredArticles.map(renderItem)
+              ) : (
+                <>
+                  {recentArticles.length > 0 ? (
+                    <div className={styles.group}>
+                      <button
+                        type="button"
+                        className={styles.groupHeader}
+                        onClick={() => setRecentCollapsed((prev) => !prev)}
+                        aria-expanded={!recentCollapsed}
                       >
-                        <polyline points="3 6 5 6 21 6" />
-                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                      </svg>
+                        {recentCollapsed ? (
+                          <ChevronRight aria-hidden="true" className={styles.groupChevron} />
+                        ) : (
+                          <ChevronDown aria-hidden="true" className={styles.groupChevron} />
+                        )}
+                        <span>最近阅读</span>
+                        <span className={styles.groupCount}>{recentArticles.length}</span>
+                      </button>
+                      {!recentCollapsed ? recentArticles.map(renderItem) : null}
+                    </div>
+                  ) : null}
+
+                  <div className={styles.group}>
+                    <button
+                      type="button"
+                      className={styles.groupHeader}
+                      onClick={() => setAllCollapsed((prev) => !prev)}
+                      aria-expanded={!allCollapsed}
+                    >
+                      {allCollapsed ? (
+                        <ChevronRight aria-hidden="true" className={styles.groupChevron} />
+                      ) : (
+                        <ChevronDown aria-hidden="true" className={styles.groupChevron} />
+                      )}
+                      <span>全部文章</span>
+                      <span className={styles.groupCount}>{filteredArticles.length}</span>
                     </button>
+                    {!allCollapsed ? filteredArticles.map(renderItem) : null}
                   </div>
-                </div>
-              ))}
+                </>
+              )}
             </div>
           ) : (
-            <div className={styles.empty}>暂无保存的文章</div>
+            <div className={styles.empty}>
+              <BookOpen aria-hidden="true" className={styles.emptyIcon} />
+              <span>{query.trim() ? "无匹配文章" : "暂无文章"}</span>
+              {!query.trim() ? (
+                <button
+                  type="button"
+                  className={styles.emptyAction}
+                  onClick={() => {
+                    onNewArticle();
+                    if (variant === "drawer") onClose();
+                  }}
+                >
+                  <Plus aria-hidden="true" className={styles.buttonIcon} />
+                  <span>新建</span>
+                </button>
+              ) : null}
+            </div>
           )}
         </div>
+          </>
+        ) : null}
       </aside>
     </>
   );

@@ -1,8 +1,16 @@
 import type {
   ApplyTextNormalization,
+  EdgeTTSVoice,
   GeminiTTSModel,
   ReaderSettings,
 } from "./types";
+
+export type EdgeTtsGenerationParams = {
+  provider: "edge";
+  voice: EdgeTTSVoice;
+  rate: number;
+  pitch: number;
+};
 
 export type AzureTtsGenerationParams = {
   provider: "azure";
@@ -47,6 +55,7 @@ export type GeminiTtsGenerationParams = {
 };
 
 export type TtsGenerationParams =
+  | EdgeTtsGenerationParams
   | AzureTtsGenerationParams
   | ElevenLabsTtsGenerationParams
   | GeminiTtsGenerationParams;
@@ -54,6 +63,15 @@ export type TtsGenerationParams =
 export function buildTtsGenerationParams(
   settings: ReaderSettings
 ): TtsGenerationParams {
+  if (settings.ttsProvider === "edge") {
+    return {
+      provider: "edge",
+      voice: settings.edgeVoice,
+      rate: settings.edgeRate,
+      pitch: settings.edgePitch,
+    };
+  }
+
   if (settings.ttsProvider === "elevenlabs") {
     return {
       provider: "elevenlabs",

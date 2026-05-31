@@ -3,7 +3,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSettings } from "@/contexts/SettingsContext";
 import { SegmentedControl, type SegmentedOption } from "@/components/ui";
-import { ReadingTab, TypographyTab, LayoutTab, TtsTab } from "@/components/settings";
+import {
+  AiTab,
+  LayoutTab,
+  ReadingTab,
+  SyncTab,
+  TtsTab,
+  TypographyTab,
+} from "@/components/settings";
 import styles from "./SettingsPanel.module.css";
 
 interface SettingsPanelProps {
@@ -12,7 +19,7 @@ interface SettingsPanelProps {
   onArticlesCleared?: () => void;
 }
 
-type SettingsTab = "reading" | "typography" | "layout" | "tts";
+type SettingsTab = "reading" | "typography" | "layout" | "tts" | "ai" | "sync";
 
 export function SettingsPanel({ isOpen, onClose, onArticlesCleared }: SettingsPanelProps) {
   const { settings, resetSettings } = useSettings();
@@ -36,6 +43,8 @@ export function SettingsPanel({ isOpen, onClose, onArticlesCleared }: SettingsPa
         { value: "reading", label: "阅读" },
         { value: "typography", label: "排版" },
         { value: "layout", label: "布局" },
+        { value: "ai", label: "AI" },
+        { value: "sync", label: "同步" },
       ];
 
       return canConfigureTts
@@ -121,6 +130,14 @@ export function SettingsPanel({ isOpen, onClose, onArticlesCleared }: SettingsPa
               <TtsTab />
             </div>
           ) : null}
+
+          <div hidden={activeTab !== "ai"} className={styles.tabContent}>
+            <AiTab />
+          </div>
+
+          <div hidden={activeTab !== "sync"} className={styles.tabContent}>
+            <SyncTab />
+          </div>
         </div>
 
         <div className={styles.footer}>

@@ -25,7 +25,7 @@
   padding: 0.65rem 1.4rem;
   margin: 0;
   border-radius: 6px;
-  transition: background-color 0.15s ease, box-shadow 0.15s ease;
+  transition: background-color 0.15s ease;
   text-align: var(--text-align);
   text-indent: var(--text-indent);
   white-space: pre-wrap;
@@ -54,26 +54,73 @@
 }
 
 .paragraph:hover {
-  background-color: var(--panel-muted-bg);
+  background-color: var(--whisper);
+  background-image: linear-gradient(to right, var(--accent-light), var(--accent-light));
+  background-size: 2px 100%;
+  background-repeat: no-repeat;
+  background-position: left center;
 }
 
 .paragraph.active {
-  background-color: var(--paragraph-active-bg);
-  box-shadow: 0 0 0 1px var(--paragraph-active-ring);
+  background-color: var(--paragraph-active-bg, var(--accent-glow));
+  background-image: linear-gradient(to right, var(--accent), var(--accent));
+  background-size: 2px 100%;
+  background-repeat: no-repeat;
+  background-position: left center;
+}
+
+.aiPressing {
+  background: var(--color-highlight);
 }
 
 /* 空状态 */
 .empty {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: 200px;
+  gap: 12px;
+  min-height: 50vh;
   padding: 2rem;
 }
 
-.emptyText {
+.emptyIcon {
+  width: 2rem;
+  height: 2rem;
+  stroke-width: 1.5;
   color: var(--color-muted);
-  font-size: 0.95rem;
+  opacity: 0.55;
+}
+
+.emptyText {
+  margin: 0;
+  color: var(--color-muted);
+  font-family: var(--font-ui), system-ui, sans-serif;
+  font-size: 0.92rem;
   text-align: center;
 }
 
+.emptyHint {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-family: var(--font-ui), system-ui, sans-serif;
+  font-size: 0.8rem;
+  color: var(--color-muted);
+}
+
+.kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.3rem;
+  height: 1.3rem;
+  padding: 0 0.3rem;
+  border-radius: var(--radius-small, 4px);
+  background: var(--whisper);
+  font-family: var(--font-ui), system-ui, sans-serif;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--color-muted);
+}

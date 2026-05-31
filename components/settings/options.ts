@@ -2,6 +2,8 @@ import type {
   ApplyTextNormalization,
   AzureTTSVoice,
   BoldRatio,
+  DeepSeekModel,
+  EdgeTTSVoice,
   ElevenOutputFormat,
   GeminiTTSModel,
   PageWidthMode,
@@ -51,7 +53,16 @@ export const azureVoiceOptions = [
   { value: "en-GB-SoniaNeural", label: "Sonia (英式女声)" },
 ] as const satisfies readonly { value: AzureTTSVoice; label: string }[];
 
+export const edgeVoiceOptions = [
+  { value: "en-US-EmmaMultilingualNeural", label: "Emma Multilingual (女声)" },
+  { value: "en-US-AvaMultilingualNeural", label: "Ava Multilingual (女声)" },
+  { value: "en-US-JennyNeural", label: "Jenny (女声)" },
+  { value: "en-US-GuyNeural", label: "Guy (男声)" },
+  { value: "en-GB-SoniaNeural", label: "Sonia (英式女声)" },
+] as const satisfies readonly { value: EdgeTTSVoice; label: string }[];
+
 export const ttsProviderOptions = [
+  { value: "edge", label: "Edge 免费档" },
   { value: "azure", label: "Azure" },
   { value: "elevenlabs", label: "ElevenLabs" },
   { value: "gemini", label: "Gemini" },
@@ -61,6 +72,11 @@ export const geminiModelOptions = [
   { value: "gemini-2.5-flash-preview-tts", label: "Gemini 2.5 Flash TTS（低延迟）" },
   { value: "gemini-2.5-pro-preview-tts", label: "Gemini 2.5 Pro TTS（高质量）" },
 ] as const satisfies readonly { value: GeminiTTSModel; label: string }[];
+
+export const deepseekModelOptions = [
+  { value: "deepseek-v4-flash", label: "DeepSeek V4 Flash" },
+  { value: "deepseek-v4-pro", label: "DeepSeek V4 Pro" },
+] as const satisfies readonly { value: DeepSeekModel; label: string }[];
 
 export const elevenModelOptions = [
   { value: "eleven_v3", label: "Eleven v3（高质量，适合情感/长文本）" },

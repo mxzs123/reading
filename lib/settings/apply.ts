@@ -31,9 +31,7 @@ export function applySettings(settings: ReaderSettings): void {
   const bionicWeight = clampNumber(settings.bionicWeight ?? 600, 400, 850);
   const pageWidthMode: PageWidthMode = settings.pageWidthMode ?? "px";
 
-  const responsiveFontSize = isMobile
-    ? `clamp(15px, calc(${fontSizePx}px + 0.7vw), 30px)`
-    : `clamp(17px, calc(${fontSizePx}px + 0.4vw), 30px)`;
+  const responsiveFontSize = `${fontSizePx}px`;
 
   let responsivePageWidth: string;
   if (pageWidthMode === "vw") {

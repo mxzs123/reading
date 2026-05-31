@@ -1,5 +1,5 @@
 /**
- * 云存储模块 - 通过 REST API 访问 Vercel KV/Blob
+ * 文章存储客户端 - 通过 REST API 访问当前数据源
  */
 
 export interface Article {

@@ -23,9 +23,10 @@
   height: 100vh;
   padding: 1.75rem;
   background: var(--color-surface);
+  border-radius: var(--radius-panel, 8px) 0 0 var(--radius-panel, 8px);
   backdrop-filter: blur(28px);
   -webkit-backdrop-filter: blur(28px);
-  border-left: 1px solid var(--color-border);
+  border-left: 0;
   display: flex;
   flex-direction: column;
   gap: 1.75rem;
@@ -33,7 +34,7 @@
   transform: translateX(100%);
   transition: transform 0.35s cubic-bezier(0.32, 0.72, 0, 1);
   overflow: hidden;
-  box-shadow: -8px 0 32px var(--shadow-deep);
+  box-shadow: none;
 }
 
 .panelOpen {
@@ -69,7 +70,7 @@
 
 .scrollContent::-webkit-scrollbar-thumb {
   background: var(--scrollbar-thumb);
-  border-radius: 999px;
+  border-radius: var(--radius-control, 6px);
 }
 
 .scrollContent::-webkit-scrollbar-track {
@@ -81,14 +82,14 @@
   justify-content: space-between;
   align-items: center;
   padding-bottom: 0.75rem;
-  border-bottom: 1px solid var(--color-border);
+  border-bottom: 0;
 }
 
 .title {
   font-family: var(--font-display), Georgia, serif;
   font-size: 1.35rem;
   font-weight: 600;
-  letter-spacing: -0.02em;
+  letter-spacing: 0;
   margin: 0;
   color: var(--ink);
 }
@@ -98,8 +99,8 @@
   font-size: 0.85rem;
   padding: 0.5rem 1.1rem;
   background: var(--whisper);
-  border: 1px solid var(--color-border);
-  border-radius: 999px;
+  border: 0;
+  border-radius: var(--radius-control, 6px);
   font-weight: 600;
   white-space: nowrap;
   color: var(--color-muted);
@@ -121,8 +122,8 @@
   gap: 1.1rem;
   padding: 1rem;
   background: var(--whisper);
-  border-radius: 16px;
-  border: 1px solid var(--color-border);
+  border-radius: var(--radius-panel, 8px);
+  border: 0;
 }
 
 .sectionHeader {
@@ -154,8 +155,8 @@
   gap: 0.75rem;
   padding: 0.75rem 0.85rem;
   background: var(--panel-muted-bg);
-  border: 1px solid var(--color-border);
-  border-radius: 14px;
+  border: 0;
+  border-radius: var(--radius-control, 6px);
 }
 
 .calloutText {
@@ -171,9 +172,9 @@
   font-weight: 700;
   white-space: nowrap;
   padding: 0.45rem 0.9rem;
-  border-radius: 999px;
+  border-radius: var(--radius-control, 6px);
   background: var(--control-active-surface);
-  border: 1px solid var(--color-border);
+  border: 0;
   color: var(--accent);
   transition: transform 0.15s ease, background 0.2s ease;
 }
@@ -198,7 +199,7 @@
   gap: 0.8rem;
   background: var(--panel-muted-bg);
   padding: 0.8rem;
-  border-radius: 14px;
+  border-radius: var(--radius-control, 6px);
 }
 
 .miniControl {
@@ -216,21 +217,20 @@
 .miniSegments {
   display: flex;
   background: var(--panel-strong-bg);
-  border-radius: 8px;
+  border-radius: var(--radius-control, 6px);
   padding: 2px;
 }
 
 .miniSegment {
   font-size: 0.8rem;
   padding: 0.2rem 0.6rem;
-  border-radius: 6px;
+  border-radius: var(--radius-small, 4px);
   color: var(--color-muted);
 }
 
 .miniSegmentActive {
   background: var(--control-active-surface);
   color: var(--color-primary);
-  box-shadow: 0 1px 3px var(--color-border);
   font-weight: 500;
 }
 
@@ -267,7 +267,7 @@
   accent-color: var(--accent);
   height: 5px;
   background: var(--control-track);
-  border-radius: 999px;
+  border-radius: var(--radius-small, 4px);
   appearance: none;
   transition: height 0.15s ease;
 }
@@ -282,10 +282,8 @@
   height: 18px;
   border-radius: 50%;
   background: #fff;
-  border: 3px solid var(--accent);
-  box-shadow: 
-    0 2px 6px var(--shadow),
-    0 4px 12px var(--accent-light);
+  border: 0;
+  box-shadow: none;
   cursor: grab;
   transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
@@ -314,7 +312,7 @@
   width: 48px;
   height: 26px;
   border-radius: 999px;
-  border: 1px solid var(--input-border);
+  border: 0;
   background: var(--control-track);
   position: relative;
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
@@ -330,7 +328,7 @@
   height: 20px;
   border-radius: 50%;
   background: #fff;
-  box-shadow: 0 2px 6px var(--shadow);
+  box-shadow: none;
   transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -348,7 +346,7 @@
   display: grid;
   background: var(--control-track);
   padding: 4px;
-  border-radius: 14px;
+  border-radius: var(--radius-control, 6px);
   gap: 4px;
 }
 
@@ -371,14 +369,13 @@
 .segmentButton {
   font-family: var(--font-ui), system-ui, sans-serif;
   padding: 0.55rem 0.5rem;
-  border-radius: 10px;
+  border-radius: var(--radius-small, 4px);
   color: var(--color-muted);
   font-size: 0.85rem;
   font-weight: 500;
   transition: 
     background 0.2s ease,
-    color 0.2s ease,
-    box-shadow 0.2s ease;
+    color 0.2s ease;
   text-align: center;
   white-space: normal;
   line-height: 1.1;
@@ -393,15 +390,14 @@
 .segmentActive {
   background: var(--control-active-surface);
   color: var(--accent);
-  box-shadow: 0 2px 8px var(--shadow);
   font-weight: 600;
 }
 
 .select {
   width: 100%;
   padding: 0.7rem 1rem;
-  border-radius: 12px;
-  border: 1px solid var(--input-border);
+  border-radius: var(--radius-control, 6px);
+  border: 0;
   background: var(--input-surface);
   font-size: 0.95rem;
 }
@@ -420,8 +416,8 @@
 .apiKeyInput {
   flex: 1;
   padding: 0.7rem 1rem;
-  border-radius: 12px;
-  border: 1px solid var(--input-border);
+  border-radius: var(--radius-control, 6px);
+  border: 0;
   background: var(--input-surface);
   font-size: 0.95rem;
   font-family: monospace;
@@ -434,7 +430,7 @@
 
 .apiKeyToggle {
   padding: 0 1rem;
-  border-radius: 10px;
+  border-radius: var(--radius-control, 6px);
   background: var(--panel-muted-bg);
   font-size: 0.85rem;
   font-weight: 500;
@@ -449,8 +445,8 @@
 .numberInput {
   width: 120px;
   padding: 0.6rem 0.8rem;
-  border-radius: 10px;
-  border: 1px solid var(--input-border);
+  border-radius: var(--radius-control, 6px);
+  border: 0;
   background: var(--input-surface);
   font-size: 0.95rem;
 }
@@ -468,9 +464,9 @@
 }
 
 .details {
-  border: 1px solid var(--color-border);
+  border: 0;
   background: var(--panel-muted-bg);
-  border-radius: 14px;
+  border-radius: var(--radius-control, 6px);
   padding: 0.75rem 0.85rem;
 }
 
@@ -496,7 +492,7 @@
 .footer {
   margin-top: auto;
   padding-top: 1rem;
-  border-top: 1px solid var(--color-border);
+  border-top: 0;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -522,11 +518,11 @@
   font-family: var(--font-ui), system-ui, sans-serif;
   font-size: 0.85rem;
   padding: 0.5rem 1.1rem;
-  border-radius: 999px;
+  border-radius: var(--radius-control, 6px);
   font-weight: 700;
   white-space: nowrap;
   background: rgba(220, 38, 38, 0.12);
-  border: 1px solid rgba(220, 38, 38, 0.28);
+  border: 0;
   color: rgba(185, 28, 28, 0.95);
   transition: background 0.2s ease, transform 0.15s ease, opacity 0.2s ease;
 }
@@ -550,10 +546,10 @@
     width: 100%;
     height: auto;
     max-height: 85vh;
-    border-radius: 24px 24px 0 0;
+    border-radius: var(--radius-panel, 8px) var(--radius-panel, 8px) 0 0;
     padding: 1.4rem 1.2rem calc(1.4rem + env(safe-area-inset-bottom));
     transform: translateY(100%);
-    box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.2);
+    box-shadow: none;
   }
 
   .panelOpen {

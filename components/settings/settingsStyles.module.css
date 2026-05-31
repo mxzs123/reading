@@ -5,8 +5,8 @@
   gap: 1.1rem;
   padding: 1rem;
   background: var(--whisper);
-  border-radius: 16px;
-  border: 1px solid var(--color-border);
+  border-radius: var(--radius-panel, 8px);
+  border: 0;
 }
 
 .sectionHeader {
@@ -47,8 +47,8 @@
 .select {
   width: 100%;
   padding: 0.7rem 1rem;
-  border-radius: 12px;
-  border: 1px solid var(--input-border);
+  border-radius: var(--radius-control, 6px);
+  border: 0;
   background: var(--input-surface);
   font-size: 0.95rem;
 }
@@ -56,8 +56,8 @@
 .apiKeyInput {
   flex: 1;
   padding: 0.7rem 1rem;
-  border-radius: 12px;
-  border: 1px solid var(--input-border);
+  border-radius: var(--radius-control, 6px);
+  border: 0;
   background: var(--input-surface);
   font-size: 0.95rem;
   font-family: monospace;
@@ -65,7 +65,7 @@
 
 .apiKeyInput:focus {
   outline: none;
-  border-color: var(--color-primary);
+  background: var(--control-active-surface);
 }
 
 .apiKeyHint {
@@ -87,8 +87,8 @@
   gap: 0.75rem;
   padding: 0.75rem 0.85rem;
   background: var(--panel-muted-bg);
-  border: 1px solid var(--color-border);
-  border-radius: 14px;
+  border: 0;
+  border-radius: var(--radius-control, 6px);
 }
 
 .calloutText {
@@ -104,9 +104,9 @@
   font-weight: 700;
   white-space: nowrap;
   padding: 0.45rem 0.9rem;
-  border-radius: 999px;
+  border-radius: var(--radius-control, 6px);
   background: var(--control-active-surface);
-  border: 1px solid var(--color-border);
+  border: 0;
   color: var(--accent);
   transition: transform 0.15s ease, background 0.2s ease;
 }
@@ -116,10 +116,16 @@
   transform: translateY(-1px);
 }
 
+.calloutButton:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+}
+
 .details {
-  border: 1px solid var(--color-border);
+  border: 0;
   background: var(--panel-muted-bg);
-  border-radius: 14px;
+  border-radius: var(--radius-control, 6px);
   padding: 0.75rem 0.85rem;
 }
 

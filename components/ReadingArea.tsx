@@ -1,14 +1,19 @@
 "use client";
 
 import { useEffect, useMemo, useRef } from "react";
+import { FileText } from "lucide-react";
 import { useAudioStore } from "@/stores/audioStore";
 import { buildParagraphs, buildParagraphKey } from "@/lib/paragraphs";
+import type { WordAskTarget } from "@/lib/wordInteraction";
 import { Paragraph } from "./Paragraph";
 import styles from "./ReadingArea.module.css";
 
 interface ReadingAreaProps {
   text: string;
   onWordClick: (word: string, rect: DOMRect) => void;
+  onWordLongPress?: (target: WordAskTarget) => void;
+  wordLongPressEnabled?: boolean;
+  wordLongPressMs?: number;
   onWordPrefetch?: (word: string) => void;
   onStopArticleAudio?: () => void;
   onWordAudioEnd?: () => void;
@@ -17,6 +22,9 @@ interface ReadingAreaProps {
 export function ReadingArea({
   text,
   onWordClick,
+  onWordLongPress,
+  wordLongPressEnabled,
+  wordLongPressMs,
   onWordPrefetch,
   onStopArticleAudio,
   onWordAudioEnd,
@@ -39,7 +47,13 @@ export function ReadingArea({
   if (!paragraphs.length) {
     return (
       <div className={styles.empty}>
-        <p className={styles.emptyText}>在左侧输入英文文本，点击「确认生成」开始阅读</p>
+        <FileText aria-hidden="true" className={styles.emptyIcon} />
+        <p className={styles.emptyText}>粘贴英文原文，或从左侧选择文章</p>
+        <p className={styles.emptyHint}>
+          <kbd className={styles.kbd}>⌘</kbd>
+          <kbd className={styles.kbd}>↵</kbd>
+          <span>生成阅读</span>
+        </p>
       </div>
     );
   }
@@ -52,6 +66,9 @@ export function ReadingArea({
           id={seg.id}
           text={seg.text}
           onWordClick={onWordClick}
+          onWordLongPress={onWordLongPress}
+          wordLongPressEnabled={wordLongPressEnabled}
+          wordLongPressMs={wordLongPressMs}
           onWordPrefetch={onWordPrefetch}
           onStopArticleAudio={onStopArticleAudio}
           onWordAudioEnd={onWordAudioEnd}

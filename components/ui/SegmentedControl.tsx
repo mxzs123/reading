@@ -22,7 +22,7 @@ export function SegmentedControl<TValue extends string>({
   layout = "auto",
 }: SegmentedControlProps<TValue>) {
   const columns = useMemo(() => {
-    if (layout === "tabs") return Math.min(4, Math.max(1, options.length));
+    if (layout === "tabs") return Math.min(6, Math.max(1, options.length));
 
     const count = options.length;
     if (count <= 1) return 1;

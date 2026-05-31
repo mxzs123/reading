@@ -5,7 +5,9 @@ export type {
   ReadingMode,
   AzureRegion,
   AzureTTSVoice,
+  EdgeTTSVoice,
   GeminiTTSModel,
+  DeepSeekModel,
   TTSProvider,
   ApplyTextNormalization,
   ElevenOutputFormat,
@@ -20,7 +22,9 @@ export type {
 
 export {
   ALLOWED_GEMINI_TTS_MODELS,
+  ALLOWED_DEEPSEEK_MODELS,
   isAllowedGeminiTtsModel,
+  isAllowedDeepSeekModel,
   SENSITIVE_SETTINGS_FIELDS,
 } from "./types";
 
@@ -33,6 +37,7 @@ export { applySettings } from "./apply";
 // TTS Params
 export type {
   AzureTtsGenerationParams,
+  EdgeTtsGenerationParams,
   ElevenLabsTtsGenerationParams,
   GeminiTtsGenerationParams,
   TtsGenerationParams,

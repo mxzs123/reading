@@ -14,6 +14,7 @@ import {
   SENSITIVE_SETTINGS_FIELDS,
   SETTINGS_STORAGE_KEY,
   applySettings,
+  isAllowedDeepSeekModel,
   isAllowedGeminiTtsModel,
   mergeSettings,
   type ReaderSettings,
@@ -23,8 +24,11 @@ function sanitizeSettings(value: ReaderSettings): ReaderSettings {
   const geminiModel = isAllowedGeminiTtsModel(value.geminiModel)
     ? value.geminiModel
     : DEFAULT_SETTINGS.geminiModel;
+  const deepseekModel = isAllowedDeepSeekModel(value.deepseekModel)
+    ? value.deepseekModel
+    : DEFAULT_SETTINGS.deepseekModel;
 
-  return { ...value, geminiModel };
+  return { ...value, geminiModel, deepseekModel };
 }
 
 interface SettingsContextValue {
